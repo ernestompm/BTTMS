@@ -170,7 +170,6 @@ export function VenueScoreboard({ initialMatch, config, tournamentName, sponsors
       <style jsx global>{`
         html, body { margin:0; padding:0; background:#000; color:#fff; font-family:'Barlow Condensed',system-ui,sans-serif; overflow:hidden; height:100%; }
         @keyframes vsbBlink    { 0%,100%{opacity:1} 50%{opacity:.2} }
-        @keyframes vsbMarquee  { from{transform:translateX(0)} to{transform:translateX(-33.333%)} }
         @keyframes vsbSrvPulse { 0%,100%{box-shadow:0 0 0 0 rgba(239,106,76,.7)} 50%{box-shadow:0 0 0 18px rgba(239,106,76,0)} }
         @keyframes vsbPop      { 0%{opacity:0;transform:scale(.92)} 100%{opacity:1;transform:scale(1)} }
         @keyframes vsbPulseGlow{ 0%,100%{opacity:1} 50%{opacity:.6} }
@@ -192,19 +191,17 @@ export function VenueScoreboard({ initialMatch, config, tournamentName, sponsors
                 ? <img src={cfg.logos.tournament_logo_url} alt={tournamentName} style={{ width:78, height:78, borderRadius:14, objectFit:'contain' }} />
                 : <div style={{ width:78, height:78, borderRadius:14, background:'radial-gradient(circle at 30% 30%,#f3e4c7 0 20px,transparent 20.5px),linear-gradient(135deg,#ef6a4c 0%,#d94a2e 100%)', boxShadow:'0 10px 32px rgba(239,106,76,.55)' }} />
               }
-              <div style={{ display:'flex', flexDirection:'column', gap:6, lineHeight:1 }}>
-                <span style={{ fontWeight:600, fontSize:22, letterSpacing:'.32em', textTransform:'uppercase', opacity:.85 }}>EDICIÓN 2026</span>
-                <span style={{ fontWeight:900, fontSize:44, letterSpacing:'.1em', textTransform:'uppercase' }}>{(tournamentName||'TENIS PLAYA').toUpperCase()}</span>
+              <div style={{ display:'flex', flexDirection:'column', lineHeight:1.02, maxWidth:600 }}>
+                <span style={{ fontWeight:900, fontSize:60, letterSpacing:'.06em', textTransform:'uppercase' }}>{(tournamentName||'TENIS PLAYA').toUpperCase()}</span>
               </div>
             </div>
-            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:12, lineHeight:1 }}>
-              {showRound && <span style={{ padding:'14px 34px', background:accentA, color:'#fff', borderRadius:999, fontWeight:900, fontSize:32, letterSpacing:'.24em', textTransform:'uppercase', boxShadow:`0 8px 24px ${hexAlpha(accentA,.45)}` }}>{roundLabel}</span>}
-              {courtLabel && <span style={{ fontWeight:700, fontSize:22, letterSpacing:'.3em', opacity:.95, textTransform:'uppercase' }}>{courtLabel}</span>}
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:0, lineHeight:1 }}>
+              {showRound && <span style={{ padding:'18px 46px', background:accentA, color:'#fff', borderRadius:999, fontWeight:900, fontSize:46, letterSpacing:'.18em', textTransform:'uppercase', textAlign:'center', boxShadow:`0 8px 24px ${hexAlpha(accentA,.45)}` }}>{roundLabel}</span>}
             </div>
-            <div style={{ display:'flex', alignItems:'center', gap:18, fontFamily:"'JetBrains Mono',monospace", fontSize:30, letterSpacing:'.14em', opacity:.95 }}>
-              <span style={{ width:18, height:18, borderRadius:'50%', background:'#ff3b30', boxShadow:'0 0 22px #ff3b30', animation:'vsbBlink 1.2s infinite' }} />
-              <span>{clock}</span>
-              {isLive && <span style={{ opacity:.5, marginLeft:6 }}>{matchTime}</span>}
+            <div style={{ display:'flex', alignItems:'center', gap:20, fontFamily:"'JetBrains Mono',monospace", letterSpacing:'.1em', opacity:.95 }}>
+              <span style={{ width:18, height:18, borderRadius:'50%', background:'#ff3b30', boxShadow:'0 0 22px #ff3b30', animation:'vsbBlink 1.2s infinite', flex:'none' }} />
+              <span style={{ fontSize:44 }}>{clock}</span>
+              {isLive && <span style={{ fontSize:36, opacity:.5, marginLeft:4 }}>{matchTime}</span>}
             </div>
           </div>
 
@@ -273,8 +270,8 @@ export function VenueScoreboard({ initialMatch, config, tournamentName, sponsors
               <div className="absolute z-10" style={{ left:64, right:64, top:190, height:30, display:'grid', gridTemplateColumns:gridCols, alignItems:'center', pointerEvents:'none' }}>
                 {showSeed && <div />}
                 <div />
-                {setCols.map((_,i) => <div key={i} style={{ fontWeight:700, letterSpacing:'.3em', fontSize:20, opacity:.55, textAlign:'center', textTransform:'uppercase' }}>SET {i+1}</div>)}
-                <div style={{ fontWeight:700, letterSpacing:'.3em', fontSize:20, opacity:.55, textAlign:'center', textTransform:'uppercase' }}>PUNTOS</div>
+                {setCols.map((_,i) => <div key={i} style={{ fontWeight:700, letterSpacing:'.28em', fontSize:28, opacity:.65, textAlign:'center', textTransform:'uppercase' }}>SET {i+1}</div>)}
+                <div style={{ fontWeight:700, letterSpacing:'.28em', fontSize:28, opacity:.65, textAlign:'center', textTransform:'uppercase' }}>PUNTOS</div>
               </div>
 
               {/* Score rows */}
@@ -367,24 +364,35 @@ export function VenueScoreboard({ initialMatch, config, tournamentName, sponsors
 }
 
 // ── Sponsor bar ───────────────────────────────────────────────────────────────
+// Fills the full 1920px stage regardless of sponsor count using dynamic keyframes.
 function SponsorBar({ sponsorList, carouselSpeed }: { sponsorList: Sponsor[]; carouselSpeed: number }) {
+  const CARD_W = 340, CARD_GAP = 64 // 32px each side
+  const cardSlot = CARD_W + CARD_GAP // 404px per sponsor slot
+  const oneSetW = sponsorList.length * cardSlot
+  // Enough copies to fill stage (1920px) + one extra set for seamless loop
+  const copies = Math.max(3, Math.ceil((1920 + oneSetW) / oneSetW) + 1)
+  const kf = `@keyframes vsbMarqueeDyn{from{transform:translateX(0)}to{transform:translateX(-${oneSetW}px)}}`
+
   return (
     <div className="absolute z-10" style={{ left:0, right:0, bottom:0, height:240, background:'linear-gradient(180deg,rgba(0,0,0,.1) 0%,rgba(0,0,0,.4) 100%)', borderTop:'3px solid rgba(255,255,255,.08)', display:'grid', gridTemplateRows:'48px 1fr' }}>
+      <style dangerouslySetInnerHTML={{ __html: kf }} />
       <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:28, fontWeight:700, letterSpacing:'.42em', fontSize:24, opacity:.7, textTransform:'uppercase' }}>
         <i style={{ display:'block', width:40, height:2, background:'currentColor', opacity:.4 }} />
         Patrocinadores oficiales
         <i style={{ display:'block', width:40, height:2, background:'currentColor', opacity:.4 }} />
       </div>
       <div style={{ position:'relative', overflow:'hidden', height:192 }}>
-        <div style={{ position:'absolute', left:0, top:0, height:'100%', display:'flex', alignItems:'center', animation:`vsbMarquee ${carouselSpeed}s linear infinite` }}>
-          {[...sponsorList, ...sponsorList, ...sponsorList].map((sp, i) => (
-            <div key={i} style={{ flex:'none', display:'flex', alignItems:'center', justifyContent:'center', width:340, height:160, margin:'0 32px' }}>
-              {sp.logo_url
-                ? <img src={sp.logo_url} alt={sp.name} style={{ maxHeight:150, maxWidth:320, objectFit:'contain' }} />
-                : <span style={{ fontWeight:800, fontSize:36, letterSpacing:'.06em', textTransform:'uppercase', color:'rgba(255,255,255,.85)', whiteSpace:'nowrap' }}>{sp.name}</span>
-              }
-            </div>
-          ))}
+        <div style={{ position:'absolute', left:0, top:0, height:'100%', display:'flex', alignItems:'center', animation:`vsbMarqueeDyn ${carouselSpeed}s linear infinite` }}>
+          {Array.from({ length: copies }).flatMap((_, ci) =>
+            sponsorList.map((sp, i) => (
+              <div key={`${ci}-${i}`} style={{ flex:'none', display:'flex', alignItems:'center', justifyContent:'center', width:CARD_W, height:160, margin:`0 ${CARD_GAP/2}px` }}>
+                {sp.logo_url
+                  ? <img src={sp.logo_url} alt={sp.name} style={{ maxHeight:150, maxWidth:320, objectFit:'contain' }} />
+                  : <span style={{ fontWeight:800, fontSize:36, letterSpacing:'.06em', textTransform:'uppercase', color:'rgba(255,255,255,.85)', whiteSpace:'nowrap' }}>{sp.name}</span>
+                }
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>
