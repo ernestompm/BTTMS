@@ -121,19 +121,6 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {/* Stats */}
-          <div className="relative z-10 flex gap-10">
-            {[
-              { value: 'Live', label: 'Marcador en directo' },
-              { value: '7+', label: 'Módulos' },
-              { value: '0€', label: 'Coste' },
-            ].map(({ value, label }) => (
-              <div key={label}>
-                <p className="text-white font-black text-3xl font-score">{value}</p>
-                <p className="text-gray-500 text-xs mt-1">{label}</p>
-              </div>
-            ))}
-          </div>
         </div>
 
         {/* Right — form */}
