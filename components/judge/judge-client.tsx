@@ -56,7 +56,11 @@ export function JudgeClient({ initialMatch }: Props) {
     const res = await fetch(`/api/matches/${match.id}/start`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(tossData),
     })
-    if (res.ok) { setMatch((m) => ({ ...m, ...(await res.json()) })); setShowToss(false) }
+    if (res.ok) {
+      const updated = await res.json()
+      setMatch((m) => ({ ...m, ...updated }))
+      setShowToss(false)
+    }
     setSaving(false)
   }
 
@@ -67,7 +71,10 @@ export function JudgeClient({ initialMatch }: Props) {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ winner_team: winnerTeam, point_type: pointType, shot_direction: shotDirection }),
     })
-    if (res.ok) setMatch((m) => ({ ...m, ...(await res.json()) }))
+    if (res.ok) {
+      const updated = await res.json()
+      setMatch((m) => ({ ...m, ...updated }))
+    }
     setSaving(false)
   }
 
@@ -75,7 +82,10 @@ export function JudgeClient({ initialMatch }: Props) {
     if (!confirm('¿Deshacer el último punto?')) return
     setSaving(true)
     const res = await fetch(`/api/matches/${match.id}/undo`, { method: 'POST' })
-    if (res.ok) setMatch((m) => ({ ...m, ...(await res.json()) }))
+    if (res.ok) {
+      const updated = await res.json()
+      setMatch((m) => ({ ...m, ...updated }))
+    }
     setSaving(false)
   }
 
