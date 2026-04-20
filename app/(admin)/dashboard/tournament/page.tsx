@@ -15,6 +15,8 @@ export default function TournamentPage() {
   const [success, setSuccess] = useState(false)
   const [resetting, setResetting] = useState(false)
   const [resetDone, setResetDone] = useState(false)
+  const [seeding, setSeeding] = useState(false)
+  const [seedMsg, setSeedMsg] = useState('')
 
   useEffect(() => {
     supabase.from('tournaments').select('*').eq('id', TOURNAMENT_ID).single()
@@ -61,6 +63,17 @@ export default function TournamentPage() {
     const res = await fetch('/api/admin/reset', { method: 'POST' })
     setResetting(false)
     if (res.ok) { setResetDone(true); setTimeout(() => setResetDone(false), 4000) }
+  }
+
+  async function handleSeed() {
+    if (!confirm('Esto BORRARÁ los datos actuales y creará 32 jugadores + cuadro de octavos (16 equipos, 8 partidos). ¿Continuar?')) return
+    setSeeding(true)
+    setSeedMsg('')
+    const res = await fetch('/api/admin/seed', { method: 'POST' })
+    const data = await res.json()
+    setSeeding(false)
+    setSeedMsg(res.ok ? `✓ ${data.message}` : `✗ ${data.error}`)
+    setTimeout(() => setSeedMsg(''), 8000)
   }
 
   const cfg = tournament.scoreboard_config ?? DEFAULT_SCOREBOARD_CONFIG
@@ -180,6 +193,22 @@ export default function TournamentPage() {
           {saving ? 'Guardando...' : 'Guardar cambios'}
         </button>
         {success && <span className="text-green-400 text-sm">✓ Guardado correctamente</span>}
+      </div>
+
+      {/* Test Data */}
+      <div className="bg-gray-900 rounded-2xl p-6 border border-blue-900/50 space-y-4">
+        <h2 className="text-blue-300 font-semibold">🧪 Datos de prueba</h2>
+        <p className="text-gray-400 text-sm">
+          Genera 32 jugadores españoles, un cuadro absoluto masculino (dobles, 16 equipos) y 8 partidos de octavos listos para jugar.
+          Reemplaza los datos existentes.
+        </p>
+        <div className="flex items-center gap-4 flex-wrap">
+          <button onClick={handleSeed} disabled={seeding}
+            className="bg-blue-900/40 hover:bg-blue-800 border border-blue-700 disabled:opacity-50 text-blue-200 font-semibold px-6 py-2.5 rounded-xl transition-colors">
+            {seeding ? 'Generando...' : '🎾 Generar octavos de dobles'}
+          </button>
+          {seedMsg && <span className={`text-sm ${seedMsg.startsWith('✓') ? 'text-green-400' : 'text-red-400'}`}>{seedMsg}</span>}
+        </div>
       </div>
 
       {/* Danger Zone */}
