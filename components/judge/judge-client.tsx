@@ -112,7 +112,7 @@ export function JudgeClient({ initialMatch, userId }: Props) {
     const res = await fetch(`/api/matches/${match.id}/start`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
     })
-    if (res.ok) { setMatch((m) => ({ ...m, ...await res.json() })); setShowToss(false) }
+    if (res.ok) { const u = await res.json(); setMatch((m) => ({ ...m, ...u })); setShowToss(false) }
     setSaving(false)
   }
 
@@ -122,7 +122,7 @@ export function JudgeClient({ initialMatch, userId }: Props) {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ winner_team: wt, point_type: pt, shot_direction: sd }),
     })
-    if (res.ok) setMatch((m) => ({ ...m, ...await res.json() }))
+    if (res.ok) { const u = await res.json(); setMatch((m) => ({ ...m, ...u })) }
     setSaving(false)
   }
 
@@ -130,7 +130,7 @@ export function JudgeClient({ initialMatch, userId }: Props) {
     if (!confirm('¿Deshacer el último punto?')) return
     setSaving(true)
     const res = await fetch(`/api/matches/${match.id}/undo`, { method: 'POST' })
-    if (res.ok) setMatch((m) => ({ ...m, ...await res.json() }))
+    if (res.ok) { const u = await res.json(); setMatch((m) => ({ ...m, ...u })) }
     setSaving(false)
   }
 
@@ -138,7 +138,7 @@ export function JudgeClient({ initialMatch, userId }: Props) {
     if (!confirm('¿Finalizar el partido?')) return
     setSaving(true)
     const res = await fetch(`/api/matches/${match.id}/finish`, { method: 'POST' })
-    if (res.ok) setMatch((m) => ({ ...m, ...await res.json() }))
+    if (res.ok) { const u = await res.json(); setMatch((m) => ({ ...m, ...u })) }
     setSaving(false)
   }
 
@@ -148,7 +148,7 @@ export function JudgeClient({ initialMatch, userId }: Props) {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ team, type }),
     })
-    if (res.ok) setMatch((m) => ({ ...m, ...await res.json() }))
+    if (res.ok) { const u = await res.json(); setMatch((m) => ({ ...m, ...u })) }
     setSaving(false)
   }
 
