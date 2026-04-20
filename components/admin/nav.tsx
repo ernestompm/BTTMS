@@ -38,10 +38,16 @@ export function AdminNav({ user }: { user: AppUser }) {
   const sidebarContent = (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="p-4 border-b border-gray-800 flex items-center justify-between">
-        <img src="/logo-full.png" alt="Vinteon" className="h-8 w-auto object-contain" />
+      <div className="p-4 border-b border-gray-800 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-3 min-w-0">
+          <img src="/logo-full.png" alt="Vinteon" className="h-10 w-10 object-contain flex-shrink-0" />
+          <div className="min-w-0">
+            <p className="text-white font-bold text-sm leading-tight">Marcador Vinteon</p>
+            <p className="text-gray-400 text-xs leading-tight">Tenis Playa</p>
+          </div>
+        </div>
         {/* Close button — mobile only */}
-        <button onClick={() => setOpen(false)} className="md:hidden text-gray-400 hover:text-white p-1">
+        <button onClick={() => setOpen(false)} className="md:hidden text-gray-400 hover:text-white p-1 flex-shrink-0">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
@@ -96,12 +102,16 @@ export function AdminNav({ user }: { user: AppUser }) {
 
       {/* Mobile top bar */}
       <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-gray-900 border-b border-gray-800 flex items-center px-4 z-40 gap-3">
-        <button onClick={() => setOpen(true)} className="text-gray-400 hover:text-white p-1">
+        <button onClick={() => setOpen(true)} className="text-gray-400 hover:text-white p-1 flex-shrink-0">
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
-        <img src="/logo-full.png" alt="Vinteon" className="h-7 w-auto object-contain" />
+        <img src="/logo-full.png" alt="Vinteon" className="h-8 w-8 object-contain flex-shrink-0" />
+        <div>
+          <p className="text-white font-bold text-sm leading-tight">Marcador Vinteon</p>
+          <p className="text-gray-400 text-xs leading-tight">Tenis Playa</p>
+        </div>
       </div>
 
       {/* Mobile sidebar overlay */}
