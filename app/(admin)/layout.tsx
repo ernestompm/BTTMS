@@ -4,6 +4,9 @@ import { AdminNav } from '@/components/admin/nav'
 import { NavProgress } from '@/components/ui/nav-progress'
 import type { AppUser } from '@/types'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createServerSupabase()
   const { data: { user } } = await supabase.auth.getUser()
