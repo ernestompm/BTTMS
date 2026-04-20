@@ -17,7 +17,7 @@ export default async function JudgeIndexPage() {
 
   let query = service.from('matches')
     .select(`*, court:courts(name), entry1:draw_entries!entry1_id(player1:players!player1_id(first_name,last_name,nationality), player2:players!player2_id(first_name,last_name,nationality)), entry2:draw_entries!entry2_id(player1:players!player1_id(first_name,last_name,nationality), player2:players!player2_id(first_name,last_name,nationality))`)
-    .in('status', ['scheduled', 'in_progress'])
+    .in('status', ['scheduled', 'judge_on_court', 'players_on_court', 'warmup', 'in_progress'])
     .order('scheduled_at', { nullsFirst: false })
 
   if (appUser.role === 'judge') {
@@ -59,8 +59,12 @@ export default async function JudgeIndexPage() {
               className="block bg-gray-900 border border-gray-800 hover:border-brand-red rounded-2xl p-4 transition-colors">
               <div className="flex items-start justify-between mb-2">
                 <div className="flex gap-2">
-                  <Badge variant={m.status === 'in_progress' ? 'danger' : 'outline'}>
-                    {m.status === 'in_progress' ? '● En juego' : 'Programado'}
+                  <Badge variant={m.status === 'in_progress' ? 'danger' : m.status === 'warmup' ? 'warning' : 'outline'}>
+                    {m.status === 'in_progress' ? '● En juego'
+                      : m.status === 'warmup' ? '⏱ Calentamiento'
+                      : m.status === 'players_on_court' ? '👥 Jugadores en pista'
+                      : m.status === 'judge_on_court' ? '🧑‍⚖️ Juez en pista'
+                      : 'Programado'}
                   </Badge>
                   <Badge variant="default">{m.round ?? '—'}</Badge>
                 </div>

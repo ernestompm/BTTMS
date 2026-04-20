@@ -22,10 +22,20 @@ export default async function JudgeMatchPage({ params }: { params: Promise<{ mat
 
   if (!match) notFound()
 
-  // Judges can only access their assigned match
   if (appUser.role === 'judge' && match.judge_id !== user.id) {
     redirect('/judge')
   }
 
-  return <JudgeClient initialMatch={match as any} userId={user.id} />
+  const { data: tournament } = await service.from('tournaments')
+    .select('warmup_duration_seconds, side_change_duration_seconds, set_break_duration_seconds')
+    .eq('id', match.tournament_id)
+    .single()
+
+  const timerConfig = {
+    warmup: tournament?.warmup_duration_seconds ?? 300,
+    sideChange: tournament?.side_change_duration_seconds ?? 60,
+    setBreak: tournament?.set_break_duration_seconds ?? 90,
+  }
+
+  return <JudgeClient initialMatch={match as any} userId={user.id} timerConfig={timerConfig} />
 }

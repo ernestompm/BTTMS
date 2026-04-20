@@ -13,7 +13,7 @@ export type Category =
 
 export type DrawType = 'single_elimination' | 'double_elimination' | 'round_robin' | 'group_stage'
 export type DrawStatus = 'draft' | 'seeded' | 'in_progress' | 'finished'
-export type MatchStatus = 'scheduled' | 'in_progress' | 'finished' | 'suspended' | 'walkover' | 'bye'
+export type MatchStatus = 'scheduled' | 'judge_on_court' | 'players_on_court' | 'warmup' | 'in_progress' | 'finished' | 'suspended' | 'walkover' | 'bye' | 'retired'
 export type MatchType = 'singles' | 'doubles'
 export type Round = 'QF' | 'SF' | 'F' | 'R32' | 'R16' | 'RR' | 'Q1' | 'Q2' | 'CON' | 'GRP'
 export type ScoringSystem =
@@ -84,6 +84,9 @@ export interface Tournament {
   broadcast_endpoint: string | null
   broadcast_api_key: string | null
   status: TournamentStatus
+  warmup_duration_seconds: number
+  side_change_duration_seconds: number
+  set_break_duration_seconds: number
   created_at: string
 }
 
@@ -245,6 +248,11 @@ export interface Match {
   forbidden_zone_serving: 3.0 | 6.0 | null
   warnings: MatchWarnings | null
   notes: string | null
+  judge_on_court_at: string | null
+  players_on_court_at: string | null
+  warmup_started_at: string | null
+  retired_team: 1 | 2 | null
+  retire_reason: string | null
   entry1?: DrawEntry
   entry2?: DrawEntry
   court?: Court

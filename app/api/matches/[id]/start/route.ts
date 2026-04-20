@@ -31,8 +31,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const initialStats = emptyStats()
 
   const { data: updatedMatch } = await service.from('matches').update({
-    status: 'in_progress',
-    started_at: new Date().toISOString(),
+    status: 'warmup',
+    warmup_started_at: new Date().toISOString(),
     toss_winner: toss_winner ?? null,
     toss_choice: toss_choice ?? null,
     serving_team: serving_team ?? 1,

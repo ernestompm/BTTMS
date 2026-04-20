@@ -39,6 +39,9 @@ export default function TournamentPage() {
       broadcast_endpoint: tournament.broadcast_endpoint,
       broadcast_api_key: tournament.broadcast_api_key,
       scoreboard_config: tournament.scoreboard_config,
+      warmup_duration_seconds: tournament.warmup_duration_seconds,
+      side_change_duration_seconds: tournament.side_change_duration_seconds,
+      set_break_duration_seconds: tournament.set_break_duration_seconds,
     }).eq('id', TOURNAMENT_ID)
     setSaving(false)
     setSuccess(true)
@@ -154,6 +157,31 @@ export default function TournamentPage() {
               </select>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Match timers */}
+      <div className="bg-gray-900 rounded-2xl p-6 border border-gray-800 space-y-4">
+        <h2 className="text-white font-semibold">Temporizadores de partido</h2>
+        <p className="text-gray-500 text-xs">Configurables en segundos. Se aplican a todos los partidos del torneo.</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {[
+            { field: 'warmup_duration_seconds',      label: 'Calentamiento',         default: 300 },
+            { field: 'side_change_duration_seconds', label: 'Descanso cambio de lado', default: 60 },
+            { field: 'set_break_duration_seconds',   label: 'Descanso entre sets',    default: 90 },
+          ].map(({ field, label, default: def }) => (
+            <div key={field}>
+              <label className="block text-sm text-gray-400 mb-1">{label}</label>
+              <div className="flex items-center gap-2">
+                <input type="number" min={0} max={600}
+                  value={(tournament as any)[field] ?? def}
+                  onChange={(e) => updateField(field, Number(e.target.value))}
+                  className="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-brand-red" />
+                <span className="text-gray-500 text-sm flex-shrink-0">seg</span>
+              </div>
+              <p className="text-gray-600 text-xs mt-1">{Math.floor(((tournament as any)[field] ?? def) / 60)}:{String(((tournament as any)[field] ?? def) % 60).padStart(2,'0')} min</p>
+            </div>
+          ))}
         </div>
       </div>
 
