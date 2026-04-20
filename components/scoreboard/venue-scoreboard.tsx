@@ -63,13 +63,14 @@ export function VenueScoreboard({ initialMatch, tournamentName, sponsors }: Prop
     return () => clearInterval(id)
   }, [match.started_at, match.finished_at])
 
-  // 1920x1080 stage scaling
+  // 1920x1080 stage scaling — always fills 100% of screen
   useEffect(() => {
     const scale = () => {
       const s = stageRef.current
       if (!s) return
-      const k = Math.min(window.innerWidth / 1920, window.innerHeight / 1080)
-      s.style.transform = `scale(${k})`
+      const kx = window.innerWidth / 1920
+      const ky = window.innerHeight / 1080
+      s.style.transform = `scaleX(${kx}) scaleY(${ky})`
     }
     scale()
     window.addEventListener('resize', scale)
@@ -146,12 +147,12 @@ export function VenueScoreboard({ initialMatch, tournamentName, sponsors }: Prop
         }
       `}</style>
 
-      <div className="fixed inset-0 grid place-items-center bg-black overflow-hidden">
+      <div className="fixed inset-0 bg-black overflow-hidden">
         <div
           ref={stageRef}
-          className="relative"
+          className="absolute"
           style={{
-            width: 1920, height: 1080, transformOrigin: 'center center',
+            width: 1920, height: 1080, top: 0, left: 0, transformOrigin: 'top left',
             background: 'radial-gradient(1400px 700px at 50% 0%, #1d3a5f 0%, #0a1627 70%), #0a1627',
           }}
         >
