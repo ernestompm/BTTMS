@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { createServerSupabase } from '@/lib/supabase-server'
+import { createServerSupabase, createServiceSupabase } from '@/lib/supabase-server'
 import { AdminNav } from '@/components/admin/nav'
 import type { AppUser } from '@/types'
 
@@ -9,7 +9,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   if (!user) redirect('/login')
 
-  const { data: appUser } = await supabase
+  const service = createServiceSupabase()
+  const { data: appUser } = await service
     .from('app_users')
     .select('*')
     .eq('id', user.id)
