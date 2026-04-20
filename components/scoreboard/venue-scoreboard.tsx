@@ -57,7 +57,7 @@ export function VenueScoreboard({ initialMatch, config, tournamentName, sponsors
   const showCourtName = cfg.display?.show_court_name !== false
   const showSponsors = cfg.sponsors?.enabled !== false
   const accentA: string = cfg.colors?.team1_accent ?? '#ef6a4c'
-  const accentB: string = cfg.colors?.team2_accent ?? '#5fb7d6'
+  const accentB: string = cfg.colors?.team2_accent ?? '#ef6a4c'
   const srvColor: string = cfg.colors?.serving_indicator ?? accentA
   const carouselSpeed: number = cfg.sponsors?.rotation_interval_seconds ?? 10
 
@@ -184,7 +184,10 @@ export function VenueScoreboard({ initialMatch, config, tournamentName, sponsors
           {/* Header */}
           <div className="absolute top-0 left-0 right-0 z-10" style={{ height: 160, padding: '0 64px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 56, background: 'linear-gradient(180deg, rgba(0,0,0,.55) 0%, rgba(0,0,0,0) 100%)' }}>
             <div className="flex items-center" style={{ gap: 26 }}>
-              <div style={{ width: 78, height: 78, borderRadius: 14, background: 'radial-gradient(circle at 30% 30%, #f3e4c7 0 20px, transparent 20.5px), linear-gradient(135deg, #ef6a4c 0%, #d94a2e 100%)', boxShadow: '0 10px 32px rgba(239,106,76,.55)' }} />
+              {cfg.logos?.tournament_logo_url
+                ? <img src={cfg.logos.tournament_logo_url} alt={tournamentName} style={{ width: 78, height: 78, borderRadius: 14, objectFit: 'contain' }} />
+                : <div style={{ width: 78, height: 78, borderRadius: 14, background: 'radial-gradient(circle at 30% 30%, #f3e4c7 0 20px, transparent 20.5px), linear-gradient(135deg, #ef6a4c 0%, #d94a2e 100%)', boxShadow: '0 10px 32px rgba(239,106,76,.55)' }} />
+              }
               <div className="flex flex-col" style={{ gap: 6, lineHeight: 1 }}>
                 <span style={{ fontWeight: 600, fontSize: 22, letterSpacing: '.32em', textTransform: 'uppercase', opacity: .85 }}>EDICIÓN 2026</span>
                 <span style={{ fontWeight: 900, fontSize: 44, letterSpacing: '.1em', textTransform: 'uppercase' }}>{(tournamentName || 'TENIS PLAYA').toUpperCase()}</span>
@@ -254,9 +257,11 @@ export function VenueScoreboard({ initialMatch, config, tournamentName, sponsors
               <div style={{ position: 'relative', overflow: 'hidden', height: 192 }}>
                 <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', display: 'flex', alignItems: 'center', animation: `vsbMarquee ${carouselSpeed}s linear infinite` }}>
                   {[...sponsorList, ...sponsorList, ...sponsorList].map((sp, i) => (
-                    <div key={i} style={{ flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 18, width: 420, height: 150, margin: '0 14px', padding: '0 28px', background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 10, fontWeight: 800, fontSize: 28, letterSpacing: '.06em', textTransform: 'uppercase', color: 'rgba(255,255,255,.9)', whiteSpace: 'nowrap' }}>
-                      {sp.logo_url ? <img src={sp.logo_url} alt={sp.name} style={{ maxHeight: 80, maxWidth: 140, objectFit: 'contain' }} /> : null}
-                      <span>{sp.name}</span>
+                    <div key={i} style={{ flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 340, height: 160, margin: '0 32px' }}>
+                      {sp.logo_url
+                        ? <img src={sp.logo_url} alt={sp.name} style={{ maxHeight: 150, maxWidth: 320, objectFit: 'contain' }} />
+                        : <span style={{ fontWeight: 800, fontSize: 36, letterSpacing: '.06em', textTransform: 'uppercase', color: 'rgba(255,255,255,.85)', whiteSpace: 'nowrap' }}>{sp.name}</span>
+                      }
                     </div>
                   ))}
                 </div>

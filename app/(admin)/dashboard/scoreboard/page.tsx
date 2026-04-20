@@ -53,6 +53,12 @@ export default function ScoreboardConfigPage() {
   const [uploadError, setUploadError] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
+  // Tournament logo
+  const [tournamentLogoMode, setTournamentLogoMode] = useState<'url' | 'upload'>('url')
+  const [uploadingTournamentLogo, setUploadingTournamentLogo] = useState(false)
+  const [tournamentLogoError, setTournamentLogoError] = useState('')
+  const tournamentLogoRef = useRef<HTMLInputElement>(null)
+
   useEffect(() => {
     Promise.all([
       supabase.from('tournaments').select('*').eq('id', TOURNAMENT_ID).single(),
@@ -88,6 +94,9 @@ export default function ScoreboardConfigPage() {
   function setSpCfg(key: keyof ScoreboardConfig['sponsors'], val: any) {
     patchCfg({ sponsors: { ...cfg.sponsors, [key]: val } })
   }
+  function setLogos(key: keyof ScoreboardConfig['logos'], val: string) {
+    patchCfg({ logos: { ...(cfg.logos ?? { tournament_logo_url: '', rfet_logo_url: '', sponsor_logos: [] }), [key]: val } })
+  }
 
   // ---- Sponsor management ----
   function addSponsor() {
@@ -107,7 +116,24 @@ export default function ScoreboardConfigPage() {
     setTournament(t => t ? { ...t, sponsors: arr as any } : t)
   }
 
-  // ---- Logo upload ----
+  // ---- Tournament logo upload ----
+  async function uploadTournamentLogo(file: File) {
+    setUploadingTournamentLogo(true); setTournamentLogoError('')
+    try {
+      const ext = file.name.split('.').pop()?.toLowerCase() ?? 'png'
+      const path = `tournament/${Date.now()}.${ext}`
+      const { data, error } = await supabase.storage.from('sponsor-logos').upload(path, file, { upsert: true })
+      if (error) throw error
+      const { data: ud } = supabase.storage.from('sponsor-logos').getPublicUrl(data.path)
+      setLogos('tournament_logo_url', ud.publicUrl)
+    } catch {
+      setTournamentLogoError('Error al subir. Verifica el bucket "sponsor-logos" en Supabase Storage.')
+    } finally {
+      setUploadingTournamentLogo(false)
+    }
+  }
+
+  // ---- Sponsor logo upload ----
   async function uploadLogo(file: File) {
     setUploading(true); setUploadError('')
     try {
@@ -257,7 +283,7 @@ export default function ScoreboardConfigPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {([
               { key: 'team1_accent',      label: 'Acento equipo 1',     default: '#ef6a4c' },
-              { key: 'team2_accent',      label: 'Acento equipo 2',     default: '#5fb7d6' },
+              { key: 'team2_accent',      label: 'Acento equipo 2',     default: '#ef6a4c' },
               { key: 'serving_indicator', label: 'Indicador de saque',  default: '#ef6a4c' },
             ] as const).map(({ key, label, default: def }) => {
               const val = (cfg.colors as any)?.[key] ?? def
@@ -275,6 +301,55 @@ export default function ScoreboardConfigPage() {
                 </div>
               )
             })}
+          </div>
+        </div>
+
+        {/* Tournament logo */}
+        <div>
+          <label className="block text-sm text-gray-400 mb-3">Logo del torneo</label>
+          <div className="flex items-start gap-4">
+            <div className="w-20 h-20 rounded-xl bg-gray-800 border border-gray-700 flex items-center justify-center flex-shrink-0 overflow-hidden">
+              {cfg.logos?.tournament_logo_url
+                ? <img src={cfg.logos.tournament_logo_url} alt="Logo torneo" className="w-full h-full object-contain p-1" />
+                : <span className="text-gray-600 text-xs text-center leading-tight px-2">Sin logo</span>
+              }
+            </div>
+            <div className="flex-1 space-y-2">
+              <div className="flex rounded-lg overflow-hidden border border-gray-700 text-xs w-fit">
+                <button onClick={() => setTournamentLogoMode('url')}
+                  className={`px-3 py-1.5 transition-colors ${tournamentLogoMode === 'url' ? 'bg-brand-red text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}>
+                  URL
+                </button>
+                <button onClick={() => setTournamentLogoMode('upload')}
+                  className={`px-3 py-1.5 transition-colors ${tournamentLogoMode === 'upload' ? 'bg-brand-red text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}>
+                  Subir archivo
+                </button>
+              </div>
+              {tournamentLogoMode === 'url' ? (
+                <input
+                  value={cfg.logos?.tournament_logo_url ?? ''}
+                  onChange={e => setLogos('tournament_logo_url', e.target.value)}
+                  placeholder="https://ejemplo.com/logo-torneo.png"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-brand-red"
+                />
+              ) : (
+                <div className="flex items-center gap-3">
+                  <input ref={tournamentLogoRef} type="file" accept="image/png,image/jpeg,image/jpg,image/webp,image/svg+xml" className="hidden"
+                    onChange={e => { const f = e.target.files?.[0]; if (f) uploadTournamentLogo(f) }} />
+                  <button onClick={() => tournamentLogoRef.current?.click()} disabled={uploadingTournamentLogo}
+                    className="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 text-sm px-4 py-2.5 rounded-xl transition-colors disabled:opacity-50 flex items-center gap-2">
+                    {uploadingTournamentLogo ? <><span className="animate-spin">⟳</span> Subiendo...</> : <>📁 Seleccionar imagen</>}
+                  </button>
+                  {tournamentLogoError && <p className="text-red-400 text-xs">{tournamentLogoError}</p>}
+                </div>
+              )}
+              {cfg.logos?.tournament_logo_url && (
+                <button onClick={() => setLogos('tournament_logo_url', '')} className="text-xs text-red-400/70 hover:text-red-400 transition-colors">
+                  Eliminar logo
+                </button>
+              )}
+              <p className="text-gray-600 text-xs">PNG con fondo transparente recomendado. Se muestra en la esquina superior del marcador.</p>
+            </div>
           </div>
         </div>
       </div>
