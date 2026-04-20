@@ -11,7 +11,7 @@ interface Props {
   userId: string
 }
 
-function tennisPoint(value: number, deuce: boolean, adv: 1 | 2 | null, team: 1 | 2): string {
+function tennisPoint(value: number | undefined, deuce: boolean | undefined, adv: 1 | 2 | null | undefined, team: 1 | 2): string {
   if (deuce) {
     if (adv === team) return 'ADV'
     if (adv && adv !== team) return '—'

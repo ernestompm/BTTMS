@@ -2,27 +2,32 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase'
-import type { Match, Score, ScoreboardConfig, Sponsor, WeatherData } from '@/types'
+import type { Match, Score, Sponsor } from '@/types'
 
 interface Props {
   initialMatch: Match & { entry1: any; entry2: any; court: any }
-  config: ScoreboardConfig | null
+  config: any
   tournamentName: string
   sponsors: Sponsor[]
-  weather: WeatherData | null
+  weather: any
 }
 
 const PTS_LABEL = ['0', '15', '30', '40']
+const ROUND_LABELS: Record<string, string> = {
+  F: 'FINAL', SF: 'SEMIFINAL', QF: 'CUARTOS DE FINAL',
+  R16: 'OCTAVOS DE FINAL', R32: 'DIECISEISAVOS',
+}
 
 function gameLabel(score: Score | null, team: 1 | 2): string {
   if (!score) return '0'
+  const key = (`t${team}`) as 't1' | 't2'
   if (score.super_tiebreak_active || score.tiebreak_active) {
-    return String(score.tiebreak_score?.[`t${team}` as 't1' | 't2'] ?? 0)
+    return String(score.tiebreak_score?.[key] ?? 0)
   }
   if (score.advantage_team === team) return 'AD'
   if (score.advantage_team && score.advantage_team !== team) return '40'
   if (score.deuce) return '40'
-  const pts = score.current_game?.[`t${team}` as 't1' | 't2'] ?? 0
+  const pts = score.current_game?.[key] ?? 0
   return PTS_LABEL[pts] ?? '0'
 }
 
@@ -110,10 +115,7 @@ export function VenueScoreboard({ initialMatch, tournamentName, sponsors }: Prop
     }
   })
 
-  const roundLabel = {
-    F: 'FINAL', SF: 'SEMIFINAL', QF: 'CUARTOS DE FINAL',
-    R16: 'OCTAVOS DE FINAL', R32: 'DIECISEISAVOS',
-  }[(match.round ?? '') as string] ?? (match.round ?? '—')
+  const roundLabel = ROUND_LABELS[match.round ?? ''] ?? (match.round ?? '—')
 
   const courtLabel = `${match.court?.name ?? 'PISTA'} · ${isDoubles ? 'DOBLES' : 'INDIVIDUAL'}`
 
