@@ -131,6 +131,12 @@ export function VenueScoreboard({ initialMatch, tournamentName, sponsors }: Prop
           font-family: 'Barlow Condensed', system-ui, sans-serif;
           overflow: hidden; height: 100%;
         }
+        @keyframes vsbBlink { 0%,100% { opacity: 1 } 50% { opacity: .2 } }
+        @keyframes vsbMarquee { from { transform: translateX(0) } to { transform: translateX(-33.333%) } }
+        @keyframes vsbSrvPulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(239,106,76,.7); }
+          50% { box-shadow: 0 0 0 18px rgba(239,106,76,0); }
+        }
       `}</style>
 
       <div className="fixed inset-0 grid place-items-center bg-black overflow-hidden">
@@ -206,11 +212,6 @@ export function VenueScoreboard({ initialMatch, tournamentName, sponsors }: Prop
           </div>
         </div>
       </div>
-
-      <style jsx>{`
-        @keyframes vsbBlink { 50% { opacity: .2 } }
-        @keyframes vsbMarquee { from { transform: translateX(0) } to { transform: translateX(-33.333%) } }
-      `}</style>
     </>
   )
 }
@@ -291,13 +292,6 @@ function TeamRowLED({ team, serving, setCols, teamKey, isDoubles, servingPlayerI
       <div style={{ position: 'relative', display: 'grid', placeItems: 'center', background: accentColor, color: '#fff', fontWeight: 900, fontSize: 158, lineHeight: 1, letterSpacing: '-.01em', fontVariantNumeric: 'tabular-nums' }}>
         {team.point}
       </div>
-
-      <style jsx>{`
-        @keyframes vsbSrvPulse {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(239,106,76,.7); }
-          50% { box-shadow: 0 0 0 18px rgba(239,106,76,0); }
-        }
-      `}</style>
     </div>
   )
 }
