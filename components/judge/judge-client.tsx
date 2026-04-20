@@ -33,7 +33,7 @@ function gameScore(score: any, team: 1 | 2): string {
   if (!score) return '0'
   if (score.super_tiebreak_active) return String(score.tiebreak_score?.[`t${team}`] ?? 0)
   if (score.tiebreak_active) return String(score.tiebreak_score?.[`t${team}`] ?? 0)
-  if (score.deuce) return 'ORO'
+  if (score.deuce) return '40'  // 40-40 en deuce; "Punto de Oro" se muestra en la barra de contexto
   const pts: number = score.current_game?.[`t${team}`] ?? 0
   return (['0', '15', '30', '40'][pts]) ?? '0'
 }
@@ -85,7 +85,6 @@ export function JudgeClient({ initialMatch, userId }: Props) {
   const toastId = useRef(0)
   const lastPointRef = useRef(0)
 
-  // ── realtime ──────────────────────────────────────────────────
   useEffect(() => {
     const ch = supabase.channel(`match-${match.id}`)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'matches', filter: `id=eq.${match.id}` },
@@ -94,7 +93,6 @@ export function JudgeClient({ initialMatch, userId }: Props) {
     return () => { supabase.removeChannel(ch) }
   }, [match.id])
 
-  // ── match timer ───────────────────────────────────────────────
   useEffect(() => {
     if (match.status !== 'in_progress' || !match.started_at) return
     const t0 = new Date(match.started_at).getTime()
@@ -104,7 +102,6 @@ export function JudgeClient({ initialMatch, userId }: Props) {
 
   useEffect(() => () => { if (medTimer.current) clearInterval(medTimer.current) }, [])
 
-  // ── toast helpers ─────────────────────────────────────────────
   function addToast(msg: string, color: Toast['color']) {
     const id = ++toastId.current
     setToasts((t) => [...t, { id, msg, color }])
@@ -139,13 +136,13 @@ export function JudgeClient({ initialMatch, userId }: Props) {
   const nextWarnLabel1 = PENALTY_NEXT_LABEL[Math.min(warnCount1, 3)]
   const nextWarnLabel2 = PENALTY_NEXT_LABEL[Math.min(warnCount2, 3)]
 
-  // Context badges — computed from live score
-  const ctxGolden = !isFinished && !!score?.deuce && !isTB && !isSuperTB
-  const ctxBreak  = !isFinished && !!scoreTyped && isBreakPoint(scoreTyped, serving)
-  const ctxSetT1  = !isFinished && !!scoreTyped && isSetPoint(scoreTyped, 1)
-  const ctxSetT2  = !isFinished && !!scoreTyped && isSetPoint(scoreTyped, 2)
+  const ctxGolden  = !isFinished && !!score?.deuce && !isTB && !isSuperTB
+  const ctxBreak   = !isFinished && !!scoreTyped && isBreakPoint(scoreTyped, serving)
+  const ctxSetT1   = !isFinished && !!scoreTyped && isSetPoint(scoreTyped, 1)
+  const ctxSetT2   = !isFinished && !!scoreTyped && isSetPoint(scoreTyped, 2)
   const ctxMatchT1 = !isFinished && !!scoreTyped && isMatchPoint(scoreTyped, 1)
   const ctxMatchT2 = !isFinished && !!scoreTyped && isMatchPoint(scoreTyped, 2)
+  const hasCtx     = ctxGolden || ctxBreak || ctxSetT1 || ctxSetT2 || ctxMatchT1 || ctxMatchT2
 
   // ── actions ───────────────────────────────────────────────────
   async function handleTossComplete(data: any) {
@@ -158,7 +155,6 @@ export function JudgeClient({ initialMatch, userId }: Props) {
   }
 
   async function handlePointWon(wt: 1 | 2, pt: PointType, sd: ShotDirection | null) {
-    // Ref-based debounce — allow rapid point logging without blocking UI
     const now = Date.now()
     if (now - lastPointRef.current < 600) return
     lastPointRef.current = now
@@ -173,26 +169,16 @@ export function JudgeClient({ initialMatch, userId }: Props) {
       const ctx = u._context ?? {}
       setMatch((m) => ({ ...m, ...u }))
 
-      // Toasts for notable events — show multiple if needed
-      if (ctx.match_finished) {
-        addToast('PARTIDO FINALIZADO', 'green')
-      }
-      if (ctx.side_change && !ctx.match_finished) {
-        addToast('↔ CAMBIO DE LADO', 'blue')
-      }
-      if (ctx.new_super_tb) {
-        addToast('SUPER TIEBREAK', 'amber')
-      } else if (ctx.new_tb) {
-        addToast('TIEBREAK', 'blue')
-      } else if (ctx.new_set && !ctx.match_finished) {
-        addToast('NUEVO SET', 'teal')
-      }
+      if (ctx.match_finished) addToast('PARTIDO FINALIZADO', 'green')
+      if (ctx.side_change && !ctx.match_finished) addToast('↔ CAMBIO DE LADO', 'blue')
+      if (ctx.new_super_tb) addToast('SUPER TIEBREAK', 'amber')
+      else if (ctx.new_tb) addToast('TIEBREAK', 'blue')
+      else if (ctx.new_set && !ctx.match_finished) addToast('NUEVO SET', 'teal')
+
       if (ctx.match_point_t1 || ctx.match_point_t2) {
-        const tn = ctx.match_point_t1 ? (t1.main) : (t2.main)
-        addToast(`PARTIDO · ${tn}`, 'red')
+        addToast(`PARTIDO · ${ctx.match_point_t1 ? t1.main : t2.main}`, 'red')
       } else if (ctx.set_point_t1 || ctx.set_point_t2) {
-        const tn = ctx.set_point_t1 ? (t1.main) : (t2.main)
-        addToast(`SET · ${tn}`, 'orange')
+        addToast(`SET · ${ctx.set_point_t1 ? t1.main : t2.main}`, 'orange')
       } else if (ctx.golden_point) {
         addToast('PUNTO DE ORO', 'yellow')
       } else if (ctx.break_point) {
@@ -230,15 +216,9 @@ export function JudgeClient({ initialMatch, userId }: Props) {
   function handleLet() { setLetFlash(true); setTimeout(() => setLetFlash(false), 1800) }
 
   function openMedical(team: 1 | 2) {
-    setMedTeam(team)
-    setShowMedTeamSelector(false)
-    setMedSecs(180)
-    setShowMedical(true)
+    setMedTeam(team); setShowMedTeamSelector(false); setMedSecs(180); setShowMedical(true)
     medTimer.current = setInterval(() => {
-      setMedSecs((s) => {
-        if (s <= 1) { clearInterval(medTimer.current!); return 0 }
-        return s - 1
-      })
+      setMedSecs((s) => { if (s <= 1) { clearInterval(medTimer.current!); return 0 } return s - 1 })
     }, 1000)
   }
 
@@ -253,11 +233,11 @@ export function JudgeClient({ initialMatch, userId }: Props) {
       <div className="flex items-center justify-between px-4 py-3 bg-gray-900 border-b border-gray-800 flex-shrink-0">
         <div className="flex items-center gap-2 min-w-0">
           <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${isFinished ? 'bg-green-500' : 'bg-red-500 animate-pulse'}`} />
-          <span className="text-white font-semibold truncate">{(match as any).court?.name ?? '—'}</span>
+          <span className="text-white font-semibold truncate text-sm">{(match as any).court?.name ?? '—'}</span>
           {match.round && <span className="text-gray-500 text-sm flex-shrink-0">· {match.round}</span>}
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
-          <span className="text-gray-300 font-mono tabular-nums">{fmtTime(elapsed)}</span>
+          <span className="text-gray-300 font-mono tabular-nums text-sm">{fmtTime(elapsed)}</span>
           {!isFinished && (
             <button onClick={handleFinish} disabled={saving}
               className="h-8 px-3 bg-gray-800 hover:bg-red-900/50 rounded-lg text-gray-400 hover:text-red-300 font-bold text-xs border border-gray-700 transition-colors">
@@ -267,60 +247,71 @@ export function JudgeClient({ initialMatch, userId }: Props) {
         </div>
       </div>
 
-      {/* ── SCORE STRIP ──────────────────────────────────────────── */}
-      <div className="flex-shrink-0 bg-gray-950 border-b border-gray-800 px-3 py-4">
-        {(isTB || isSuperTB) && (
-          <p className={`text-center text-xs font-bold uppercase tracking-widest mb-1 ${isSuperTB ? 'text-amber-400' : 'text-blue-400'}`}>
-            {isSuperTB ? 'Super Tiebreak' : 'Tiebreak'}
-          </p>
-        )}
-        <div className="flex items-center gap-2">
-          {/* T1 */}
-          <div className="flex items-center gap-2 flex-1 justify-start">
-            <span className="text-4xl font-black font-score text-white tabular-nums leading-none">{setsWon1}</span>
-            <div className="flex flex-col items-center gap-0.5">
-              {pastSets.map((s, i) => (
-                <span key={i} className="text-xs text-gray-600 font-score leading-none tabular-nums">{s.t1}</span>
-              ))}
-              <span className="text-2xl font-bold text-gray-300 font-score leading-none tabular-nums">{curSet1}</span>
-            </div>
-          </div>
-
-          {/* Game score */}
-          <div className="flex items-center gap-3 flex-shrink-0">
-            <span className={`font-black font-score tabular-nums leading-none transition-colors ${serving === 1 ? 'text-white text-6xl' : 'text-gray-500 text-5xl'}`}>
-              {game1}
-            </span>
-            <span className="text-gray-700 text-xl font-light">–</span>
-            <span className={`font-black font-score tabular-nums leading-none transition-colors ${serving === 2 ? 'text-white text-6xl' : 'text-gray-500 text-5xl'}`}>
-              {game2}
-            </span>
-          </div>
-
-          {/* T2 */}
-          <div className="flex items-center gap-2 flex-1 justify-end">
-            <div className="flex flex-col items-center gap-0.5">
-              {pastSets.map((s, i) => (
-                <span key={i} className="text-xs text-gray-600 font-score leading-none tabular-nums">{s.t2}</span>
-              ))}
-              <span className="text-2xl font-bold text-gray-300 font-score leading-none tabular-nums">{curSet2}</span>
-            </div>
-            <span className="text-4xl font-black font-score text-white tabular-nums leading-none">{setsWon2}</span>
-          </div>
+      {/* ── CLASSIC SCOREBOARD ───────────────────────────────────── */}
+      <div className="flex-shrink-0 bg-gray-900 border-b border-gray-700">
+        {/* Column labels */}
+        <div className="flex items-center px-3 pt-1.5 pb-0">
+          <div className="flex-1" />
+          <div className="w-10 text-center text-gray-600 text-[10px] font-bold uppercase tracking-wider">SETS</div>
+          {pastSets.map((_, i) => (
+            <div key={i} className="w-9 text-center text-gray-700 text-[10px] font-bold uppercase tracking-wider">S{i + 1}</div>
+          ))}
+          <div className="w-11 text-center text-gray-600 text-[10px] font-bold uppercase tracking-wider">JUE</div>
+          <div className="w-7" />
         </div>
 
-        {/* Context badges row */}
-        {!isFinished && (ctxGolden || ctxBreak || ctxSetT1 || ctxSetT2 || ctxMatchT1 || ctxMatchT2) && (
-          <div className="flex gap-2 justify-center mt-3 flex-wrap">
-            {ctxGolden && <span className="px-3 py-1 rounded-full bg-yellow-900/60 border border-yellow-600 text-yellow-300 text-xs font-bold uppercase tracking-widest">Punto de Oro</span>}
-            {ctxBreak  && <span className="px-3 py-1 rounded-full bg-purple-900/60 border border-purple-600 text-purple-300 text-xs font-bold uppercase tracking-widest">Punto de Break</span>}
+        {/* Team rows */}
+        {([1, 2] as const).map((t) => {
+          const name = t === 1 ? t1 : t2
+          const sw   = t === 1 ? setsWon1 : setsWon2
+          const cs   = t === 1 ? curSet1 : curSet2
+          const isServing = serving === t
+          const wc   = t === 1 ? warnCount1 : warnCount2
+          return (
+            <div key={t} className={`flex items-center px-3 py-2 gap-0 ${t === 2 ? 'border-t border-gray-800' : ''}`}>
+              {/* Names */}
+              <div className="flex-1 min-w-0 pr-2">
+                <p className="text-white font-bold text-base leading-tight truncate">{name.main}</p>
+                {name.partner && <p className="text-white font-bold text-base leading-tight truncate">{name.partner}</p>}
+              </div>
+              {/* Sets won */}
+              <div className="w-10 text-center font-score font-black text-2xl text-white tabular-nums leading-none">{sw}</div>
+              {/* Past set scores */}
+              {pastSets.map((s, i) => (
+                <div key={i} className="w-9 text-center font-score font-bold text-lg text-gray-500 tabular-nums leading-none">
+                  {t === 1 ? s.t1 : s.t2}
+                </div>
+              ))}
+              {/* Current set games */}
+              <div className="w-11 text-center font-score font-black text-2xl text-gray-300 tabular-nums leading-none">{cs}</div>
+              {/* Serving dot + warning */}
+              <div className="w-7 flex flex-col items-center gap-1">
+                {isServing && <span className="w-2.5 h-2.5 rounded-full bg-orange-400 serving-pulse" />}
+                {wc > 0 && <span className="text-yellow-500 text-xs font-bold">⚠{wc}</span>}
+              </div>
+            </div>
+          )
+        })}
+
+        {/* TB label */}
+        {(isTB || isSuperTB) && (
+          <div className={`text-center text-xs font-bold uppercase tracking-widest py-1 border-t border-gray-800 ${isSuperTB ? 'text-amber-400 bg-amber-950/30' : 'text-blue-400 bg-blue-950/30'}`}>
+            {isSuperTB ? 'Super Tiebreak' : 'Tiebreak'}
+          </div>
+        )}
+
+        {/* Context badges */}
+        {!isFinished && hasCtx && (
+          <div className="flex gap-2 justify-center px-3 py-2 border-t border-gray-800 flex-wrap">
+            {ctxGolden  && <span className="px-3 py-0.5 rounded-full bg-yellow-900/70 border border-yellow-600 text-yellow-300 text-xs font-bold uppercase tracking-widest">Punto de Oro</span>}
+            {ctxBreak   && <span className="px-3 py-0.5 rounded-full bg-purple-900/70 border border-purple-600 text-purple-300 text-xs font-bold uppercase tracking-widest">Punto de Break</span>}
             {(ctxSetT1 || ctxSetT2) && !ctxMatchT1 && !ctxMatchT2 && (
-              <span className="px-3 py-1 rounded-full bg-orange-900/60 border border-orange-600 text-orange-300 text-xs font-bold uppercase tracking-widest">
+              <span className="px-3 py-0.5 rounded-full bg-orange-900/70 border border-orange-600 text-orange-300 text-xs font-bold uppercase tracking-widest">
                 Punto de Set · {ctxSetT1 ? t1.main : t2.main}
               </span>
             )}
             {(ctxMatchT1 || ctxMatchT2) && (
-              <span className="px-3 py-1 rounded-full bg-red-900/60 border border-red-600 text-red-300 text-xs font-bold uppercase tracking-widest">
+              <span className="px-3 py-0.5 rounded-full bg-red-900/70 border border-red-600 text-red-300 text-xs font-bold uppercase tracking-widest">
                 Partido · {ctxMatchT1 ? t1.main : t2.main}
               </span>
             )}
@@ -331,17 +322,12 @@ export function JudgeClient({ initialMatch, userId }: Props) {
       {/* ── MAIN AREA ────────────────────────────────────────────── */}
       {isFinished ? (
 
-        /* ── ACTA ──────────────────────────────────────────────── */
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           <div className="bg-green-900/20 rounded-2xl border border-green-800/40 p-6 text-center">
             <p className="text-green-400 text-xs font-bold uppercase tracking-widest mb-3">Partido finalizado</p>
-            <p className="text-white font-black font-score text-4xl leading-tight">
-              {winnerTeam === 1 ? t1.main : t2.main}
-            </p>
+            <p className="text-white font-black font-score text-4xl leading-tight">{winnerTeam === 1 ? t1.main : t2.main}</p>
             {(winnerTeam === 1 ? t1.partner : t2.partner) && (
-              <p className="text-white font-black font-score text-4xl leading-tight">
-                {winnerTeam === 1 ? t1.partner : t2.partner}
-              </p>
+              <p className="text-white font-black font-score text-4xl leading-tight">{winnerTeam === 1 ? t1.partner : t2.partner}</p>
             )}
             <p className="text-gray-400 mt-2">gana el partido · {fmtTime(elapsed)}</p>
           </div>
@@ -350,7 +336,7 @@ export function JudgeClient({ initialMatch, userId }: Props) {
             <p className="text-gray-400 text-xs uppercase tracking-widest mb-3">Resultado</p>
             <div className="flex text-xs text-gray-600 uppercase tracking-widest mb-2">
               <span className="flex-1 text-right pr-4">{t1.main}{t1.partner ? `/${t1.partner}` : ''}</span>
-              <span className="w-16 text-center"></span>
+              <span className="w-16 text-center" />
               <span className="flex-1 pl-4">{t2.main}{t2.partner ? `/${t2.partner}` : ''}</span>
             </div>
             {pastSets.map((s, i) => (
@@ -378,9 +364,9 @@ export function JudgeClient({ initialMatch, userId }: Props) {
               { label: 'Mayor racha',         v1: String(s1.max_points_streak),     v2: String(s2.max_points_streak)     },
               { label: 'Puntos totales',      v1: String(s1.total_points_won),      v2: String(s2.total_points_won)      },
               { label: 'ACEs',                v1: String(s1.aces),                  v2: String(s2.aces)                  },
-              { label: 'Faltas de saque',     v1: String(s1.serve_faults),          v2: String(s2.serve_faults)          },
+              { label: 'Faltas saque',        v1: String(s1.serve_faults),          v2: String(s2.serve_faults)          },
               { label: 'Winners',             v1: String(s1.winners),               v2: String(s2.winners)               },
-              { label: 'Errores no forz.',    v1: String(s1.unforced_errors),       v2: String(s2.unforced_errors)       },
+              { label: 'Err. no forz.',       v1: String(s1.unforced_errors),       v2: String(s2.unforced_errors)       },
             ]
             return (
               <div className="bg-gray-900 rounded-2xl border border-gray-800 p-4">
@@ -425,36 +411,46 @@ export function JudgeClient({ initialMatch, userId }: Props) {
           {([1, 2] as const).map((t) => {
             const isServing = serving === t
             const name = t === 1 ? t1 : t2
+            const g = t === 1 ? game1 : game2
             const wc = t === 1 ? warnCount1 : warnCount2
             const nextL = t === 1 ? nextWarnLabel1 : nextWarnLabel2
             return (
               <button key={t}
                 onClick={() => setShowPointModal(t)}
-                className={`flex-1 flex flex-col items-center justify-center transition-all active:brightness-75 relative overflow-hidden ${t === 1 ? 'border-r border-gray-800' : ''}`}
+                className={`flex-1 flex flex-col items-center justify-center gap-3 transition-all active:brightness-75 relative overflow-hidden ${t === 1 ? 'border-r border-gray-800' : ''}`}
                 style={{ background: isServing ? 'rgba(100,45,0,0.38)' : '#111827' }}>
 
+                {/* Serving stripe */}
                 {isServing && <div className="absolute top-0 left-0 right-0 h-1.5 bg-orange-500" />}
 
-                <div className="flex flex-col items-center gap-2 px-4 max-w-full">
-                  <p className="text-white font-black font-score text-4xl leading-tight text-center">{name.main}</p>
+                {/* Game score — BIG, above names */}
+                <span className={`font-score font-black tabular-nums leading-none ${(isTB || isSuperTB) ? 'text-6xl' : 'text-8xl'} text-white`}>
+                  {g}
+                </span>
+
+                {/* Names */}
+                <div className="flex flex-col items-center gap-1">
+                  <p className="text-white font-black font-score text-3xl leading-tight text-center px-3">{name.main}</p>
                   {name.partner && (
-                    <p className="text-white font-black font-score text-4xl leading-tight text-center">{name.partner}</p>
-                  )}
-
-                  {isServing ? (
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="w-3 h-3 rounded-full bg-orange-400 serving-pulse" />
-                      <span className="text-orange-400 text-sm font-bold uppercase tracking-widest">SAQUE</span>
-                    </div>
-                  ) : <div className="h-5" />}
-
-                  {wc > 0 && (
-                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-yellow-900/40 border border-yellow-700/50 mt-1">
-                      <span className="text-yellow-400 font-bold text-sm">⚠ {wc}</span>
-                      <span className="text-gray-400 text-xs">→ sig. {nextL}</span>
-                    </div>
+                    <p className="text-white font-black font-score text-3xl leading-tight text-center px-3">{name.partner}</p>
                   )}
                 </div>
+
+                {/* Serving badge */}
+                {isServing && (
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-orange-400 serving-pulse" />
+                    <span className="text-orange-400 text-sm font-bold uppercase tracking-widest">SAQUE</span>
+                  </div>
+                )}
+
+                {/* Warning */}
+                {wc > 0 && (
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-yellow-900/40 border border-yellow-700/50">
+                    <span className="text-yellow-400 font-bold text-sm">⚠ {wc}</span>
+                    <span className="text-gray-400 text-xs">→ sig. {nextL}</span>
+                  </div>
+                )}
               </button>
             )
           })}
@@ -534,7 +530,7 @@ export function JudgeClient({ initialMatch, userId }: Props) {
             ↩ Deshacer último punto
           </button>
           <Link href="/judge"
-            className="flex-1 py-5 flex items-center justify-center gap-2 font-black font-score text-white text-lg transition-opacity"
+            className="flex-1 py-5 flex items-center justify-center gap-2 font-black font-score text-white text-lg"
             style={{ background: 'linear-gradient(90deg,#f31948,#fc6f43)' }}>
             ✓ CONFIRMAR
           </Link>
