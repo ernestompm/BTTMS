@@ -66,7 +66,7 @@ export default function NewMatchPage() {
   const selectClass = "w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-brand-red"
 
   return (
-    <div className="max-w-2xl space-y-6 fade-in">
+    <div className="space-y-6 fade-in">
       <div>
         <button onClick={() => router.back()} className="text-gray-400 hover:text-white text-sm mb-3 flex items-center gap-1">← Volver</button>
         <h1 className="text-2xl font-bold text-white font-score">Nuevo Partido</h1>

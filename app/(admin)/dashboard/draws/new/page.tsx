@@ -43,7 +43,7 @@ export default function NewDrawPage() {
   }
 
   return (
-    <div className="max-w-lg space-y-6 fade-in">
+    <div className="space-y-6 fade-in">
       <div>
         <button onClick={() => router.back()} className="text-gray-400 hover:text-white text-sm mb-3 flex items-center gap-1">← Volver</button>
         <h1 className="text-2xl font-bold text-white font-score">Nuevo Cuadro</h1>

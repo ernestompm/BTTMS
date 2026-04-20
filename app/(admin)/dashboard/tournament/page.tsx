@@ -66,7 +66,7 @@ export default function TournamentPage() {
   const cfg = tournament.scoreboard_config ?? DEFAULT_SCOREBOARD_CONFIG
 
   return (
-    <div className="max-w-3xl space-y-6 fade-in">
+    <div className="space-y-6 fade-in">
       <h1 className="text-2xl font-bold text-white font-score">Configuración del Torneo</h1>
 
       <div className="bg-gray-900 rounded-2xl p-6 border border-gray-800 space-y-4">
