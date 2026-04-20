@@ -12,7 +12,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: appUser } = await supabase.from('app_users').select('role').eq('id', user.id).single()
+  const { data: appUser } = await service.from('app_users').select('role').eq('id', user.id).single()
   if (!appUser) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const { data: match } = await service.from('matches').select('*').eq('id', matchId).single()
@@ -23,9 +23,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   const body = await req.json()
-  const { toss_winner, toss_choice, serving_team, side_entry1, current_server_id, scoring_system } = body
+  const { toss_winner, toss_choice, serving_team, side_entry1, current_server_id } = body
 
-  const system = (scoring_system ?? 'best_of_2_sets_super_tb') as ScoringSystem
+  // Scoring system now comes from the match itself (set at draw level, propagated on match creation)
+  const system = (match.scoring_system ?? 'best_of_2_sets_super_tb') as ScoringSystem
   const initialScore = INITIAL_SCORE(system)
   const initialStats = emptyStats()
 

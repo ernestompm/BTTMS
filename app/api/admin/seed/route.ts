@@ -85,7 +85,8 @@ export async function POST() {
     draw_type: 'single_elimination',
     size: 16,
     status: 'in_progress',
-  }).select('id').single()
+    structure: { scoring_system: 'best_of_2_sets_super_tb' },
+  }).select('id, structure').single()
   if (dErr || !draw) return NextResponse.json({ error: 'Cuadro: ' + (dErr?.message ?? 'unknown') }, { status: 500 })
 
   // 4. Create 16 teams (draw_entries)
@@ -106,7 +107,8 @@ export async function POST() {
   const entryBySeed: Record<number, string> = {}
   for (const e of entries) entryBySeed[e.seed!] = e.id
 
-  // 5. Create 8 R16 matches
+  // 5. Create 8 R16 matches, inheriting scoring_system from draw.structure
+  const drawScoring = (draw as any).structure?.scoring_system ?? 'best_of_2_sets_super_tb'
   const matchInserts = R16_PAIRS.map(([s1, s2], idx) => ({
     tournament_id: TOURNAMENT_ID,
     draw_id: draw.id,
@@ -117,6 +119,7 @@ export async function POST() {
     entry1_id: entryBySeed[s1],
     entry2_id: entryBySeed[s2],
     status: 'scheduled',
+    scoring_system: drawScoring,
   }))
   const { error: mErr } = await service.from('matches').insert(matchInserts)
   if (mErr) {

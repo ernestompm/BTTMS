@@ -18,6 +18,7 @@ export default function NewDrawPage() {
     category: 'absolute_m',
     match_type: 'doubles' as 'singles' | 'doubles',
     draw_type: 'single_elimination',
+    scoring_system: 'best_of_2_sets_super_tb',
     size: '16',
     consolation: false,
   })
@@ -40,6 +41,7 @@ export default function NewDrawPage() {
       size: parseInt(form.size),
       consolation: form.consolation,
       status: 'draft',
+      structure: { scoring_system: form.scoring_system },
     })
     if (error) { setError(error.message); setLoading(false) }
     else router.push('/dashboard/draws')
@@ -86,6 +88,18 @@ export default function NewDrawPage() {
               {[4, 8, 16, 32, 64].map(n => <option key={n} value={n}>{n} equipos</option>)}
             </select>
           </div>
+        </div>
+
+        <div>
+          <label className="block text-sm text-gray-400 mb-1">Sistema de puntuación (se aplica a todos los partidos del cuadro)</label>
+          <select value={form.scoring_system} onChange={(e) => setForm(f => ({ ...f, scoring_system: e.target.value }))} className={sc}>
+            <option value="best_of_2_sets_super_tb">Mejor de 2 sets + Super TB (Dobles Absoluto)</option>
+            <option value="best_of_3_sets_tb">Mejor de 3 sets con TB</option>
+            <option value="7_games_tb">7 juegos + TB si 6-6 (Individual)</option>
+            <option value="pro_set">Pro Set (1 set a 7)</option>
+            <option value="short_sets">Sets cortos a 4</option>
+            <option value="best_of_3_tiebreaks">Mejor de 3 tie-breaks</option>
+          </select>
         </div>
 
         <div className="flex items-center gap-3">

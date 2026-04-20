@@ -1,13 +1,13 @@
 'use client'
 
+import { useEffect, useRef, useState } from 'react'
 import type { PointType, ShotDirection } from '@/types'
 
-interface PointOption {
+interface Option {
   pointType: PointType
   shotDirection: ShotDirection | null
   label: string
-  emoji?: string
-  color?: string
+  color: string
 }
 
 interface Props {
@@ -17,103 +17,91 @@ interface Props {
   onClose: () => void
 }
 
-export function PointModal({ winnerTeam, servingTeam, onSelect, onClose }: Props) {
+const AUTO_MS = 5000
+
+// 4 opciones cuando gana el SACADOR
+const SERVER_OPTS: Option[] = [
+  { pointType: 'ace',            shotDirection: 'serve', label: 'ACE',              color: 'bg-yellow-500' },
+  { pointType: 'winner',         shotDirection: null,    label: 'WINNER',           color: 'bg-green-600' },
+  { pointType: 'forced_error',   shotDirection: null,    label: 'ERROR FORZADO',    color: 'bg-orange-600' },
+  { pointType: 'unforced_error', shotDirection: null,    label: 'ERROR NO FORZADO', color: 'bg-red-700' },
+]
+
+// 4 opciones cuando gana el RESTADOR
+const RETURNER_OPTS: Option[] = [
+  { pointType: 'double_fault',   shotDirection: null,    label: 'DOBLE FALTA',      color: 'bg-red-600' },
+  { pointType: 'winner',         shotDirection: null,    label: 'WINNER',           color: 'bg-green-600' },
+  { pointType: 'forced_error',   shotDirection: null,    label: 'ERROR FORZADO',    color: 'bg-orange-600' },
+  { pointType: 'unforced_error', shotDirection: null,    label: 'ERROR NO FORZADO', color: 'bg-red-700' },
+]
+
+export function PointModal({ winnerTeam, servingTeam, onSelect }: Props) {
   const isServer = winnerTeam === servingTeam
+  const options = isServer ? SERVER_OPTS : RETURNER_OPTS
+  const [remaining, setRemaining] = useState(AUTO_MS)
+  const doneRef = useRef(false)
 
-  // Case A: Server wins
-  const serverWinOptions: PointOption[] = [
-    { pointType: 'ace', shotDirection: 'serve', label: 'ACE', emoji: '🚀', color: 'bg-yellow-600 hover:bg-yellow-500' },
-    { pointType: 'winner', shotDirection: 'forehand', label: 'Winner Derecha', emoji: '💥' },
-    { pointType: 'winner', shotDirection: 'backhand', label: 'Winner Revés', emoji: '💥' },
-    { pointType: 'winner', shotDirection: 'volley_fh', label: 'Winner Volea', emoji: '🏓' },
-    { pointType: 'winner', shotDirection: 'overhead', label: 'Winner Remate', emoji: '⬆️' },
-    { pointType: 'forced_error', shotDirection: null, label: 'Error Forzado (rival)', emoji: '↩️' },
-  ]
+  function finish(pointType: PointType, shotDirection: ShotDirection | null) {
+    if (doneRef.current) return
+    doneRef.current = true
+    onSelect(winnerTeam, pointType, shotDirection)
+  }
 
-  // Case B: Returner wins
-  const returnerWinOptions: PointOption[] = [
-    { pointType: 'serve_fault', shotDirection: null, label: 'Falta Red', emoji: '🕸️', color: 'bg-blue-700 hover:bg-blue-600' },
-    { pointType: 'serve_fault', shotDirection: null, label: 'Falta Larga', emoji: '📏', color: 'bg-blue-700 hover:bg-blue-600' },
-    { pointType: 'serve_fault', shotDirection: null, label: 'Falta de Pie', emoji: '👟', color: 'bg-blue-700 hover:bg-blue-600' },
-    { pointType: 'winner', shotDirection: 'forehand', label: 'Winner Resto', emoji: '⚡', color: 'bg-green-700 hover:bg-green-600' },
-    { pointType: 'winner', shotDirection: 'forehand', label: 'Winner Rally', emoji: '💥' },
-    { pointType: 'unforced_error', shotDirection: 'forehand', label: 'Error No Forz. (Der)', emoji: '😬' },
-    { pointType: 'unforced_error', shotDirection: 'backhand', label: 'Error No Forz. (Rev)', emoji: '😬' },
-    { pointType: 'unforced_error', shotDirection: 'volley_fh', label: 'Error No Forz. (Volea)', emoji: '😬' },
-    { pointType: 'forced_error', shotDirection: null, label: 'Error Forzado (sacador)', emoji: '↩️' },
-  ]
+  // Auto-skip timer → guarda el punto como 'winner' genérico
+  useEffect(() => {
+    const start = Date.now()
+    const tick = setInterval(() => {
+      const rem = Math.max(0, AUTO_MS - (Date.now() - start))
+      setRemaining(rem)
+      if (rem === 0) {
+        clearInterval(tick)
+        finish('winner', null)
+      }
+    }, 50)
+    return () => clearInterval(tick)
+  }, [])
 
-  // Case C/D: Rally options
-  const rallyOptions: PointOption[] = [
-    { pointType: 'winner', shotDirection: 'forehand', label: 'Winner Derecha', emoji: '💥' },
-    { pointType: 'winner', shotDirection: 'backhand', label: 'Winner Revés', emoji: '💥' },
-    { pointType: 'winner', shotDirection: 'volley_fh', label: 'Winner Volea', emoji: '🏓' },
-    { pointType: 'winner', shotDirection: 'overhead', label: 'Winner Remate', emoji: '⬆️' },
-    { pointType: 'winner', shotDirection: 'lob', label: 'Winner Lob', emoji: '🌈' },
-    { pointType: 'unforced_error', shotDirection: 'forehand', label: 'Error No F. (Der)', emoji: '😬' },
-    { pointType: 'unforced_error', shotDirection: 'backhand', label: 'Error No F. (Rev)', emoji: '😬' },
-    { pointType: 'unforced_error', shotDirection: 'volley_fh', label: 'Error No F. (Volea)', emoji: '😬' },
-    { pointType: 'forced_error', shotDirection: null, label: 'Error Forzado', emoji: '↩️' },
-  ]
-
-  const primaryOptions = isServer ? serverWinOptions : returnerWinOptions
+  const progress = (remaining / AUTO_MS) * 100
+  const accent = winnerTeam === 1 ? 'text-brand-red' : 'text-brand-pink'
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/70" onClick={onClose} />
-
-      {/* Sheet */}
-      <div className="relative bg-gray-900 rounded-t-3xl border-t border-gray-700 slide-up" style={{ maxHeight: '75vh', overflowY: 'auto' }}>
-        <div className="sticky top-0 bg-gray-900 px-5 pt-4 pb-3 border-b border-gray-800 z-10">
-          <div className="flex items-center justify-between">
-            <div>
-              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-bold ${winnerTeam === 1 ? 'bg-brand-red/20 text-brand-red' : 'bg-brand-pink/20 text-brand-pink'}`}>
-                <span className={`w-2 h-2 rounded-full ${winnerTeam === 1 ? 'bg-brand-red' : 'bg-brand-pink'}`} />
-                Punto Equipo {winnerTeam}
-              </span>
-            </div>
-            <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-800 text-gray-400 hover:text-white">✕</button>
-          </div>
-          <p className="text-gray-500 text-xs mt-2">
-            {isServer ? '⚡ Equipo sacador gana el punto' : '🔄 Equipo restador gana el punto'}
-          </p>
+    <div className="fixed inset-0 z-50 bg-black/85 flex flex-col justify-center p-4">
+      <div className="bg-gray-900 rounded-3xl border border-gray-700 overflow-hidden max-w-3xl w-full mx-auto">
+        {/* Countdown bar */}
+        <div className="h-3 bg-gray-800">
+          <div className="h-full bg-brand-orange transition-all duration-100 ease-linear"
+            style={{ width: `${progress}%` }} />
         </div>
 
-        <div className="p-4 space-y-2">
-          {primaryOptions.map((opt, i) => (
-            <button key={i} onClick={() => onSelect(winnerTeam, opt.pointType, opt.shotDirection)}
-              className={`w-full flex items-center gap-3 px-4 py-4 rounded-xl text-white font-medium text-left transition-colors active:scale-98 ${opt.color ?? 'bg-gray-800 hover:bg-gray-700'}`}>
-              {opt.emoji && <span className="text-xl">{opt.emoji}</span>}
-              <span>{opt.label}</span>
+        {/* Header con X grande */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-800">
+          <div>
+            <p className={`text-xs uppercase tracking-widest ${accent} font-bold`}>Equipo {winnerTeam} gana punto</p>
+            <p className="text-white text-3xl font-black font-score mt-1">
+              {isServer ? 'SACADOR gana' : 'RESTADOR gana'}
+            </p>
+          </div>
+          <button onClick={() => finish('winner', null)}
+            aria-label="Saltar stats"
+            className="w-20 h-20 bg-gray-800 hover:bg-gray-700 active:scale-95 rounded-2xl flex items-center justify-center text-white border border-gray-700 transition-transform">
+            <span className="text-5xl font-black leading-none">✕</span>
+          </button>
+        </div>
+
+        {/* 4 botones gigantes en grid 2x2 */}
+        <div className="p-4 grid grid-cols-2 gap-4">
+          {options.map((opt, i) => (
+            <button key={i}
+              onClick={() => finish(opt.pointType, opt.shotDirection)}
+              className={`${opt.color} hover:brightness-110 active:scale-95 rounded-2xl h-36 md:h-40 flex items-center justify-center text-white font-black font-score text-2xl md:text-3xl text-center px-4 transition-all shadow-lg leading-tight`}>
+              {opt.label}
             </button>
           ))}
-
-          {/* Rally section separator */}
-          {isServer && (
-            <>
-              <div className="py-2 border-t border-gray-800">
-                <p className="text-gray-600 text-xs text-center">— Rally alternativo —</p>
-              </div>
-              {rallyOptions.map((opt, i) => (
-                <button key={`rally-${i}`} onClick={() => onSelect(winnerTeam, opt.pointType, opt.shotDirection)}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-400 hover:text-white bg-gray-800/50 hover:bg-gray-800 font-medium text-left text-sm transition-colors">
-                  {opt.emoji && <span>{opt.emoji}</span>}
-                  <span>{opt.label}</span>
-                </button>
-              ))}
-            </>
-          )}
-
-          {/* Special actions */}
-          <div className="pt-2 border-t border-gray-800">
-            <p className="text-gray-600 text-xs mb-2">Acciones especiales</p>
-            <button onClick={() => onSelect(winnerTeam, 'double_fault', null)}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-orange-900/30 hover:bg-orange-900/50 text-orange-300 font-medium text-left text-sm transition-colors">
-              <span>⚠️</span> Doble falta
-            </button>
-          </div>
         </div>
+
+        <p className="text-center text-gray-600 text-sm pb-4">
+          Se cierra en {Math.ceil(remaining / 1000)}s · Pulsa ✕ para omitir
+        </p>
       </div>
     </div>
   )
