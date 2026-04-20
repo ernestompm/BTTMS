@@ -13,6 +13,8 @@ export default function TournamentPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [resetting, setResetting] = useState(false)
+  const [resetDone, setResetDone] = useState(false)
 
   useEffect(() => {
     supabase.from('tournaments').select('*').eq('id', TOURNAMENT_ID).single()
@@ -52,6 +54,14 @@ export default function TournamentPage() {
 
   if (loading) return <div className="text-gray-400 fade-in">Cargando...</div>
   if (!tournament) return <div className="text-red-400">Torneo no encontrado. Ejecuta el seed SQL primero.</div>
+
+  async function handleReset() {
+    if (!confirm('⚠️ Esto borrará TODOS los jugadores, cuadros, partidos y puntos. El usuario admin se conserva. ¿Continuar?')) return
+    setResetting(true)
+    const res = await fetch('/api/admin/reset', { method: 'POST' })
+    setResetting(false)
+    if (res.ok) { setResetDone(true); setTimeout(() => setResetDone(false), 4000) }
+  }
 
   const cfg = tournament.scoreboard_config ?? DEFAULT_SCOREBOARD_CONFIG
 
@@ -170,6 +180,19 @@ export default function TournamentPage() {
           {saving ? 'Guardando...' : 'Guardar cambios'}
         </button>
         {success && <span className="text-green-400 text-sm">✓ Guardado correctamente</span>}
+      </div>
+
+      {/* Danger Zone */}
+      <div className="bg-gray-900 rounded-2xl p-6 border border-red-900/50 space-y-4">
+        <h2 className="text-red-400 font-semibold">⚠️ Zona de peligro (solo tests)</h2>
+        <p className="text-gray-400 text-sm">Borra todos los jugadores, cuadros, partidos y puntos. El usuario administrador se conserva. Úsalo para limpiar datos de prueba.</p>
+        <div className="flex items-center gap-4">
+          <button onClick={handleReset} disabled={resetting}
+            className="bg-red-900/50 hover:bg-red-800 border border-red-700 disabled:opacity-50 text-red-300 font-semibold px-6 py-2.5 rounded-xl transition-colors">
+            {resetting ? 'Reseteando...' : '🗑 Resetear base de datos'}
+          </button>
+          {resetDone && <span className="text-green-400 text-sm">✓ Base de datos reseteada</span>}
+        </div>
       </div>
     </div>
   )
