@@ -27,7 +27,7 @@ export default async function JudgeMatchPage({ params }: { params: Promise<{ mat
   }
 
   const { data: tournament } = await service.from('tournaments')
-    .select('warmup_duration_seconds, side_change_duration_seconds, set_break_duration_seconds')
+    .select('warmup_duration_seconds, side_change_duration_seconds, set_break_duration_seconds, advanced_stats_enabled')
     .eq('id', match.tournament_id)
     .single()
 
@@ -37,5 +37,12 @@ export default async function JudgeMatchPage({ params }: { params: Promise<{ mat
     setBreak: tournament?.set_break_duration_seconds ?? 90,
   }
 
-  return <JudgeClient initialMatch={match as any} userId={user.id} timerConfig={timerConfig} />
+  return (
+    <JudgeClient
+      initialMatch={match as any}
+      userId={user.id}
+      timerConfig={timerConfig}
+      advancedStats={tournament?.advanced_stats_enabled ?? true}
+    />
+  )
 }

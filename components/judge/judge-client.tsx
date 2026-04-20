@@ -15,6 +15,7 @@ interface Props {
   initialMatch: Match & { entry1: any; entry2: any; court: any }
   userId: string
   timerConfig: TimerConfig
+  advancedStats: boolean
 }
 
 interface Toast { id: number; msg: string; color: 'yellow' | 'orange' | 'red' | 'blue' | 'green' | 'teal' | 'gray' | 'purple' | 'amber' }
@@ -157,10 +158,10 @@ function BreakOverlay({ title, subtitle, secs, onDismiss }: {
 }
 
 // ── Main component ─────────────────────────────────────────────────
-export function JudgeClient({ initialMatch, userId, timerConfig }: Props) {
+export function JudgeClient({ initialMatch, userId, timerConfig, advancedStats }: Props) {
   const supabase = createClient()
   const [match, setMatch] = useState(initialMatch)
-  const [showPointModal, setShowPointModal] = useState<1 | 2 | null>(null)
+  const [classifyModal, setClassifyModal] = useState<{ team: 1 | 2; servingTeam: 1 | 2 } | null>(null)
   const [showWarningModal, setShowWarningModal] = useState(false)
   const [showRetireModal, setShowRetireModal] = useState(false)
   const [showMedical, setShowMedical] = useState(false)
@@ -273,20 +274,26 @@ export function JudgeClient({ initialMatch, userId, timerConfig }: Props) {
     setSaving(false)
   }
 
-  async function handlePointWon(wt: 1 | 2, pt: PointType, sd: ShotDirection | null) {
+  async function handleImmediatePoint(wt: 1 | 2) {
     const now = Date.now()
     if (now - lastPointRef.current < 600) return
     lastPointRef.current = now
-    setShowPointModal(null)
+
+    const servingTeamAtPress = (match.serving_team ?? 1) as 1 | 2
 
     const res = await fetch(`/api/matches/${match.id}/point`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ winner_team: wt, point_type: pt, shot_direction: sd }),
+      body: JSON.stringify({ winner_team: wt, point_type: 'winner', shot_direction: null }),
     })
     if (res.ok) {
       const u = await res.json()
       const ctx = u._context ?? {}
       setMatch((m) => ({ ...m, ...u }))
+
+      // Show classification panel after score is updated (non-blocking)
+      if (advancedStats) {
+        setClassifyModal({ team: wt, servingTeam: servingTeamAtPress })
+      }
 
       if (ctx.match_finished) addToast('PARTIDO FINALIZADO', 'green')
 
@@ -312,6 +319,14 @@ export function JudgeClient({ initialMatch, userId, timerConfig }: Props) {
         addToast('PUNTO DE BREAK', 'purple')
       }
     }
+  }
+
+  async function handleClassifyPoint(pt: PointType, sd: ShotDirection | null) {
+    setClassifyModal(null)
+    await fetch(`/api/matches/${match.id}/classify-point`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ point_type: pt, shot_direction: sd }),
+    })
   }
 
   async function handleUndo() {
@@ -556,7 +571,7 @@ export function JudgeClient({ initialMatch, userId, timerConfig }: Props) {
           const wc = t === 1 ? warnCount1 : warnCount2
           const nextL = PENALTY_NEXT_LABEL[Math.min(wc, 3)]
           return (
-            <button key={t} onClick={() => setShowPointModal(t)}
+            <button key={t} onClick={() => handleImmediatePoint(t)}
               className={`flex-1 flex flex-col items-center justify-center gap-3 transition-all active:brightness-75 relative overflow-hidden ${t === 1 ? 'border-r border-gray-800' : ''}`}
               style={{ background: isServing ? 'rgba(100,45,0,0.38)' : '#111827' }}>
 
@@ -659,10 +674,14 @@ export function JudgeClient({ initialMatch, userId, timerConfig }: Props) {
         </button>
       </div>
 
-      {/* Modals */}
-      {showPointModal !== null && (
-        <PointModal winnerTeam={showPointModal} servingTeam={match.serving_team ?? 1}
-          onSelect={handlePointWon} onClose={() => setShowPointModal(null)} />
+      {/* Classification panel (non-blocking — score already saved) */}
+      {classifyModal !== null && advancedStats && (
+        <PointModal
+          winnerTeam={classifyModal.team}
+          servingTeam={classifyModal.servingTeam}
+          onClassify={handleClassifyPoint}
+          onDismiss={() => setClassifyModal(null)}
+        />
       )}
       {showWarningModal && (
         <WarningModal warnings={warnings} team1Name={t1Label} team2Name={t2Label}

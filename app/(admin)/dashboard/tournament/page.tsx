@@ -42,6 +42,7 @@ export default function TournamentPage() {
       warmup_duration_seconds: tournament.warmup_duration_seconds,
       side_change_duration_seconds: tournament.side_change_duration_seconds,
       set_break_duration_seconds: tournament.set_break_duration_seconds,
+      advanced_stats_enabled: (tournament as any).advanced_stats_enabled ?? true,
     }).eq('id', TOURNAMENT_ID)
     setSaving(false)
     setSuccess(true)
@@ -182,6 +183,22 @@ export default function TournamentPage() {
               <p className="text-gray-600 text-xs mt-1">{Math.floor(((tournament as any)[field] ?? def) / 60)}:{String(((tournament as any)[field] ?? def) % 60).padStart(2,'0')} min</p>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Referee app settings */}
+      <div className="bg-gray-900 rounded-2xl p-6 border border-gray-800 space-y-4">
+        <h2 className="text-white font-semibold">App de Árbitro</h2>
+        <div className="flex items-center justify-between py-2">
+          <div>
+            <p className="text-white text-sm font-medium">Estadísticas avanzadas</p>
+            <p className="text-gray-500 text-xs mt-0.5">Cuando está activo, aparece un panel de clasificación tras cada punto (winner, error forzado, ace…). Desactívalo si quieres que el punto suba al instante sin ningún paso extra.</p>
+          </div>
+          <button
+            onClick={() => updateField('advanced_stats_enabled', !(tournament as any).advanced_stats_enabled ?? false)}
+            className={`relative ml-4 flex-shrink-0 w-12 h-6 rounded-full transition-colors ${(tournament as any).advanced_stats_enabled !== false ? 'bg-brand-red' : 'bg-gray-700'}`}>
+            <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${(tournament as any).advanced_stats_enabled !== false ? 'translate-x-6' : 'translate-x-0'}`} />
+          </button>
         </div>
       </div>
 

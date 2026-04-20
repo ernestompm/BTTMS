@@ -87,6 +87,7 @@ export interface Tournament {
   warmup_duration_seconds: number
   side_change_duration_seconds: number
   set_break_duration_seconds: number
+  advanced_stats_enabled: boolean
   created_at: string
 }
 
