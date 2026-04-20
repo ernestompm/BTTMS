@@ -104,8 +104,10 @@ export function VenueScoreboard({ initialMatch, tournamentName, sponsors }: Prop
     setsWon: score?.sets_won?.t2 ?? 0,
   }
 
-  // Always 3 columns: SET 1, SET 2, current
-  const setCols = [0, 1, 2].map((i) => {
+  // Number of set columns depends on format (pro_set/7_games = 1, else 3)
+  const scoringSystem = (match as any).scoring_system ?? ''
+  const numSetCols = (scoringSystem === 'pro_set' || scoringSystem === '7_games_tb') ? 1 : 3
+  const setCols = Array.from({ length: numSetCols }, (_, i) => {
     const s = score?.sets?.[i]
     return {
       a: s ? s.t1 : null,
@@ -114,6 +116,9 @@ export function VenueScoreboard({ initialMatch, tournamentName, sponsors }: Prop
       current: !s && i === (score?.sets?.length ?? 0),
     }
   })
+
+  const setColWidth = 170
+  const gridCols = `110px minmax(0,1fr) ${Array(numSetCols).fill(`${setColWidth}px`).join(' ')} 220px`
 
   const roundLabel = ROUND_LABELS[match.round ?? ''] ?? (match.round ?? '—')
 
@@ -177,11 +182,11 @@ export function VenueScoreboard({ initialMatch, tournamentName, sponsors }: Prop
           </div>
 
           {/* Column labels */}
-          <div className="absolute z-10" style={{ left: 64, right: 64, top: 190, height: 30, display: 'grid', gridTemplateColumns: '110px minmax(0,1fr) 170px 170px 170px 220px', alignItems: 'center', pointerEvents: 'none' }}>
+          <div className="absolute z-10" style={{ left: 64, right: 64, top: 190, height: 30, display: 'grid', gridTemplateColumns: gridCols, alignItems: 'center', pointerEvents: 'none' }}>
             <div /><div />
-            <div style={{ fontWeight: 700, letterSpacing: '.3em', fontSize: 20, opacity: .55, textAlign: 'center', textTransform: 'uppercase' }}>SET 1</div>
-            <div style={{ fontWeight: 700, letterSpacing: '.3em', fontSize: 20, opacity: .55, textAlign: 'center', textTransform: 'uppercase' }}>SET 2</div>
-            <div style={{ fontWeight: 700, letterSpacing: '.3em', fontSize: 20, opacity: .55, textAlign: 'center', textTransform: 'uppercase' }}>SET 3</div>
+            {setCols.map((_, i) => (
+              <div key={i} style={{ fontWeight: 700, letterSpacing: '.3em', fontSize: 20, opacity: .55, textAlign: 'center', textTransform: 'uppercase' }}>SET {i + 1}</div>
+            ))}
             <div style={{ fontWeight: 700, letterSpacing: '.3em', fontSize: 20, opacity: .55, textAlign: 'center', textTransform: 'uppercase' }}>PUNTOS</div>
           </div>
 
@@ -191,7 +196,7 @@ export function VenueScoreboard({ initialMatch, tournamentName, sponsors }: Prop
               const t = key === 'A' ? teamA : teamB
               const serving = (match.serving_team === 1 && key === 'A') || (match.serving_team === 2 && key === 'B')
               return (
-                <TeamRowLED key={key} team={t} serving={serving} setCols={setCols} teamKey={key} isDoubles={isDoubles} servingPlayerId={match.current_server_id ?? null} />
+                <TeamRowLED key={key} team={t} serving={serving} setCols={setCols} teamKey={key} isDoubles={isDoubles} servingPlayerId={match.current_server_id ?? null} gridCols={gridCols} />
               )
             })}
           </div>
@@ -232,9 +237,10 @@ interface TeamRowProps {
   teamKey: 'A' | 'B'
   isDoubles: boolean
   servingPlayerId: string | null
+  gridCols: string
 }
 
-function TeamRowLED({ team, serving, setCols, teamKey, isDoubles, servingPlayerId }: TeamRowProps) {
+function TeamRowLED({ team, serving, setCols, teamKey, isDoubles, servingPlayerId, gridCols }: TeamRowProps) {
   const accentColor = '#ef6a4c'
   const bg = serving
     ? `linear-gradient(90deg, rgba(239,106,76,.18) 0%, rgba(239,106,76,.04) 100%)`
@@ -243,7 +249,7 @@ function TeamRowLED({ team, serving, setCols, teamKey, isDoubles, servingPlayerI
   return (
     <div style={{
       position: 'relative', display: 'grid',
-      gridTemplateColumns: '110px minmax(0,1fr) 170px 170px 170px 220px',
+      gridTemplateColumns: gridCols,
       alignItems: 'stretch', background: bg, borderLeft: `12px solid ${accentColor}`,
       borderRadius: 10, overflow: 'hidden',
     }}>
@@ -283,7 +289,7 @@ function TeamRowLED({ team, serving, setCols, teamKey, isDoubles, servingPlayerI
         return (
           <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 168, lineHeight: .92, letterSpacing: '-.02em', fontVariantNumeric: 'tabular-nums', position: 'relative', background: bgCell, overflow: 'hidden', borderRight: '1px solid rgba(255,255,255,.06)', opacity: lost ? .4 : 1 }}>
             <span style={{ position: 'relative', zIndex: 1 }}>
-              {isCurrent ? (teamKey === 'A' ? (team.games ?? 0) : (team.games ?? 0)) : (my != null ? my : '–')}
+              {isCurrent ? (team.games ?? 0) : (my != null ? my : '–')}
             </span>
             {won && <span style={{ position: 'absolute', left: '16%', right: '16%', bottom: 16, height: 8, borderRadius: 4, background: accentColor }} />}
           </div>

@@ -11,13 +11,25 @@ export default async function PublicPlayerPage({ params }: { params: Promise<{ i
   if (!player) notFound()
   const p = player as Player
 
-  // Get recent matches
-  const { data: matches } = await service.from('matches')
-    .select('id, category, round, status, score, tournament:tournaments(name), entry1:draw_entries!entry1_id(player1:players!player1_id(first_name,last_name), player2:players!player2_id(first_name,last_name)), entry2:draw_entries!entry2_id(player1:players!player1_id(first_name,last_name), player2:players!player2_id(first_name,last_name))')
-    .or(`entry1.player1_id.eq.${id},entry1.player2_id.eq.${id},entry2.player1_id.eq.${id},entry2.player2_id.eq.${id}`)
-    .eq('status', 'finished')
-    .order('finished_at', { ascending: false })
-    .limit(10)
+  // Get draw entries that include this player
+  const { data: playerEntries } = await service
+    .from('draw_entries')
+    .select('id')
+    .or(`player1_id.eq.${id},player2_id.eq.${id}`)
+
+  const entryIds = (playerEntries ?? []).map((e: any) => e.id)
+
+  // Get recent finished matches where the player participated (via their draw_entries)
+  let matches: any[] | null = null
+  if (entryIds.length > 0) {
+    const { data } = await service.from('matches')
+      .select('id, category, round, status, score, tournament:tournaments(name), entry1:draw_entries!entry1_id(player1:players!player1_id(first_name,last_name), player2:players!player2_id(first_name,last_name)), entry2:draw_entries!entry2_id(player1:players!player1_id(first_name,last_name), player2:players!player2_id(first_name,last_name))')
+      .or(`entry1_id.in.(${entryIds.join(',')}),entry2_id.in.(${entryIds.join(',')})`)
+      .eq('status', 'finished')
+      .order('finished_at', { ascending: false })
+      .limit(10)
+    matches = data
+  }
 
   const age = p.birth_date ? Math.floor((Date.now() - new Date(p.birth_date).getTime()) / (365.25 * 24 * 3600 * 1000)) : null
 

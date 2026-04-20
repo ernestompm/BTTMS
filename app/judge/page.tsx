@@ -22,6 +22,9 @@ export default async function JudgeIndexPage() {
 
   if (appUser.role === 'judge') {
     query = query.eq('judge_id', user.id)
+  } else if (appUser.role !== 'super_admin' && appUser.tournament_id) {
+    // Directors and staff only see their tournament's matches
+    query = query.eq('tournament_id', appUser.tournament_id)
   }
 
   const { data: matches } = await query.limit(50)

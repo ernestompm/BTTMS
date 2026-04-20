@@ -1,4 +1,5 @@
 import { createServiceSupabase } from '@/lib/supabase-server'
+import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { CATEGORY_LABELS } from '@/types'
 
@@ -38,7 +39,7 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
         <div className="bg-gray-900 rounded-2xl p-4 border border-gray-800 space-y-2">
           <p className="text-gray-400 text-sm font-medium mb-3">Seleccionar partido</p>
           {(matches ?? []).map((m: any) => (
-            <a key={m.id} href={`/dashboard/stats?match=${m.id}`}
+            <Link key={m.id} href={`/dashboard/stats?match=${m.id}`}
               className={`block p-3 rounded-xl border transition-colors text-sm ${matchId === m.id ? 'border-brand-red bg-brand-red/10 text-white' : 'border-gray-800 text-gray-400 hover:border-gray-700 hover:text-white'}`}>
               <div className="flex gap-2 mb-1">
                 <Badge variant={m.status === 'in_progress' ? 'danger' : 'success'}>{m.status}</Badge>
@@ -46,7 +47,7 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
               </div>
               <p className="truncate">{teamName(m.entry1)}</p>
               <p className="truncate text-gray-500">vs. {teamName(m.entry2)}</p>
-            </a>
+            </Link>
           ))}
           {(!matches || matches.length === 0) && (
             <p className="text-gray-600 text-sm">No hay partidos con estadísticas</p>

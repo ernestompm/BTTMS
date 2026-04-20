@@ -14,6 +14,7 @@ export default function NewMatchPage() {
   const [courts, setCourts] = useState<Court[]>([])
   const [judges, setJudges] = useState<any[]>([])
   const [entries, setEntries] = useState<DrawEntry[]>([])
+  const [draws, setDraws] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -21,21 +22,40 @@ export default function NewMatchPage() {
     category: 'absolute_m', match_type: 'doubles', round: 'QF',
     court_id: '', judge_id: '', scheduled_at: '',
     entry1_id: '', entry2_id: '',
+    draw_id: '', scoring_system: 'best_of_2_sets_super_tb',
   })
 
   useEffect(() => {
     async function load() {
-      const [courtsRes, judgesRes, entriesRes] = await Promise.all([
+      const [courtsRes, judgesRes, entriesRes, drawsRes] = await Promise.all([
         supabase.from('courts').select('*').eq('tournament_id', TOURNAMENT_ID),
         supabase.from('app_users').select('*').eq('role', 'judge'),
         supabase.from('draw_entries').select('*, player1:players!player1_id(first_name,last_name), player2:players!player2_id(first_name,last_name)').eq('status', 'confirmed'),
+        supabase.from('draws').select('id, category, match_type, structure').eq('tournament_id', TOURNAMENT_ID),
       ])
       setCourts((courtsRes.data as Court[]) ?? [])
       setJudges(judgesRes.data ?? [])
       setEntries((entriesRes.data as DrawEntry[]) ?? [])
+      setDraws(drawsRes.data ?? [])
     }
     load()
   }, [])
+
+  function onDrawChange(drawId: string) {
+    const draw = draws.find((d) => d.id === drawId)
+    if (!draw) {
+      setForm((f) => ({ ...f, draw_id: drawId }))
+      return
+    }
+    const scoringSystem = (draw.structure as any)?.scoring_system ?? 'best_of_2_sets_super_tb'
+    setForm((f) => ({
+      ...f,
+      draw_id: drawId,
+      category: draw.category ?? f.category,
+      match_type: draw.match_type ?? f.match_type,
+      scoring_system: scoringSystem,
+    }))
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -43,6 +63,7 @@ export default function NewMatchPage() {
     setLoading(true)
     const { error } = await supabase.from('matches').insert({
       tournament_id: TOURNAMENT_ID,
+      draw_id: form.draw_id || null,
       category: form.category,
       match_type: form.match_type,
       round: form.round || null,
@@ -51,6 +72,7 @@ export default function NewMatchPage() {
       scheduled_at: form.scheduled_at ? new Date(form.scheduled_at).toISOString() : null,
       entry1_id: form.entry1_id || null,
       entry2_id: form.entry2_id || null,
+      scoring_system: form.scoring_system,
       status: 'scheduled',
     })
     if (error) { setError(error.message) } else { router.push('/dashboard/matches') }
@@ -73,6 +95,20 @@ export default function NewMatchPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="bg-gray-900 rounded-2xl p-6 border border-gray-800 space-y-4">
+
+        {/* Draw selector — auto-fills category, match_type, scoring_system */}
+        <div>
+          <label className="block text-sm text-gray-400 mb-1">Cuadro (opcional — rellena categoría y puntuación automáticamente)</label>
+          <select value={form.draw_id} onChange={(e) => onDrawChange(e.target.value)} className={selectClass}>
+            <option value="">Sin asignar a cuadro</option>
+            {draws.map((d) => (
+              <option key={d.id} value={d.id}>
+                {(CATEGORY_LABELS as Record<string, string>)[d.category] ?? d.category} · {d.match_type}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm text-gray-400 mb-1">Categoría</label>
@@ -87,6 +123,18 @@ export default function NewMatchPage() {
               <option value="singles">Individual</option>
             </select>
           </div>
+        </div>
+
+        <div>
+          <label className="block text-sm text-gray-400 mb-1">Sistema de puntuación</label>
+          <select value={form.scoring_system} onChange={(e) => setForm((f) => ({ ...f, scoring_system: e.target.value }))} className={selectClass}>
+            <option value="best_of_2_sets_super_tb">Mejor de 2 sets + Super TB (Dobles Absoluto)</option>
+            <option value="best_of_3_sets_tb">Mejor de 3 sets con TB</option>
+            <option value="7_games_tb">7 juegos + TB si 6-6 (Individual)</option>
+            <option value="pro_set">Pro Set (1 set a 7)</option>
+            <option value="short_sets">Sets cortos a 4</option>
+            <option value="best_of_3_tiebreaks">Mejor de 3 tie-breaks</option>
+          </select>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -126,7 +174,7 @@ export default function NewMatchPage() {
             <label className="block text-sm text-gray-400 mb-1">Pareja/Jugador 1</label>
             <select value={form.entry1_id} onChange={(e) => setForm((f) => ({ ...f, entry1_id: e.target.value }))} className={selectClass}>
               <option value="">Por determinar</option>
-              {entries.map((e) => <option key={e.id} value={e.id}>{entryName(e)}</option>)}
+              {entries.filter((e) => e.id !== form.entry2_id).map((e) => <option key={e.id} value={e.id}>{entryName(e)}</option>)}
             </select>
           </div>
           <div>

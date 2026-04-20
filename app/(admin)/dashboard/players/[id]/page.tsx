@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 
 const ic = "w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-brand-red text-sm"
@@ -14,6 +14,7 @@ function calcAge(birthDate: string): number {
 export default function EditPlayerPage() {
   const { id } = useParams<{ id: string }>()
   const supabase = createClient()
+  const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -110,7 +111,7 @@ export default function EditPlayerPage() {
     if (!confirm(`¿Eliminar a ${form.first_name} ${form.last_name}? Esta acción no se puede deshacer.`)) return
     setDeleting(true)
     await supabase.from('players').delete().eq('id', id)
-    window.location.href = '/dashboard/players'
+    router.push('/dashboard/players')
   }
 
   if (loading) return <div className="text-gray-400 fade-in">Cargando...</div>
@@ -119,7 +120,7 @@ export default function EditPlayerPage() {
     <div className="space-y-6 fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <button onClick={() => window.history.back()} className="text-gray-400 hover:text-white text-sm mb-3 flex items-center gap-1">← Volver</button>
+          <button onClick={() => router.back()} className="text-gray-400 hover:text-white text-sm mb-3 flex items-center gap-1">← Volver</button>
           <h1 className="text-2xl font-bold text-white font-score">{form.first_name} {form.last_name}</h1>
         </div>
         <button onClick={handleDelete} disabled={deleting}

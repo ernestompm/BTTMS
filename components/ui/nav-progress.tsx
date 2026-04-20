@@ -24,8 +24,12 @@ export function NavProgress() {
   useEffect(() => {
     setVisible(true)
     setWidth(70)
-    timer.current = setTimeout(() => { setWidth(100); setTimeout(() => setVisible(false), 300) }, 400)
-    return () => clearTimeout(timer.current)
+    let inner: ReturnType<typeof setTimeout>
+    timer.current = setTimeout(() => {
+      setWidth(100)
+      inner = setTimeout(() => setVisible(false), 300)
+    }, 400)
+    return () => { clearTimeout(timer.current); clearTimeout(inner) }
   }, [])
 
   if (!visible) return null

@@ -35,7 +35,7 @@ export default async function DrawsPage() {
                 <p className="text-white font-semibold group-hover:text-brand-red transition-colors">
                   {(CATEGORY_LABELS as Record<string, string>)[d.category] ?? d.category}
                 </p>
-                <p className="text-gray-500 text-xs mt-0.5">{d.draw_type.replace('_', ' ')} · {d.size} plazas</p>
+                <p className="text-gray-500 text-xs mt-0.5">{d.draw_type.replace(/_/g, ' ')} · {d.size} plazas</p>
               </div>
               <Badge variant={statusBadge[d.status] ?? 'default'}>{d.status}</Badge>
             </div>

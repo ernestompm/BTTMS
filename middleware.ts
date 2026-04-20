@@ -25,18 +25,27 @@ export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname
 
   // Public routes (no auth required)
-  const publicPaths = ['/login', '/scoreboard', '/players', '/api/setup', '/api/draws']
+  const publicPaths = ['/login', '/scoreboard', '/players', '/api/setup']
   const isPublic = publicPaths.some((p) => path.startsWith(p))
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     url.searchParams.set('redirect', path)
-    return NextResponse.redirect(url)
+    const redirectRes = NextResponse.redirect(url)
+    // Propagate refreshed session cookies onto the redirect response
+    supabaseResponse.cookies.getAll().forEach(({ name, value, ...options }) => {
+      redirectRes.cookies.set(name, value, options)
+    })
+    return redirectRes
   }
 
   if (user && path === '/login') {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
+    const redirectRes = NextResponse.redirect(new URL('/dashboard', request.url))
+    supabaseResponse.cookies.getAll().forEach(({ name, value, ...options }) => {
+      redirectRes.cookies.set(name, value, options)
+    })
+    return redirectRes
   }
 
   // Role-based access for judge routes
@@ -48,7 +57,11 @@ export async function middleware(request: NextRequest) {
       .single()
 
     if (!appUser || !['judge', 'super_admin', 'tournament_director', 'staff'].includes(appUser.role)) {
-      return NextResponse.redirect(new URL('/dashboard', request.url))
+      const redirectRes = NextResponse.redirect(new URL('/dashboard', request.url))
+      supabaseResponse.cookies.getAll().forEach(({ name, value, ...options }) => {
+        redirectRes.cookies.set(name, value, options)
+      })
+      return redirectRes
     }
   }
 
@@ -57,6 +70,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }

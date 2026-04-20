@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import { TossScreen } from './toss-screen'
 import { PointModal } from './point-modal'
@@ -14,8 +15,8 @@ interface Props {
 function tennisPoint(value: number | undefined, deuce: boolean | undefined, adv: 1 | 2 | null | undefined, team: 1 | 2): string {
   if (deuce) {
     if (adv === team) return 'ADV'
-    if (adv && adv !== team) return '—'
-    return '40'
+    if (adv && adv !== team) return '40'
+    return 'DUC'
   }
   return ['0', '15', '30', '40'][value ?? 0] ?? '0'
 }
@@ -92,7 +93,11 @@ export function JudgeClient({ initialMatch }: Props) {
   async function handleFinish() {
     if (!confirm('¿Finalizar el partido?')) return
     setSaving(true)
-    await fetch(`/api/matches/${match.id}/finish`, { method: 'POST' })
+    const res = await fetch(`/api/matches/${match.id}/finish`, { method: 'POST' })
+    if (res.ok) {
+      const updated = await res.json()
+      setMatch((m) => ({ ...m, ...updated }))
+    }
     setSaving(false)
   }
 
@@ -171,9 +176,9 @@ export function JudgeClient({ initialMatch }: Props) {
           <div className="text-center">
             <p className="text-green-400 font-score font-black text-5xl mb-3">✓ FINALIZADO</p>
             <p className="text-gray-400 text-lg mb-6">Ganador: Equipo {match.score?.winner_team ?? '?'}</p>
-            <a href="/judge" className="inline-block bg-gray-800 hover:bg-gray-700 text-white px-6 py-3 rounded-xl text-lg">
+            <Link href="/judge" className="inline-block bg-gray-800 hover:bg-gray-700 text-white px-6 py-3 rounded-xl text-lg">
               ← Volver
-            </a>
+            </Link>
           </div>
         </div>
       ) : (

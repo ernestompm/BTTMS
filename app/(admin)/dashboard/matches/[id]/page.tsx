@@ -92,7 +92,7 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
               <tbody>
                 {[1, 2].map((team) => (
                   <tr key={team} className="border-t border-gray-800">
-                    <td className="py-2 pr-4 text-white font-medium">{team === 1 ? playerName(m.entry1).split('/')[0] : playerName(m.entry2).split('/')[0]}</td>
+                    <td className="py-2 pr-4 text-white font-medium max-w-[180px] truncate">{team === 1 ? playerName(m.entry1) : playerName(m.entry2)}</td>
                     {score.sets?.map((s: any, i: number) => (
                       <td key={i} className="text-center px-3 text-white font-score font-bold">{s[`t${team}`]}</td>
                     ))}

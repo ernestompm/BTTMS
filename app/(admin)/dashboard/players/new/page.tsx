@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 
 const ic = "w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-brand-red text-sm"
@@ -12,6 +13,7 @@ function calcAge(birthDate: string): number {
 
 export default function NewPlayerPage() {
   const supabase = createClient()
+  const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [photoFile, setPhotoFile] = useState<File | null>(null)
@@ -79,14 +81,14 @@ export default function NewPlayerPage() {
       setError(error.message)
       setLoading(false)
     } else {
-      window.location.href = '/dashboard/players'
+      router.push('/dashboard/players')
     }
   }
 
   return (
     <div className="space-y-6 fade-in">
       <div>
-        <button onClick={() => window.history.back()} className="text-gray-400 hover:text-white text-sm mb-3 flex items-center gap-1">← Volver</button>
+        <button onClick={() => router.back()} className="text-gray-400 hover:text-white text-sm mb-3 flex items-center gap-1">← Volver</button>
         <h1 className="text-2xl font-bold text-white font-score">Nuevo Jugador</h1>
       </div>
 
@@ -211,7 +213,7 @@ export default function NewPlayerPage() {
             className="bg-brand-red hover:bg-red-600 disabled:opacity-50 text-white font-semibold px-6 py-2.5 rounded-xl transition-colors">
             {loading ? 'Guardando...' : 'Crear jugador'}
           </button>
-          <button type="button" onClick={() => window.history.back()} className="bg-gray-800 hover:bg-gray-700 text-white px-6 py-2.5 rounded-xl transition-colors">
+          <button type="button" onClick={() => router.back()} className="bg-gray-800 hover:bg-gray-700 text-white px-6 py-2.5 rounded-xl transition-colors">
             Cancelar
           </button>
         </div>

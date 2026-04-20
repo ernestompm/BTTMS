@@ -16,6 +16,8 @@ export default function BroadcastPage() {
   const [apiKey, setApiKey] = useState('')
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState('')
+  const [savingConfig, setSavingConfig] = useState(false)
+  const [saveResult, setSaveResult] = useState('')
 
   useEffect(() => {
     loadMatches()
@@ -45,16 +47,30 @@ export default function BroadcastPage() {
   }
 
   async function toggleBroadcast(matchId: string, activate: boolean) {
-    // Deactivate all first
-    await supabase.from('matches').update({ broadcast_active: false }).eq('tournament_id', TOURNAMENT_ID)
     if (activate) {
+      // Deactivate others, then activate chosen — two targeted updates
+      await supabase.from('matches').update({ broadcast_active: false })
+        .eq('tournament_id', TOURNAMENT_ID).neq('id', matchId)
       await supabase.from('matches').update({ broadcast_active: true }).eq('id', matchId)
       setActiveMatchId(matchId)
     } else {
+      await supabase.from('matches').update({ broadcast_active: false }).eq('id', matchId)
       setActiveMatchId(null)
     }
     addLog(activate ? `Partido activado: ${matchId.slice(0, 8)}` : 'Broadcast desactivado', '—')
     loadMatches()
+  }
+
+  async function saveConfig() {
+    setSavingConfig(true)
+    setSaveResult('')
+    const { error } = await supabase.from('tournaments').update({
+      broadcast_endpoint: endpoint || null,
+      broadcast_api_key: apiKey || null,
+    }).eq('id', TOURNAMENT_ID)
+    setSavingConfig(false)
+    setSaveResult(error ? `✗ ${error.message}` : '✓ Guardado')
+    if (!error) setTimeout(() => setSaveResult(''), 3000)
   }
 
   async function testEndpoint() {
@@ -72,6 +88,7 @@ export default function BroadcastPage() {
       addLog('Test endpoint', res.status)
     } catch (e) {
       setTestResult('✗ Error de conexión')
+      addLog('Test endpoint', 'error')
     }
     setTesting(false)
   }
@@ -143,11 +160,18 @@ export default function BroadcastPage() {
                     placeholder="••••••••••••"
                     className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-brand-red" />
                 </div>
-                <div className="flex gap-2 items-center">
+                <div className="flex flex-wrap gap-2 items-center">
+                  <button onClick={saveConfig} disabled={savingConfig}
+                    className="bg-brand-red hover:bg-red-600 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-sm transition-colors">
+                    {savingConfig ? 'Guardando...' : 'Guardar'}
+                  </button>
                   <button onClick={testEndpoint} disabled={testing || !endpoint}
                     className="bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-sm transition-colors">
                     {testing ? 'Probando...' : 'Probar conexión'}
                   </button>
+                  {saveResult && (
+                    <span className={`text-sm ${saveResult.startsWith('✓') ? 'text-green-400' : 'text-red-400'}`}>{saveResult}</span>
+                  )}
                   {testResult && (
                     <span className={`text-sm ${testResult.startsWith('✓') ? 'text-green-400' : 'text-red-400'}`}>{testResult}</span>
                   )}

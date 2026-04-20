@@ -79,7 +79,7 @@ export default function NewDrawPage() {
               <option value="single_elimination">Eliminación directa</option>
               <option value="double_elimination">Doble eliminación</option>
               <option value="round_robin">Todos contra todos</option>
-              <option value="group_stage_ko">Fase de grupos + KO</option>
+              <option value="group_stage">Fase de grupos + KO</option>
             </select>
           </div>
           <div>

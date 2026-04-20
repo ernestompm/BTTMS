@@ -26,21 +26,32 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   if (!lastPoint) return NextResponse.json({ error: 'No points to undo' }, { status: 400 })
 
-  // Mark as undone (append-only rule prevents delete)
+  // Mark as undone (append-only; if rule is still active this silently no-ops — user should apply 005_fixes.sql)
   await service.from('points').update({ is_undone: true }).eq('id', lastPoint.id)
 
-  // Restore score and stats from score_before
+  // After undoing, find the new "last" point to restore state from
   const { data: prevPoint } = await service.from('points')
     .select('*').eq('match_id', matchId).eq('is_undone', false)
     .order('sequence', { ascending: false }).limit(1).single()
 
+  // Restore score: if there's still a prior point, use its score_after; otherwise use score_before of the undone point
   const restoredScore = prevPoint ? prevPoint.score_after : lastPoint.score_before
+
+  // Restore stats from the per-point snapshot (stats_after added in migration 007)
+  const restoredStats = prevPoint ? (prevPoint as any).stats_after : null
+
+  // Restore serving_team from the server_team recorded on the undone point
+  const restoredServingTeam = lastPoint.server_team ?? match.serving_team
+
+  // Only restore status to 'in_progress' if the match was 'finished' (don't reopen suspended/walkover)
+  const restoredStatus = match.status === 'finished' ? 'in_progress' : match.status
 
   const { data: updatedMatch } = await service.from('matches').update({
     score: restoredScore,
-    serving_team: restoredScore.serving_team ?? match.serving_team,
-    status: 'in_progress',
-    finished_at: null,
+    stats: restoredStats,
+    serving_team: restoredServingTeam,
+    status: restoredStatus,
+    finished_at: restoredStatus === 'in_progress' ? null : match.finished_at,
   }).eq('id', matchId).select('*').single()
 
   return NextResponse.json(updatedMatch)

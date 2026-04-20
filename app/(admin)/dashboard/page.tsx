@@ -1,10 +1,19 @@
-import { createServiceSupabase } from '@/lib/supabase-server'
+import { createServerSupabase, createServiceSupabase } from '@/lib/supabase-server'
+import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import type { Match, Tournament } from '@/types'
 
 export default async function DashboardPage() {
+  const auth = await createServerSupabase()
+  const { data: { user } } = await auth.auth.getUser()
+  if (!user) redirect('/login')
+
   const supabase = createServiceSupabase()
+  const { data: appUser } = await supabase.from('app_users').select('role').eq('id', user.id).single()
+
+  // Judges have their own dedicated UI
+  if (appUser?.role === 'judge') redirect('/judge')
 
   const [{ data: tournaments }, { data: matches }, { data: stats }] = await Promise.all([
     supabase.from('tournaments').select('*').order('created_at', { ascending: false }).limit(5),
@@ -100,12 +109,12 @@ export default async function DashboardPage() {
       <div>
         <h2 className="text-lg font-semibold text-white mb-3">Acciones Rápidas</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { href: '/dashboard/matches', label: 'Gestionar Partidos', icon: '🎾', color: 'from-red-900/30 to-red-800/20' },
-            { href: '/dashboard/players', label: 'Jugadores', icon: '👤', color: 'from-blue-900/30 to-blue-800/20' },
-            { href: '/dashboard/draws', label: 'Cuadros', icon: '🏆', color: 'from-purple-900/30 to-purple-800/20' },
-            { href: '/judge', label: 'Judge App', icon: '⚖️', color: 'from-orange-900/30 to-orange-800/20' },
-          ].map((a) => (
+          {([
+            { href: '/dashboard/matches', label: 'Gestionar Partidos', icon: '🎾', color: 'from-red-900/30 to-red-800/20', roles: ['super_admin','tournament_director','staff'] },
+            { href: '/dashboard/players', label: 'Jugadores', icon: '👤', color: 'from-blue-900/30 to-blue-800/20', roles: ['super_admin','tournament_director','staff'] },
+            { href: '/dashboard/draws', label: 'Cuadros', icon: '🏆', color: 'from-purple-900/30 to-purple-800/20', roles: ['super_admin','tournament_director'] },
+            { href: '/judge', label: 'Judge App', icon: '⚖️', color: 'from-orange-900/30 to-orange-800/20', roles: ['super_admin','tournament_director','staff'] },
+          ] as const).filter((a) => a.roles.includes(appUser?.role as any)).map((a) => (
             <Link key={a.href} href={a.href}
               className={`bg-gradient-to-br ${a.color} border border-gray-800 rounded-2xl p-4 hover:border-gray-600 transition-colors group`}>
               <div className="text-2xl mb-2">{a.icon}</div>

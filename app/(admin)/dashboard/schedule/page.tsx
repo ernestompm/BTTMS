@@ -18,7 +18,7 @@ export default async function SchedulePage() {
   const { data: matches } = await service.from('matches')
     .select(`*, court:courts(name), entry1:draw_entries!entry1_id(player1:players!player1_id(first_name,last_name), player2:players!player2_id(first_name,last_name)), entry2:draw_entries!entry2_id(player1:players!player1_id(first_name,last_name), player2:players!player2_id(first_name,last_name))`)
     .eq('tournament_id', TOURNAMENT_ID)
-    .order('scheduled_at', { ascending: true })
+    .order('scheduled_at', { ascending: true, nullsFirst: false })
     .limit(200)
 
   function teamName(entry: any): string {

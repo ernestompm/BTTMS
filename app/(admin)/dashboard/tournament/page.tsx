@@ -37,6 +37,7 @@ export default function TournamentPage() {
       end_date: tournament.end_date,
       status: tournament.status,
       broadcast_endpoint: tournament.broadcast_endpoint,
+      broadcast_api_key: tournament.broadcast_api_key,
       scoreboard_config: tournament.scoreboard_config,
     }).eq('id', TOURNAMENT_ID)
     setSaving(false)
@@ -49,10 +50,14 @@ export default function TournamentPage() {
   }
 
   function updateScoreboardColor(key: string, value: string) {
-    setTournament((t) => t ? {
-      ...t,
-      scoreboard_config: { ...t.scoreboard_config, colors: { ...t.scoreboard_config.colors, [key]: value } }
-    } : t)
+    setTournament((t) => {
+      if (!t) return t
+      const cfg = t.scoreboard_config ?? DEFAULT_SCOREBOARD_CONFIG
+      return {
+        ...t,
+        scoreboard_config: { ...cfg, colors: { ...(cfg.colors ?? DEFAULT_SCOREBOARD_CONFIG.colors), [key]: value } }
+      }
+    })
   }
 
   if (loading) return <div className="text-gray-400 fade-in">Cargando...</div>
@@ -160,6 +165,13 @@ export default function TournamentPage() {
           <input value={tournament.broadcast_endpoint ?? ''}
             onChange={(e) => updateField('broadcast_endpoint', e.target.value)}
             placeholder="https://productora.tv/api/score"
+            className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-brand-red" />
+        </div>
+        <div>
+          <label className="block text-sm text-gray-400 mb-1">API Key de la productora</label>
+          <input type="password" value={tournament.broadcast_api_key ?? ''}
+            onChange={(e) => updateField('broadcast_api_key', e.target.value)}
+            placeholder="••••••••••••"
             className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-brand-red" />
         </div>
       </div>

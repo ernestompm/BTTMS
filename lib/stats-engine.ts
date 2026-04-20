@@ -31,10 +31,11 @@ export function applyPointToStats(prevStats: MatchStats, input: PointInput): Mat
   const sKey = `t${serverTeam}` as 't1' | 't2'
   const rKey = `t${restingTeam}` as 't1' | 't2'
 
-  // Total points tracking
-  s.t1.total_points_played++
-  s.t2.total_points_played++
+  // Total points tracking — only the winner's team increments their won counter;
+  // both teams increment played because this point counts for both
+  s[wKey].total_points_played++
   s[wKey].total_points_won++
+  s[lKey].total_points_played++
 
   // Service stats
   s[sKey].serve_points_played++

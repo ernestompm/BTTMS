@@ -47,7 +47,7 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
 
       {/* Filters */}
       <div className="flex gap-2 flex-wrap">
-        {['', 'in_progress', 'scheduled', 'finished'].map((s) => (
+        {(['', 'in_progress', 'scheduled', 'finished', 'suspended', 'walkover', 'bye'] as const).map((s) => (
           <Link key={s} href={`/dashboard/matches${s ? `?status=${s}` : ''}`}
             className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${status === s || (!status && !s) ? 'bg-brand-red text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}>
             {s === '' ? 'Todos' : statusLabel[s]?.label ?? s}

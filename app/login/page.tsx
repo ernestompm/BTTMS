@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 
 export default function LoginPage() {
@@ -9,6 +10,8 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const supabase = createClient()
+  const router = useRouter()
+  const searchParams = useSearchParams()
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -19,7 +22,9 @@ export default function LoginPage() {
       setError('Credenciales incorrectas. Verifica tu email y contraseña.')
       setLoading(false)
     } else {
-      window.location.href = '/dashboard'
+      const redirect = searchParams.get('redirect') ?? '/dashboard'
+      router.replace(redirect)
+      router.refresh()
     }
   }
 

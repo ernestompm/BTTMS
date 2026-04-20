@@ -52,8 +52,7 @@ export default async function DrawDetailPage({ params }: { params: Promise<{ cat
 
   const { data: matches } = await service.from('matches')
     .select('*, court:courts(name), entry1:draw_entries!entry1_id(player1:players!player1_id(first_name,last_name), player2:players!player2_id(first_name,last_name)), entry2:draw_entries!entry2_id(player1:players!player1_id(first_name,last_name), player2:players!player2_id(first_name,last_name))')
-    .eq('tournament_id', TOURNAMENT_ID)
-    .eq('category', category)
+    .eq('draw_id', draw.id)
     .order('match_number', { ascending: true })
 
   // Group matches by round
