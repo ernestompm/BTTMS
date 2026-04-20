@@ -53,6 +53,7 @@ export function getScoringSystem(category: Category, matchType: 'singles' | 'dou
 
 function getSetsToWin(system: ScoringSystem): number {
   if (system === 'best_of_3_sets_tb' || system === 'best_of_3_tiebreaks') return 2
+  if (system === 'best_of_2_sets_super_tb') return 2
   return 1
 }
 
@@ -199,15 +200,15 @@ function finishSet(s: Score, winner: 1 | 2, loser: 1 | 2): Score {
   s.deuce = false
   s.advantage_team = null
 
+  // In best-of-2: 1-1 triggers Super TB before checking sets-to-win
+  if (system === 'best_of_2_sets_super_tb' && s.sets_won.t1 === 1 && s.sets_won.t2 === 1) {
+    s.super_tiebreak_active = true
+    s.tiebreak_score = { t1: 0, t2: 0 }
+    return s
+  }
+
   const setsToWin = getSetsToWin(system)
   if (s.sets_won[wKey] >= setsToWin) {
-    // Check if it's a best_of_2 and we have 1-1
-    if (system === 'best_of_2_sets_super_tb' && s.sets_won.t1 === 1 && s.sets_won.t2 === 1) {
-      // Start Super Tie-Break
-      s.super_tiebreak_active = true
-      s.tiebreak_score = { t1: 0, t2: 0 }
-      return s
-    }
     s.match_status = 'finished'
     s.winner_team = winner
   }

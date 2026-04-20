@@ -25,8 +25,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const body = await req.json()
   const { toss_winner, toss_choice, serving_team, side_entry1, current_server_id } = body
 
-  // Scoring system now comes from the match itself (set at draw level, propagated on match creation)
-  const system = (match.scoring_system ?? 'best_of_2_sets_super_tb') as ScoringSystem
+  // Judge can override scoring system at match start; otherwise use the value stored on the match
+  const system = (body.scoring_system ?? match.scoring_system ?? 'best_of_2_sets_super_tb') as ScoringSystem
   const initialScore = INITIAL_SCORE(system)
   const initialStats = emptyStats()
 
