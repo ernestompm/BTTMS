@@ -243,6 +243,7 @@ export interface Match {
   broadcast_active: boolean
   net_height: '1.70' | '1.80' | null
   forbidden_zone_serving: 3.0 | 6.0 | null
+  warnings: MatchWarnings | null
   notes: string | null
   entry1?: DrawEntry
   entry2?: DrawEntry
@@ -253,7 +254,26 @@ export interface Match {
 
 export type PointType =
   | 'ace' | 'winner' | 'unforced_error' | 'forced_error'
-  | 'double_fault' | 'serve_fault' | 'let_replay' | 'correction'
+  | 'double_fault' | 'serve_fault' | 'forbidden_zone' | 'foot_fault'
+  | 'let_replay' | 'correction'
+
+export type WarningType =
+  | 'conduct' | 'time' | 'coaching' | 'equipment_abuse' | 'obscenity' | 'other'
+
+export type PenaltyLevel = 'warning' | 'point_penalty' | 'game_penalty' | 'default'
+
+export interface WarningEntry {
+  type: WarningType
+  penalty: PenaltyLevel
+  team: 1 | 2
+  timestamp: string
+  note?: string
+}
+
+export interface MatchWarnings {
+  t1: WarningEntry[]
+  t2: WarningEntry[]
+}
 
 export type ShotDirection =
   | 'forehand' | 'backhand' | 'volley_fh' | 'volley_bh'
