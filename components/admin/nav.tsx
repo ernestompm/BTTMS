@@ -115,16 +115,14 @@ export function AdminNav({ user }: { user: AppUser }) {
       </div>
 
       {/* Mobile sidebar overlay */}
-      {open && (
-        <div className="md:hidden fixed inset-0 z-50 flex">
-          {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/60" onClick={() => setOpen(false)} />
-          {/* Drawer */}
-          <aside className="relative w-64 bg-gray-900 border-r border-gray-800 h-full flex flex-col z-10">
-            {sidebarContent}
-          </aside>
-        </div>
-      )}
+      <div className={`md:hidden fixed inset-0 z-50 flex transition-opacity duration-300 ${open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+        {/* Backdrop */}
+        <div className="absolute inset-0 bg-black/60" onClick={() => setOpen(false)} />
+        {/* Drawer */}
+        <aside className={`relative w-64 bg-gray-900 border-r border-gray-800 h-full flex flex-col z-10 transition-transform duration-300 ease-out ${open ? 'translate-x-0' : '-translate-x-full'}`}>
+          {sidebarContent}
+        </aside>
+      </div>
     </>
   )
 }

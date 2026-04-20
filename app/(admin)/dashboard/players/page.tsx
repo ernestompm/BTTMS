@@ -55,8 +55,9 @@ export default async function PlayersPage({ searchParams }: { searchParams: Prom
               </p>
               <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
                 {p.nationality && (
-                  <img src={`https://flagcdn.com/20x15/${p.nationality.toLowerCase()}.png`}
-                    alt={p.nationality} className="w-4 h-3 rounded-sm" />
+                  <img src={`/flags/${p.nationality.toUpperCase()}.jpg`}
+                    alt={p.nationality} className="w-5 h-3.5 object-cover rounded-sm"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
                 )}
                 {p.ranking_rfet && <span>RFET #{p.ranking_rfet}</span>}
                 {p.ranking_itf && <span>ITF #{p.ranking_itf}</span>}

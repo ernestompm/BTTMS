@@ -94,6 +94,7 @@ export interface Player {
   nationality: string
   birth_date: string | null
   birth_city: string | null
+  age_manual: number | null
   height_cm: number | null
   laterality: 'right' | 'left' | 'ambidextrous' | null
   ranking_rfet: number | null
@@ -101,6 +102,8 @@ export interface Player {
   photo_url: string | null
   bio: string | null
   social_instagram: string | null
+  club: string | null
+  federacion_autonomica: string | null
   titles: { name: string; year: number; category: string }[]
   created_at: string
 }
