@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase'
 import type { AppUser } from '@/types'
 import { Badge } from '@/components/ui/badge'
 
@@ -11,7 +10,6 @@ const roleColors: Record<string, any> = {
 }
 
 export default function UsersPage() {
-  const supabase = createClient()
   const [users, setUsers] = useState<AppUser[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -20,8 +18,9 @@ export default function UsersPage() {
   const [error, setError] = useState('')
 
   async function load() {
-    const { data } = await supabase.from('app_users').select('*').order('role')
-    setUsers((data as AppUser[]) ?? [])
+    const res = await fetch('/api/users')
+    const data = await res.json()
+    setUsers(data.users ?? [])
     setLoading(false)
   }
 
