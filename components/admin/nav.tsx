@@ -39,13 +39,7 @@ export function AdminNav({ user }: { user: AppUser }) {
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="p-4 border-b border-gray-800 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-brand-red flex items-center justify-center text-white font-bold text-sm">B</div>
-          <div>
-            <p className="text-white font-bold text-sm font-score tracking-wide">BTTMS</p>
-            <p className="text-gray-500 text-xs">v2.0</p>
-          </div>
-        </div>
+        <img src="/logo-full.png" alt="Vinteon" className="h-8 w-auto object-contain" />
         {/* Close button — mobile only */}
         <button onClick={() => setOpen(false)} className="md:hidden text-gray-400 hover:text-white p-1">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -107,10 +101,7 @@ export function AdminNav({ user }: { user: AppUser }) {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-brand-red flex items-center justify-center text-white font-bold text-xs">B</div>
-          <p className="text-white font-bold text-sm font-score tracking-wide">BTTMS</p>
-        </div>
+        <img src="/logo-full.png" alt="Vinteon" className="h-7 w-auto object-contain" />
       </div>
 
       {/* Mobile sidebar overlay */}
