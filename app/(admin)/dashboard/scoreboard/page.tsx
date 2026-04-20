@@ -283,9 +283,9 @@ export default function ScoreboardConfigPage() {
             <label className="text-sm text-gray-400">Colores de acento</label>
             <button
               onClick={() => {
-                setColors('team1_accent', '#f31948')
+                setColors('team1_accent', '#ef6a4c')
                 setColors('team2_accent', '#ef6a4c')
-                setColors('serving_indicator', '#fc6f43')
+                setColors('serving_indicator', '#ef6a4c')
               }}
               className="text-xs text-gray-500 hover:text-white border border-gray-700 hover:border-gray-500 px-3 py-1 rounded-lg transition-colors">
               ↺ Restaurar originales
@@ -293,9 +293,9 @@ export default function ScoreboardConfigPage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {([
-              { key: 'team1_accent',      label: 'Acento equipo 1',     default: '#f31948' },
+              { key: 'team1_accent',      label: 'Acento equipo 1',     default: '#ef6a4c' },
               { key: 'team2_accent',      label: 'Acento equipo 2',     default: '#ef6a4c' },
-              { key: 'serving_indicator', label: 'Indicador de saque',  default: '#fc6f43' },
+              { key: 'serving_indicator', label: 'Indicador de saque',  default: '#ef6a4c' },
             ] as const).map(({ key, label, default: def }) => {
               const val = (cfg.colors as any)?.[key] ?? def
               return (

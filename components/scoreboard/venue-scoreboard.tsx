@@ -70,9 +70,9 @@ export function VenueScoreboard({ initialMatch, config, tournamentName, sponsors
   const showRound = cfg.display?.show_round !== false
   const showCourtName = cfg.display?.show_court_name !== false
   const showSponsors = cfg.sponsors?.enabled !== false
-  const accentA: string = cfg.colors?.team1_accent ?? '#f31948'
+  const accentA: string = cfg.colors?.team1_accent ?? '#ef6a4c'
   const accentB: string = cfg.colors?.team2_accent ?? '#ef6a4c'
-  const srvColor: string = cfg.colors?.serving_indicator ?? accentA
+  const srvColor: string = cfg.colors?.serving_indicator ?? '#ef6a4c'
   const carouselSpeed: number = cfg.sponsors?.rotation_interval_seconds ?? 10
 
   // Robust realtime subscription — reconnects on error
@@ -151,7 +151,7 @@ export function VenueScoreboard({ initialMatch, config, tournamentName, sponsors
   const gridCols = `${showSeed ? '110px ' : ''}minmax(0,1fr) ${Array(numSetCols).fill(`${setColW}px`).join(' ')} 220px`
 
   const roundLabel = ROUND_LABELS[match.round ?? ''] ?? (match.round ?? '—')
-  const courtLabel = [showCourtName ? (match.court?.name ?? 'PISTA') : null, isDoubles ? 'DOBLES' : 'INDIVIDUAL'].filter(Boolean).join(' · ')
+  const courtLabel = showCourtName ? (match.court?.name ?? '') : ''
   const sponsorList = propSponsors?.length ? propSponsors : []
   const status = match.status as string
 
@@ -194,16 +194,15 @@ export function VenueScoreboard({ initialMatch, config, tournamentName, sponsors
                 : <div style={{ width:78, height:78, borderRadius:14, background:'radial-gradient(circle at 30% 30%,#f3e4c7 0 20px,transparent 20.5px),linear-gradient(135deg,#ef6a4c 0%,#d94a2e 100%)', boxShadow:'0 10px 32px rgba(239,106,76,.55)' }} />
               }
               <div style={{ display:'flex', flexDirection:'column', lineHeight:1.08, maxWidth:560 }}>
-                <span style={{ fontWeight:900, fontSize:56, letterSpacing:'.06em', textTransform:'uppercase', overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>{(tournamentName||'TENIS PLAYA').toUpperCase()}</span>
+                <span style={{ fontWeight:900, fontSize:56, letterSpacing:'.06em', textTransform:'uppercase', overflow:'hidden', maxHeight:'2.17em', display:'block' }}>{(tournamentName||'TENIS PLAYA').toUpperCase()}</span>
               </div>
             </div>
             <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:0, lineHeight:1 }}>
-              {showRound && <span style={{ padding:'18px 46px', background:accentA, color:'#fff', borderRadius:999, fontWeight:900, fontSize:46, letterSpacing:'.18em', textTransform:'uppercase', textAlign:'center', boxShadow:`0 8px 24px ${hexAlpha(accentA,.45)}` }}>{roundLabel}</span>}
+              {showRound && <span style={{ padding:'18px 46px', background:srvColor, color:'#fff', borderRadius:999, fontWeight:900, fontSize:46, letterSpacing:'.18em', textTransform:'uppercase', textAlign:'center', boxShadow:`0 8px 24px ${hexAlpha(srvColor,.45)}` }}>{roundLabel}</span>}
             </div>
-            <div style={{ display:'flex', alignItems:'center', gap:20, fontFamily:"'JetBrains Mono',monospace", letterSpacing:'.1em', opacity:.95 }}>
-              <span style={{ width:18, height:18, borderRadius:'50%', background:'#ff3b30', boxShadow:'0 0 22px #ff3b30', animation:'vsbBlink 1.2s infinite', flex:'none' }} />
-              <span style={{ fontSize:44 }}>{clock}</span>
-              {isLive && <span style={{ fontSize:36, opacity:.5, marginLeft:4 }}>{matchTime}</span>}
+            <div style={{ display:'flex', alignItems:'center', gap:18, fontFamily:"'JetBrains Mono',monospace", letterSpacing:'.1em', opacity:.95 }}>
+              <span style={{ fontSize:54 }}>{clock}</span>
+              {(isLive || isFinished) && <span style={{ fontSize:48, opacity:.65, marginLeft:2 }}>{matchTime}</span>}
             </div>
           </div>
 
@@ -270,7 +269,7 @@ export function VenueScoreboard({ initialMatch, config, tournamentName, sponsors
               </div>
 
               {/* Sponsor bar */}
-              {showSponsors && sponsorList.length > 0 && <SponsorBar sponsorList={sponsorList} carouselSpeed={carouselSpeed} />}
+              {showSponsors && sponsorList.length > 0 && <SponsorBar sponsorList={sponsorList} />}
             </>
           )}
 
@@ -337,7 +336,7 @@ export function VenueScoreboard({ initialMatch, config, tournamentName, sponsors
 
           {/* Sponsor bar for pre-match and finished */}
           {(isPreMatch || isFinished) && showSponsors && sponsorList.length > 0 && (
-            <SponsorBar sponsorList={sponsorList} carouselSpeed={carouselSpeed} />
+            <SponsorBar sponsorList={sponsorList} />
           )}
 
         </div>
@@ -348,13 +347,15 @@ export function VenueScoreboard({ initialMatch, config, tournamentName, sponsors
 
 // ── Sponsor bar ───────────────────────────────────────────────────────────────
 // Fills the full 1920px stage regardless of sponsor count using dynamic keyframes.
-function SponsorBar({ sponsorList, carouselSpeed }: { sponsorList: Sponsor[]; carouselSpeed: number }) {
-  const CARD_W = 340, CARD_GAP = 64 // 32px each side
-  const cardSlot = CARD_W + CARD_GAP // 404px per sponsor slot
+function SponsorBar({ sponsorList }: { sponsorList: Sponsor[] }) {
+  const CARD_W = 340, CARD_GAP = 80
+  const cardSlot = CARD_W + CARD_GAP  // 420px per slot
   const oneSetW = sponsorList.length * cardSlot
-  // Enough copies to fill stage (1920px) + one extra set for seamless loop
-  const copies = Math.max(3, Math.ceil((1920 + oneSetW) / oneSetW) + 1)
-  const kf = `@keyframes vsbMarqueeDyn{from{transform:translateX(0)}to{transform:translateX(-${oneSetW}px)}}`
+  // Fill 1920px stage + buffer for seamless loop
+  const copies = Math.max(4, Math.ceil((1920 * 2) / oneSetW) + 1)
+  // Fixed scroll speed: 80px/s regardless of sponsor count
+  const duration = Math.round(oneSetW / 80)
+  const kf = `@keyframes vsbMarqueeDyn{0%{transform:translateX(0)}100%{transform:translateX(-${oneSetW}px)}}`
 
   return (
     <div className="absolute z-10" style={{ left:0, right:0, bottom:0, height:240, background:'linear-gradient(180deg,rgba(0,0,0,.1) 0%,rgba(0,0,0,.4) 100%)', borderTop:'3px solid rgba(255,255,255,.08)', display:'grid', gridTemplateRows:'48px 1fr' }}>
@@ -365,12 +366,12 @@ function SponsorBar({ sponsorList, carouselSpeed }: { sponsorList: Sponsor[]; ca
         <i style={{ display:'block', width:40, height:2, background:'currentColor', opacity:.4 }} />
       </div>
       <div style={{ position:'relative', overflow:'hidden', height:192 }}>
-        <div style={{ position:'absolute', left:0, top:0, height:'100%', display:'flex', alignItems:'center', animation:`vsbMarqueeDyn ${carouselSpeed}s linear infinite` }}>
+        <div style={{ position:'absolute', left:0, top:0, height:'100%', display:'flex', alignItems:'center', animation:`vsbMarqueeDyn ${duration}s linear infinite` }}>
           {Array.from({ length: copies }).flatMap((_, ci) =>
             sponsorList.map((sp, i) => (
               <div key={`${ci}-${i}`} style={{ flex:'none', display:'flex', alignItems:'center', justifyContent:'center', width:CARD_W, height:160, margin:`0 ${CARD_GAP/2}px` }}>
                 {sp.logo_url
-                  ? <img src={sp.logo_url} alt={sp.name} style={{ maxHeight:150, maxWidth:320, objectFit:'contain' }} />
+                  ? <img src={sp.logo_url} alt={sp.name} style={{ maxHeight:150, maxWidth:CARD_W, objectFit:'contain' }} />
                   : <span style={{ fontWeight:800, fontSize:36, letterSpacing:'.06em', textTransform:'uppercase', color:'rgba(255,255,255,.85)', whiteSpace:'nowrap' }}>{sp.name}</span>
                 }
               </div>
