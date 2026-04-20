@@ -119,7 +119,12 @@ export async function POST() {
     status: 'scheduled',
   }))
   const { error: mErr } = await service.from('matches').insert(matchInserts)
-  if (mErr) return NextResponse.json({ error: 'Partidos: ' + mErr.message }, { status: 500 })
+  if (mErr) {
+    return NextResponse.json({
+      error: 'Partidos: ' + mErr.message,
+      needs_sql_fix: mErr.message.includes('net_height'),
+    }, { status: 500 })
+  }
 
   return NextResponse.json({
     success: true,

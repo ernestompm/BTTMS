@@ -17,6 +17,7 @@ export default function TournamentPage() {
   const [resetDone, setResetDone] = useState(false)
   const [seeding, setSeeding] = useState(false)
   const [seedMsg, setSeedMsg] = useState('')
+  const [showFixSql, setShowFixSql] = useState(false)
 
   useEffect(() => {
     supabase.from('tournaments').select('*').eq('id', TOURNAMENT_ID).single()
@@ -60,9 +61,13 @@ export default function TournamentPage() {
   async function handleReset() {
     if (!confirm('⚠️ Esto borrará TODOS los jugadores, cuadros, partidos y puntos. El usuario admin se conserva. ¿Continuar?')) return
     setResetting(true)
+    setSeedMsg('')
     const res = await fetch('/api/admin/reset', { method: 'POST' })
-    if (res.ok) window.location.reload()
-    else setResetting(false)
+    const data = await res.json()
+    if (res.ok) { window.location.reload(); return }
+    setResetting(false)
+    setSeedMsg(`✗ ${data.error}`)
+    if (data.needs_sql_fix) setShowFixSql(true)
   }
 
   async function handleSeed() {
@@ -74,11 +79,11 @@ export default function TournamentPage() {
     if (res.ok) {
       setSeedMsg(`✓ ${data.message} — recargando...`)
       setTimeout(() => window.location.reload(), 800)
-    } else {
-      setSeeding(false)
-      setSeedMsg(`✗ ${data.error}`)
-      setTimeout(() => setSeedMsg(''), 10000)
+      return
     }
+    setSeeding(false)
+    setSeedMsg(`✗ ${data.error}`)
+    if (data.needs_sql_fix) setShowFixSql(true)
   }
 
   const cfg = tournament.scoreboard_config ?? DEFAULT_SCOREBOARD_CONFIG
@@ -214,6 +219,23 @@ export default function TournamentPage() {
           </button>
           {seedMsg && <span className={`text-sm ${seedMsg.startsWith('✓') ? 'text-green-400' : 'text-red-400'}`}>{seedMsg}</span>}
         </div>
+
+        {showFixSql && (
+          <div className="bg-yellow-900/20 border border-yellow-700/50 rounded-xl p-4 mt-2">
+            <p className="text-yellow-200 font-semibold text-sm mb-2">⚠️ Falta una migración SQL (una sola vez)</p>
+            <p className="text-gray-400 text-xs mb-3">
+              Ve al <strong>SQL Editor</strong> de Supabase y ejecuta este bloque. Después, vuelve aquí y reintenta los botones.
+            </p>
+            <pre className="bg-gray-950 rounded-lg p-3 text-xs text-green-400 overflow-x-auto font-mono leading-relaxed whitespace-pre">{`-- Quita el trigger que fuerza net_height a un valor inválido
+DROP TRIGGER IF EXISTS trg_set_match_rules ON matches;
+
+-- Permite borrar puntos (reglas append-only bloqueaban el reset)
+DROP RULE IF EXISTS no_delete_points ON points;
+DROP RULE IF EXISTS no_update_points ON points;`}</pre>
+            <button onClick={() => setShowFixSql(false)}
+              className="mt-3 text-xs text-gray-500 hover:text-gray-300">Cerrar</button>
+          </div>
+        )}
       </div>
 
       {/* Danger Zone */}
