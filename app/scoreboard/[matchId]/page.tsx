@@ -16,7 +16,7 @@ export default async function ScoreboardPage({ params }: { params: Promise<{ mat
   if (!match) notFound()
 
   const { data: tournament } = await service.from('tournaments')
-    .select('scoreboard_config, name, sponsors, logo_url')
+    .select('scoreboard_config, name, sponsors, logo_url, warmup_duration_seconds')
     .eq('id', match.tournament_id)
     .single()
 
@@ -26,6 +26,7 @@ export default async function ScoreboardPage({ params }: { params: Promise<{ mat
       config={tournament?.scoreboard_config as any}
       tournamentName={tournament?.name ?? ''}
       sponsors={tournament?.sponsors as any ?? []}
+      warmupDuration={tournament?.warmup_duration_seconds ?? 300}
       weather={null}
     />
   )
