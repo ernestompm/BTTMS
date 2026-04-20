@@ -6,6 +6,11 @@ const nextConfig = {
       { protocol: 'https', hostname: 'flagcdn.com' },
     ],
   },
+  experimental: {
+    staleTimes: {
+      dynamic: 0,  // never serve dynamic pages from router cache
+    },
+  },
 }
 
 module.exports = nextConfig
