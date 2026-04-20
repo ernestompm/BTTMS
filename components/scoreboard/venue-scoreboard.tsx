@@ -70,7 +70,7 @@ export function VenueScoreboard({ initialMatch, config, tournamentName, sponsors
   const showRound = cfg.display?.show_round !== false
   const showCourtName = cfg.display?.show_court_name !== false
   const showSponsors = cfg.sponsors?.enabled !== false
-  const accentA: string = cfg.colors?.team1_accent ?? '#ef6a4c'
+  const accentA: string = cfg.colors?.team1_accent ?? '#f31948'
   const accentB: string = cfg.colors?.team2_accent ?? '#ef6a4c'
   const srvColor: string = cfg.colors?.serving_indicator ?? accentA
   const carouselSpeed: number = cfg.sponsors?.rotation_interval_seconds ?? 10
@@ -193,8 +193,8 @@ export function VenueScoreboard({ initialMatch, config, tournamentName, sponsors
                 ? <img src={cfg.logos.tournament_logo_url} alt={tournamentName} style={{ width:78, height:78, borderRadius:14, objectFit:'contain' }} />
                 : <div style={{ width:78, height:78, borderRadius:14, background:'radial-gradient(circle at 30% 30%,#f3e4c7 0 20px,transparent 20.5px),linear-gradient(135deg,#ef6a4c 0%,#d94a2e 100%)', boxShadow:'0 10px 32px rgba(239,106,76,.55)' }} />
               }
-              <div style={{ display:'flex', flexDirection:'column', lineHeight:1.02, maxWidth:600 }}>
-                <span style={{ fontWeight:900, fontSize:60, letterSpacing:'.06em', textTransform:'uppercase' }}>{(tournamentName||'TENIS PLAYA').toUpperCase()}</span>
+              <div style={{ display:'flex', flexDirection:'column', lineHeight:1.08, maxWidth:560 }}>
+                <span style={{ fontWeight:900, fontSize:56, letterSpacing:'.06em', textTransform:'uppercase', overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>{(tournamentName||'TENIS PLAYA').toUpperCase()}</span>
               </div>
             </div>
             <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:0, lineHeight:1 }}>
