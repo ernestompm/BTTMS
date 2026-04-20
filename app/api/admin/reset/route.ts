@@ -10,18 +10,11 @@ export async function POST(req: NextRequest) {
   const { data: appUser } = await service.from('app_users').select('role').eq('id', user.id).single()
   if (appUser?.role !== 'super_admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  // Delete in dependency order, checking each step
-  const steps: Array<[string, () => Promise<{ error: any }>]> = [
-    ['points',       () => service.from('points').delete().neq('id', '00000000-0000-0000-0000-000000000000')],
-    ['matches',      () => service.from('matches').delete().neq('id', '00000000-0000-0000-0000-000000000000')],
-    ['draw_entries', () => service.from('draw_entries').delete().neq('id', '00000000-0000-0000-0000-000000000000')],
-    ['groups',       () => service.from('groups').delete().neq('id', '00000000-0000-0000-0000-000000000000')],
-    ['draws',        () => service.from('draws').delete().neq('id', '00000000-0000-0000-0000-000000000000')],
-    ['players',      () => service.from('players').delete().neq('id', '00000000-0000-0000-0000-000000000000')],
-  ]
+  const FAKE_ID = '00000000-0000-0000-0000-000000000000'
+  const tables = ['points', 'matches', 'draw_entries', 'groups', 'draws', 'players'] as const
 
-  for (const [name, fn] of steps) {
-    const { error } = await fn()
+  for (const name of tables) {
+    const { error } = await service.from(name).delete().neq('id', FAKE_ID)
     if (error) {
       return NextResponse.json({
         error: `Error borrando ${name}: ${error.message}`,
