@@ -20,6 +20,10 @@ export default function EditPlayerPage() {
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  const [inviteLink, setInviteLink] = useState('')
+  const [inviteExpires, setInviteExpires] = useState('')
+  const [generatingLink, setGeneratingLink] = useState(false)
+  const [linkCopied, setLinkCopied] = useState(false)
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [form, setForm] = useState({
@@ -107,6 +111,24 @@ export default function EditPlayerPage() {
     if (error) { setError(error.message) } else { setSuccess(true); setTimeout(() => setSuccess(false), 3000) }
   }
 
+  async function handleGenerateLink() {
+    setGeneratingLink(true)
+    setInviteLink('')
+    const res = await fetch(`/api/players/${id}/invite`, { method: 'POST' })
+    const data = await res.json()
+    if (data.link) {
+      setInviteLink(data.link)
+      setInviteExpires(new Date(data.expires_at).toLocaleString('es-ES', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }))
+    }
+    setGeneratingLink(false)
+  }
+
+  function handleCopyLink() {
+    navigator.clipboard.writeText(inviteLink)
+    setLinkCopied(true)
+    setTimeout(() => setLinkCopied(false), 2000)
+  }
+
   async function handleDelete() {
     if (!confirm(`¿Eliminar a ${form.first_name} ${form.last_name}? Esta acción no se puede deshacer.`)) return
     setDeleting(true)
@@ -127,6 +149,33 @@ export default function EditPlayerPage() {
           className="bg-red-900/30 hover:bg-red-900/60 border border-red-800 text-red-400 px-4 py-2 rounded-xl text-sm transition-colors">
           {deleting ? 'Eliminando...' : '🗑 Eliminar'}
         </button>
+      </div>
+
+      {/* Invite link */}
+      <div className="bg-gray-900 rounded-2xl p-5 border border-gray-800">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-white font-semibold text-sm">Enlace de perfil para el jugador</p>
+            <p className="text-gray-500 text-xs mt-0.5">Genera un enlace de 24 h para que el jugador complete su propio perfil (foto, bio, club…)</p>
+          </div>
+          <button type="button" onClick={handleGenerateLink} disabled={generatingLink}
+            className="flex-shrink-0 bg-brand-red/20 hover:bg-brand-red/30 border border-brand-red/40 text-brand-red text-xs font-bold px-4 py-2 rounded-xl transition-colors disabled:opacity-50">
+            {generatingLink ? 'Generando...' : '🔗 Generar enlace'}
+          </button>
+        </div>
+
+        {inviteLink && (
+          <div className="mt-4 space-y-2">
+            <div className="flex items-center gap-2 bg-gray-800 rounded-xl px-3 py-2.5 border border-gray-700">
+              <p className="flex-1 text-gray-300 text-xs font-mono truncate">{inviteLink}</p>
+              <button type="button" onClick={handleCopyLink}
+                className="flex-shrink-0 text-xs font-bold text-brand-red hover:text-red-400 transition-colors px-2">
+                {linkCopied ? '✓ Copiado' : 'Copiar'}
+              </button>
+            </div>
+            <p className="text-amber-500 text-xs">⏱ Válido hasta {inviteExpires} · El jugador puede actualizar: foto, bio, club, fecha de nacimiento y más.</p>
+          </div>
+        )}
       </div>
 
       <form onSubmit={handleSave} className="bg-gray-900 rounded-2xl p-6 border border-gray-800 space-y-5">
