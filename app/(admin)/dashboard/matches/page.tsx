@@ -1,4 +1,4 @@
-import { createServerSupabase } from '@/lib/supabase-server'
+import { createServiceSupabase } from '@/lib/supabase-server'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import type { Match } from '@/types'
@@ -15,7 +15,7 @@ const statusLabel: Record<string, { label: string; variant: any }> = {
 
 export default async function MatchesPage({ searchParams }: { searchParams: Promise<{ status?: string; category?: string }> }) {
   const { status, category } = await searchParams
-  const supabase = await createServerSupabase()
+  const supabase = createServiceSupabase()
 
   let query = supabase.from('matches')
     .select(`*, court:courts(name), entry1:draw_entries!entry1_id(player1:players!player1_id(first_name,last_name), player2:players!player2_id(first_name,last_name)), entry2:draw_entries!entry2_id(player1:players!player1_id(first_name,last_name), player2:players!player2_id(first_name,last_name))`)

@@ -1,4 +1,4 @@
-import { createServerSupabase } from '@/lib/supabase-server'
+import { createServiceSupabase } from '@/lib/supabase-server'
 import { Badge } from '@/components/ui/badge'
 import { CATEGORY_LABELS } from '@/types'
 
@@ -6,7 +6,7 @@ const TOURNAMENT_ID = '00000000-0000-0000-0000-000000000001'
 
 export default async function StatsPage({ searchParams }: { searchParams: Promise<{ match?: string }> }) {
   const { match: matchId } = await searchParams
-  const supabase = await createServerSupabase()
+  const supabase = createServiceSupabase()
 
   const { data: matches } = await supabase.from('matches')
     .select('id, category, round, status, entry1:draw_entries!entry1_id(player1:players!player1_id(first_name,last_name), player2:players!player2_id(first_name,last_name)), entry2:draw_entries!entry2_id(player1:players!player1_id(first_name,last_name), player2:players!player2_id(first_name,last_name))')

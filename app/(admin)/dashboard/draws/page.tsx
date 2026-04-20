@@ -1,4 +1,4 @@
-import { createServerSupabase } from '@/lib/supabase-server'
+import { createServiceSupabase } from '@/lib/supabase-server'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { CATEGORY_LABELS } from '@/types'
@@ -10,7 +10,7 @@ const statusBadge: Record<string, any> = {
 }
 
 export default async function DrawsPage() {
-  const supabase = await createServerSupabase()
+  const supabase = createServiceSupabase()
   const { data: draws } = await supabase.from('draws')
     .select('*').eq('tournament_id', TOURNAMENT_ID).order('created_at')
 

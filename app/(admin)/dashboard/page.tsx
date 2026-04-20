@@ -1,10 +1,10 @@
-import { createServerSupabase } from '@/lib/supabase-server'
+import { createServiceSupabase } from '@/lib/supabase-server'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import type { Match, Tournament } from '@/types'
 
 export default async function DashboardPage() {
-  const supabase = await createServerSupabase()
+  const supabase = createServiceSupabase()
 
   const [{ data: tournaments }, { data: matches }, { data: stats }] = await Promise.all([
     supabase.from('tournaments').select('*').order('created_at', { ascending: false }).limit(5),

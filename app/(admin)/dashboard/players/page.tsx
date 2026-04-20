@@ -1,11 +1,11 @@
-import { createServerSupabase } from '@/lib/supabase-server'
+import { createServiceSupabase } from '@/lib/supabase-server'
 import Link from 'next/link'
 import type { Player } from '@/types'
 import Image from 'next/image'
 
 export default async function PlayersPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const { q } = await searchParams
-  const supabase = await createServerSupabase()
+  const supabase = createServiceSupabase()
 
   let query = supabase.from('players').select('*').order('last_name')
   if (q) query = query.or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%`)

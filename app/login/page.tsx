@@ -51,11 +51,11 @@ export default function LoginPage() {
   return (
     <>
       {/* ── MOBILE (< lg) ─────────────────────────────────────── */}
-      <div className="lg:hidden min-h-screen flex flex-col relative overflow-hidden"
+      <div className="lg:hidden fixed inset-0 flex flex-col items-center justify-center px-6 overflow-hidden"
         style={{ background: 'linear-gradient(160deg, #0a0010 0%, #1c0030 35%, #2d0015 70%, #0a0008 100%)' }}>
 
         {/* Background orbs */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none">
           <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full opacity-30 blur-3xl"
             style={{ background: 'radial-gradient(circle, #f31948, transparent)' }} />
           <div className="absolute top-1/3 -left-16 w-56 h-56 rounded-full opacity-20 blur-3xl"
@@ -64,26 +64,24 @@ export default function LoginPage() {
             style={{ background: 'radial-gradient(circle, #af005f, transparent)' }} />
         </div>
 
-        {/* Top branding */}
-        <div className="relative z-10 flex flex-col items-center pt-16 pb-8 px-8">
-          <img src="/logo-full.png" alt="Vinteon" className="w-36 h-36 object-contain mb-6" />
-          <h1 className="text-4xl font-black text-white font-score text-center leading-tight">
-            Marcador<br />
+        {/* Branding */}
+        <div className="relative z-10 flex flex-col items-center mb-8">
+          <img src="/logo-full.png" alt="Vinteon" className="w-24 h-24 object-contain mb-4" />
+          <h1 className="text-3xl font-black text-white font-score text-center leading-tight">
+            Marcador{' '}
             <span style={{ background: 'linear-gradient(90deg, #f31948, #fc6f43)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
               Vinteon
             </span>
           </h1>
-          <p className="text-gray-400 text-base mt-2 tracking-widest uppercase text-sm">Tenis Playa</p>
+          <p className="text-gray-400 text-xs mt-1 tracking-widest uppercase">Tenis Playa</p>
         </div>
 
         {/* Form card */}
-        <div className="relative z-10 flex-1 flex flex-col justify-end">
-          <div className="mx-4 mb-8 p-6 rounded-3xl border border-white/10"
-            style={{ background: 'rgba(15, 5, 25, 0.85)', backdropFilter: 'blur(20px)' }}>
-            <h2 className="text-xl font-bold text-white mb-5">Acceder al sistema</h2>
-            {form}
-            <p className="text-center text-gray-600 text-xs mt-5">Vinteon Media · España 2026</p>
-          </div>
+        <div className="relative z-10 w-full max-w-sm p-6 rounded-3xl border border-white/10"
+          style={{ background: 'rgba(15, 5, 25, 0.85)', backdropFilter: 'blur(20px)' }}>
+          <h2 className="text-lg font-bold text-white mb-4">Acceder al sistema</h2>
+          {form}
+          <p className="text-center text-gray-600 text-xs mt-4">Vinteon Media · España 2026</p>
         </div>
       </div>
 
@@ -91,7 +89,7 @@ export default function LoginPage() {
       <div className="hidden lg:flex min-h-screen">
 
         {/* Left — branding */}
-        <div className="w-1/2 flex flex-col justify-between p-16 relative overflow-hidden"
+        <div className="w-1/2 flex flex-col justify-center gap-10 p-16 relative overflow-hidden"
           style={{ background: 'linear-gradient(145deg, #0a0010 0%, #1a0028 45%, #2d0015 100%)' }}>
 
           <div className="absolute inset-0 pointer-events-none">
