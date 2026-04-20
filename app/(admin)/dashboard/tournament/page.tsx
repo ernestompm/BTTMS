@@ -195,7 +195,7 @@ export default function TournamentPage() {
             <p className="text-gray-500 text-xs mt-0.5">Cuando está activo, aparece un panel de clasificación tras cada punto (winner, error forzado, ace…). Desactívalo si quieres que el punto suba al instante sin ningún paso extra.</p>
           </div>
           <button
-            onClick={() => updateField('advanced_stats_enabled', !(tournament as any).advanced_stats_enabled ?? false)}
+            onClick={() => updateField('advanced_stats_enabled', !((tournament as any).advanced_stats_enabled ?? true))}
             className={`relative ml-4 flex-shrink-0 w-12 h-6 rounded-full transition-colors ${(tournament as any).advanced_stats_enabled !== false ? 'bg-brand-red' : 'bg-gray-700'}`}>
             <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${(tournament as any).advanced_stats_enabled !== false ? 'translate-x-6' : 'translate-x-0'}`} />
           </button>
