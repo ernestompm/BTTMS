@@ -20,8 +20,7 @@ export default function LoginPage() {
     if (error) {
       setError('Credenciales incorrectas. Verifica tu email y contraseña.')
     } else {
-      router.push('/dashboard')
-      router.refresh()
+      window.location.href = '/dashboard'
     }
     setLoading(false)
   }
