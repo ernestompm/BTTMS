@@ -61,8 +61,8 @@ export default function TournamentPage() {
     if (!confirm('⚠️ Esto borrará TODOS los jugadores, cuadros, partidos y puntos. El usuario admin se conserva. ¿Continuar?')) return
     setResetting(true)
     const res = await fetch('/api/admin/reset', { method: 'POST' })
-    setResetting(false)
-    if (res.ok) { setResetDone(true); setTimeout(() => setResetDone(false), 4000) }
+    if (res.ok) window.location.reload()
+    else setResetting(false)
   }
 
   async function handleSeed() {
@@ -71,9 +71,14 @@ export default function TournamentPage() {
     setSeedMsg('')
     const res = await fetch('/api/admin/seed', { method: 'POST' })
     const data = await res.json()
-    setSeeding(false)
-    setSeedMsg(res.ok ? `✓ ${data.message}` : `✗ ${data.error}`)
-    setTimeout(() => setSeedMsg(''), 8000)
+    if (res.ok) {
+      setSeedMsg(`✓ ${data.message} — recargando...`)
+      setTimeout(() => window.location.reload(), 800)
+    } else {
+      setSeeding(false)
+      setSeedMsg(`✗ ${data.error}`)
+      setTimeout(() => setSeedMsg(''), 10000)
+    }
   }
 
   const cfg = tournament.scoreboard_config ?? DEFAULT_SCOREBOARD_CONFIG

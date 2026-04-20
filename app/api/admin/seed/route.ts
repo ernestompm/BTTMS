@@ -117,8 +117,6 @@ export async function POST() {
     entry1_id: entryBySeed[s1],
     entry2_id: entryBySeed[s2],
     status: 'scheduled',
-    scoring_system: 'best_of_2_sets_super_tb',
-    net_height: '1.70',
   }))
   const { error: mErr } = await service.from('matches').insert(matchInserts)
   if (mErr) return NextResponse.json({ error: 'Partidos: ' + mErr.message }, { status: 500 })
