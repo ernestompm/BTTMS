@@ -65,7 +65,7 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-2 flex-wrap">
                     <Badge variant={sl.variant}>{sl.label}</Badge>
-                    <Badge variant="outline">{CATEGORY_LABELS[m.category as any] ?? m.category}</Badge>
+                    <Badge variant="outline">{(CATEGORY_LABELS as Record<string, string>)[m.category] ?? m.category}</Badge>
                     {m.round && <Badge variant="default">{m.round}</Badge>}
                     {m.court && <span className="text-gray-500 text-xs">{m.court.name}</span>}
                   </div>

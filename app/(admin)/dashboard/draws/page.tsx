@@ -33,7 +33,7 @@ export default async function DrawsPage() {
             <div className="flex items-start justify-between mb-3">
               <div>
                 <p className="text-white font-semibold group-hover:text-brand-red transition-colors">
-                  {CATEGORY_LABELS[d.category as any] ?? d.category}
+                  {(CATEGORY_LABELS as Record<string, string>)[d.category] ?? d.category}
                 </p>
                 <p className="text-gray-500 text-xs mt-0.5">{d.draw_type.replace('_', ' ')} · {d.size} plazas</p>
               </div>

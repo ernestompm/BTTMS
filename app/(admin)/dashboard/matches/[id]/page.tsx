@@ -45,7 +45,7 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
               <Badge variant={m.status === 'in_progress' ? 'danger' : m.status === 'finished' ? 'success' : 'outline'}>
                 {m.status}
               </Badge>
-              <Badge variant="outline">{CATEGORY_LABELS[m.category] ?? m.category}</Badge>
+              <Badge variant="outline">{(CATEGORY_LABELS as Record<string, string>)[m.category] ?? m.category}</Badge>
               {m.round && <Badge variant="default">{m.round}</Badge>}
             </div>
             <div className="space-y-2">

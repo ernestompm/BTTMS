@@ -246,10 +246,14 @@ export function isGamePoint(score: Score, servingTeam: 1 | 2): boolean {
 }
 
 export function isSetPoint(score: Score, servingTeam: 1 | 2): boolean {
-  // Must be a game point AND winning this game would win the set
   if (!isGamePoint(score, servingTeam)) return false
-  const system = s.scoring_system
-  return false // simplified - full logic in full implementation
+  const wKey = `t${servingTeam}` as 't1' | 't2'
+  const lKey = `t${servingTeam === 1 ? 2 : 1}` as 't1' | 't2'
+  const wGames = score.current_set[wKey]
+  const lGames = score.current_set[lKey]
+  const gamesForSet = getGamesForSet(score.scoring_system)
+  return (wGames + 1 >= gamesForSet && (wGames + 1) - lGames >= 2) ||
+    (score.tiebreak_active && score.tiebreak_score[wKey] >= 6 && score.tiebreak_score[wKey] - score.tiebreak_score[lKey] >= 1)
 }
 
 // Exported for tests

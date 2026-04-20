@@ -58,7 +58,7 @@ export default async function JudgeIndexPage() {
                   </span>
                 )}
               </div>
-              <p className="text-xs text-gray-500 mb-2">{CATEGORY_LABELS[m.category as any] ?? m.category} · {m.court?.name}</p>
+              <p className="text-xs text-gray-500 mb-2">{(CATEGORY_LABELS as Record<string, string>)[m.category] ?? m.category} · {m.court?.name}</p>
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
                   <p className="text-white text-sm font-medium">{teamName(m.entry1)}</p>
