@@ -2,6 +2,7 @@ import { createServiceSupabase } from '@/lib/supabase-server'
 import Link from 'next/link'
 import type { Player } from '@/types'
 import Image from 'next/image'
+import { FlagImg } from '@/components/admin/flag-img'
 
 export default async function PlayersPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const { q } = await searchParams
@@ -54,11 +55,7 @@ export default async function PlayersPage({ searchParams }: { searchParams: Prom
                 {p.first_name} {p.last_name}
               </p>
               <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
-                {p.nationality && (
-                  <img src={`/Flags/${p.nationality.toUpperCase()}.jpg`}
-                    alt={p.nationality} className="w-5 h-3.5 object-cover rounded-sm"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
-                )}
+                {p.nationality && <FlagImg nationality={p.nationality} />}
                 {p.ranking_rfet && <span>RFET #{p.ranking_rfet}</span>}
                 {p.ranking_itf && <span>ITF #{p.ranking_itf}</span>}
               </div>
