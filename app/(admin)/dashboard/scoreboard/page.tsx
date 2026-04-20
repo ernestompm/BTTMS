@@ -360,7 +360,7 @@ export default function ScoreboardConfigPage() {
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <p className="text-white text-sm font-semibold truncate">{sp.name}</p>
-                    <p className="text-gray-500 text-xs">{TIER_LABELS[sp.tier] ?? sp.tier || 'Sin categoría'}</p>
+                    <p className="text-gray-500 text-xs">{TIER_LABELS[sp.tier] ?? (sp.tier || 'Sin categoría')}</p>
                   </div>
                   {/* Controls */}
                   <div className="flex items-center gap-0.5 flex-shrink-0">
