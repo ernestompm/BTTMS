@@ -104,9 +104,9 @@ export function WarningModal({ warnings, team1Name, team2Name, onConfirm, onClos
             <div className="grid grid-cols-2 gap-2">
               {VIOLATIONS.map((v) => (
                 <button key={v.type} onClick={() => setSelectedType(v.type)}
-                  className={`${v.color} rounded-xl py-3 px-3 text-left transition-all border-2 ${selectedType === v.type ? 'border-white' : 'border-transparent'}`}>
-                  <p className="text-white font-black text-sm font-score">{v.label}</p>
-                  <p className="text-gray-300 text-xs mt-0.5 leading-tight">{v.sublabel}</p>
+                  className={`${v.color} rounded-xl py-5 px-4 text-left transition-all border-2 min-h-[80px] flex flex-col justify-center ${selectedType === v.type ? 'border-white' : 'border-transparent'}`}>
+                  <p className="text-white font-black text-base font-score">{v.label}</p>
+                  <p className="text-gray-300 text-xs mt-1 leading-tight">{v.sublabel}</p>
                 </button>
               ))}
             </div>

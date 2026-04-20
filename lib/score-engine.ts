@@ -38,9 +38,7 @@ export function getGameDisplay(score: Score, team: 1 | 2): string {
   if (score.tiebreak_active) {
     return String(score.tiebreak_score[`t${team}` as 't1' | 't2'])
   }
-  if (score.deuce) return 'DUC'
-  if (score.advantage_team === team) return 'ADV'
-  if (score.advantage_team !== null && score.advantage_team !== team) return '40'
+  if (score.deuce) return 'ORO'  // Punto de Oro (no advantage in beach tennis)
   const pts = score.current_game[`t${team}` as 't1' | 't2']
   return GAME_POINTS[pts] ?? '0'
 }
@@ -97,20 +95,10 @@ export function applyPoint(prev: Score, winnerTeam: 1 | 2): Score {
   }
 
   // --- REGULAR GAME ---
-  const system = s.scoring_system
 
   if (s.deuce) {
-    if (s.advantage_team === winnerTeam) {
-      // Winner wins game
-      return winGame(s, winnerTeam, loserTeam)
-    } else if (s.advantage_team === loserTeam) {
-      // Back to deuce
-      s.advantage_team = null
-    } else {
-      // No advantage yet
-      s.advantage_team = winnerTeam
-    }
-    return s
+    // Beach tennis: Punto de Oro — no advantage, next point wins the game (RFET art. 27)
+    return winGame(s, winnerTeam, loserTeam)
   }
 
   // Normal scoring (0-3)
@@ -255,6 +243,21 @@ export function isSetPoint(score: Score, servingTeam: 1 | 2): boolean {
   const gamesForSet = getGamesForSet(score.scoring_system)
   return (wGames + 1 >= gamesForSet && (wGames + 1) - lGames >= 2) ||
     (score.tiebreak_active && score.tiebreak_score[wKey] >= 6 && score.tiebreak_score[wKey] - score.tiebreak_score[lKey] >= 1)
+}
+
+/** True if checkTeam is one point away from winning the match */
+export function isMatchPoint(score: Score, checkTeam: 1 | 2): boolean {
+  const wKey = `t${checkTeam}` as 't1' | 't2'
+  const lKey = `t${checkTeam === 1 ? 2 : 1}` as 't1' | 't2'
+
+  if (score.super_tiebreak_active) {
+    const w = score.tiebreak_score[wKey], l = score.tiebreak_score[lKey]
+    return w >= 9 && w > l  // next point → ≥10 with margin ≥2
+  }
+
+  const setsToWin = getSetsToWin(score.scoring_system)
+  if (score.sets_won[wKey] + 1 < setsToWin) return false
+  return isSetPoint(score, checkTeam)
 }
 
 // Exported for tests

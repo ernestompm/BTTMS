@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabase, createServiceSupabase } from '@/lib/supabase-server'
-import { applyPoint, INITIAL_SCORE, isBreakPoint } from '@/lib/score-engine'
+import { applyPoint, INITIAL_SCORE, isBreakPoint, isSetPoint, isMatchPoint, isTBSideChange, isSuperTBSideChange } from '@/lib/score-engine'
 import { applyPointToStats, applyBreakPointStats, emptyStats } from '@/lib/stats-engine'
 import type { Score, PointType, ShotDirection, ScoringSystem } from '@/types'
 
@@ -99,10 +99,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   // Determine next serving team (alternates on game change)
   let nextServingTeam: 1 | 2 = serverTeam
+  const setChanged = (scoreAfter.sets?.length ?? 0) > (scoreBefore.sets?.length ?? 0)
   const gameChanged =
     scoreAfter.current_set?.t1 !== scoreBefore.current_set?.t1 ||
     scoreAfter.current_set?.t2 !== scoreBefore.current_set?.t2 ||
-    (scoreAfter.sets?.length ?? 0) > (scoreBefore.sets?.length ?? 0) ||
+    setChanged ||
     (scoreAfter.super_tiebreak_active && !scoreBefore.super_tiebreak_active)
 
   if (gameChanged) {
@@ -110,6 +111,36 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   const matchFinished = scoreAfter.match_status === 'finished'
+
+  // --- Build _context for judge notifications and broadcast ---
+  let sideChange = false
+  if (setChanged) {
+    sideChange = true
+  } else if (scoreAfter.tiebreak_active) {
+    sideChange = isTBSideChange(scoreAfter.tiebreak_score)
+  } else if (scoreAfter.super_tiebreak_active) {
+    sideChange = isSuperTBSideChange(scoreAfter.tiebreak_score)
+  } else if (gameChanged) {
+    const totalGamesAfter = (scoreAfter.current_set?.t1 ?? 0) + (scoreAfter.current_set?.t2 ?? 0)
+    sideChange = totalGamesAfter % 2 === 1
+  }
+
+  const notFinished = !matchFinished
+  const _context = {
+    golden_point:         notFinished && (scoreAfter.deuce === true),
+    break_point:          notFinished && isBreakPoint(scoreAfter, nextServingTeam),
+    set_point_t1:         notFinished && isSetPoint(scoreAfter, 1),
+    set_point_t2:         notFinished && isSetPoint(scoreAfter, 2),
+    match_point_t1:       isMatchPoint(scoreAfter, 1),
+    match_point_t2:       isMatchPoint(scoreAfter, 2),
+    serving_team_changed: gameChanged,
+    new_serving_team:     nextServingTeam,
+    side_change:          sideChange,
+    new_set:              setChanged,
+    new_tb:               scoreAfter.tiebreak_active && !scoreBefore.tiebreak_active,
+    new_super_tb:         scoreAfter.super_tiebreak_active && !scoreBefore.super_tiebreak_active,
+    match_finished:       matchFinished,
+  }
 
   const { data: updatedMatch } = await service.from('matches').update({
     score: scoreAfter,
@@ -120,13 +151,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }).eq('id', matchId).select('*').single()
 
   if (match.broadcast_active) {
-    triggerBroadcast(matchId, 'point_scored', updatedMatch).catch(() => {})
+    triggerBroadcast(matchId, 'point_scored', updatedMatch, _context).catch(() => {})
   }
 
-  return NextResponse.json(updatedMatch)
+  return NextResponse.json({ ...updatedMatch, _context })
 }
 
-async function triggerBroadcast(matchId: string, event: string, matchData: any) {
+async function triggerBroadcast(matchId: string, event: string, matchData: any, context?: Record<string, unknown>) {
   const service = createServiceSupabase()
   const { data: tournament } = await service.from('tournaments')
     .select('broadcast_endpoint, broadcast_api_key, name, sponsors')
@@ -137,6 +168,7 @@ async function triggerBroadcast(matchId: string, event: string, matchData: any) 
   const payload = {
     meta: { version: '2.0', event, tournament_id: matchData.tournament_id, match_id: matchId, timestamp: new Date().toISOString() },
     match: { id: matchId, status: matchData.status, score: matchData.score, serving_team: matchData.serving_team },
+    _context: context ?? {},
     stats: matchData.stats,
     tournament: { name: tournament.name, sponsor_logos: tournament.sponsors },
   }
