@@ -55,7 +55,7 @@ export default async function PlayersPage({ searchParams }: { searchParams: Prom
               </p>
               <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
                 {p.nationality && (
-                  <img src={`/flags/${p.nationality.toUpperCase()}.jpg`}
+                  <img src={`/Flags/${p.nationality.toUpperCase()}.jpg`}
                     alt={p.nationality} className="w-5 h-3.5 object-cover rounded-sm"
                     onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
                 )}

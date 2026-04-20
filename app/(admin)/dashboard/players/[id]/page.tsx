@@ -157,7 +157,7 @@ export default function EditPlayerPage() {
             <div className="flex items-center gap-3">
               <input className={ic} value={form.nationality} onChange={e => set('nationality', e.target.value.toUpperCase().slice(0, 3))} maxLength={3} />
               {form.nationality.length === 3 && (
-                <img src={`/flags/${form.nationality.toUpperCase()}.jpg`} alt={form.nationality}
+                <img src={`/Flags/${form.nationality.toUpperCase()}.jpg`} alt={form.nationality}
                   className="h-6 w-9 object-cover rounded flex-shrink-0"
                   onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
               )}

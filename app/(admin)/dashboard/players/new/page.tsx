@@ -129,7 +129,7 @@ export default function NewPlayerPage() {
                 onChange={e => set('nationality', e.target.value.toUpperCase().slice(0, 3))}
                 maxLength={3} placeholder="ESP" />
               {form.nationality.length === 3 && (
-                <img src={`/flags/${form.nationality.toUpperCase()}.jpg`}
+                <img src={`/Flags/${form.nationality.toUpperCase()}.jpg`}
                   alt={form.nationality} className="h-6 w-9 object-cover rounded flex-shrink-0"
                   onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
               )}
