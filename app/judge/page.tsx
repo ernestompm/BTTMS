@@ -1,21 +1,24 @@
-import { createServerSupabase } from '@/lib/supabase-server'
+import { createServerSupabase, createServiceSupabase } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { CATEGORY_LABELS } from '@/types'
+
+export const dynamic = 'force-dynamic'
 
 export default async function JudgeIndexPage() {
   const supabase = await createServerSupabase()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: appUser } = await supabase.from('app_users').select('*').eq('id', user.id).single()
+  const service = createServiceSupabase()
+  const { data: appUser } = await service.from('app_users').select('*').eq('id', user.id).single()
   if (!appUser) redirect('/login')
 
-  let query = supabase.from('matches')
+  let query = service.from('matches')
     .select(`*, court:courts(name), entry1:draw_entries!entry1_id(player1:players!player1_id(first_name,last_name,nationality), player2:players!player2_id(first_name,last_name,nationality)), entry2:draw_entries!entry2_id(player1:players!player1_id(first_name,last_name,nationality), player2:players!player2_id(first_name,last_name,nationality))`)
     .in('status', ['scheduled', 'in_progress'])
-    .order('scheduled_at')
+    .order('scheduled_at', { nullsFirst: false })
 
   if (appUser.role === 'judge') {
     query = query.eq('judge_id', user.id)
@@ -35,11 +38,17 @@ export default async function JudgeIndexPage() {
       <div className="max-w-lg mx-auto space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-white font-score">Judge App</h1>
-            <p className="text-gray-400 text-sm">{appUser.full_name}</p>
+            <h1 className="text-2xl font-bold text-white font-score">Arbitraje</h1>
+            <p className="text-gray-400 text-sm">{appUser.full_name} · {appUser.role.replace('_', ' ')}</p>
           </div>
           <Link href="/dashboard" className="text-gray-500 hover:text-white text-sm">Panel →</Link>
         </div>
+
+        <p className="text-gray-500 text-xs">
+          {appUser.role === 'judge'
+            ? 'Partidos asignados a ti como juez árbitro.'
+            : 'Como admin puedes arbitrar cualquier partido. Pulsa uno para empezar.'}
+        </p>
 
         <div className="space-y-3">
           {(matches ?? []).map((m: any) => (
@@ -58,7 +67,10 @@ export default async function JudgeIndexPage() {
                   </span>
                 )}
               </div>
-              <p className="text-xs text-gray-500 mb-2">{(CATEGORY_LABELS as Record<string, string>)[m.category] ?? m.category} · {m.court?.name}</p>
+              <p className="text-xs text-gray-500 mb-2">
+                {(CATEGORY_LABELS as Record<string, string>)[m.category] ?? m.category}
+                {m.court && ` · ${m.court.name}`}
+              </p>
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
                   <p className="text-white text-sm font-medium">{teamName(m.entry1)}</p>
@@ -73,7 +85,8 @@ export default async function JudgeIndexPage() {
           ))}
           {(!matches || matches.length === 0) && (
             <div className="bg-gray-900 rounded-2xl p-8 border border-gray-800 text-center">
-              <p className="text-gray-500">No hay partidos asignados</p>
+              <p className="text-gray-500">No hay partidos programados o en juego</p>
+              <Link href="/dashboard/draws" className="text-brand-red text-sm mt-2 inline-block">Crear cuadro →</Link>
             </div>
           )}
         </div>

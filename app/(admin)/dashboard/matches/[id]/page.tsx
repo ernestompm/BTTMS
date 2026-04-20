@@ -60,7 +60,11 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
               ))}
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            <Link href={`/judge/${m.id}`}
+              className="bg-brand-red hover:bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">
+              ⚖️ Arbitrar
+            </Link>
             <Link href={`/scoreboard/${m.id}`} target="_blank"
               className="bg-gray-800 hover:bg-gray-700 text-gray-300 px-4 py-2 rounded-xl text-sm transition-colors">
               Marcador ↗

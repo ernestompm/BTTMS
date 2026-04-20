@@ -96,6 +96,10 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
                     className="bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg text-xs transition-colors">
                     Detalle
                   </Link>
+                  <Link href={`/judge/${m.id}`}
+                    className="bg-brand-red hover:bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs transition-colors">
+                    ⚖️ Arbitrar
+                  </Link>
                   {m.status === 'in_progress' && (
                     <Link href={`/scoreboard/${m.id}`} target="_blank"
                       className="bg-brand-red/20 hover:bg-brand-red/30 text-brand-red px-3 py-1.5 rounded-lg text-xs transition-colors">
