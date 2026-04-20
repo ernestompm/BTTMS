@@ -1,26 +1,32 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { TossScreen } from './toss-screen'
-import { ScoreDisplay } from './score-display'
 import { PointModal } from './point-modal'
-import type { Match, Score, PointType, ShotDirection } from '@/types'
+import type { Match, PointType, ShotDirection } from '@/types'
 
 interface Props {
   initialMatch: Match & { entry1: any; entry2: any; court: any }
   userId: string
 }
 
-export function JudgeClient({ initialMatch, userId }: Props) {
+function tennisPoint(value: number, deuce: boolean, adv: 1 | 2 | null, team: 1 | 2): string {
+  if (deuce) {
+    if (adv === team) return 'ADV'
+    if (adv && adv !== team) return '—'
+    return '40'
+  }
+  return ['0', '15', '30', '40'][value ?? 0] ?? '0'
+}
+
+export function JudgeClient({ initialMatch }: Props) {
   const supabase = createClient()
   const [match, setMatch] = useState(initialMatch)
   const [showToss, setShowToss] = useState(initialMatch.status === 'scheduled')
   const [showPointModal, setShowPointModal] = useState<1 | 2 | null>(null)
   const [saving, setSaving] = useState(false)
-  const [lastAction, setLastAction] = useState('')
   const [elapsed, setElapsed] = useState(0)
-  const [countdown, setCountdown] = useState<number | null>(null)
 
   // Realtime subscription
   useEffect(() => {
@@ -39,10 +45,8 @@ export function JudgeClient({ initialMatch, userId }: Props) {
     return () => clearInterval(interval)
   }, [match.status, match.started_at])
 
-  function formatElapsed(secs: number) {
-    const h = Math.floor(secs / 3600)
-    const m = Math.floor((secs % 3600) / 60)
-    const s = secs % 60
+  function fmt(secs: number) {
+    const h = Math.floor(secs / 3600), m = Math.floor((secs % 3600) / 60), s = secs % 60
     if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
     return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
   }
@@ -50,15 +54,9 @@ export function JudgeClient({ initialMatch, userId }: Props) {
   async function handleTossComplete(tossData: any) {
     setSaving(true)
     const res = await fetch(`/api/matches/${match.id}/start`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(tossData),
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(tossData),
     })
-    if (res.ok) {
-      const updated = await res.json()
-      setMatch((m) => ({ ...m, ...updated }))
-      setShowToss(false)
-    }
+    if (res.ok) { setMatch((m) => ({ ...m, ...(await res.json()) })); setShowToss(false) }
     setSaving(false)
   }
 
@@ -66,17 +64,10 @@ export function JudgeClient({ initialMatch, userId }: Props) {
     setShowPointModal(null)
     setSaving(true)
     const res = await fetch(`/api/matches/${match.id}/point`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ winner_team: winnerTeam, point_type: pointType, shot_direction: shotDirection }),
     })
-    if (res.ok) {
-      const updated = await res.json()
-      setMatch((m) => ({ ...m, ...updated }))
-      setLastAction(`Punto Eq.${winnerTeam} (${pointType.replace('_', ' ')})`)
-      // Start 20s countdown between points
-      setCountdown(20)
-    }
+    if (res.ok) setMatch((m) => ({ ...m, ...(await res.json()) }))
     setSaving(false)
   }
 
@@ -84,11 +75,7 @@ export function JudgeClient({ initialMatch, userId }: Props) {
     if (!confirm('¿Deshacer el último punto?')) return
     setSaving(true)
     const res = await fetch(`/api/matches/${match.id}/undo`, { method: 'POST' })
-    if (res.ok) {
-      const updated = await res.json()
-      setMatch((m) => ({ ...m, ...updated }))
-      setLastAction('Punto deshecho')
-    }
+    if (res.ok) setMatch((m) => ({ ...m, ...(await res.json()) }))
     setSaving(false)
   }
 
@@ -99,138 +86,104 @@ export function JudgeClient({ initialMatch, userId }: Props) {
     setSaving(false)
   }
 
-  // 20s countdown between points
-  useEffect(() => {
-    if (countdown === null || countdown <= 0) return
-    const t = setTimeout(() => setCountdown((c) => (c ?? 1) - 1), 1000)
-    return () => clearTimeout(t)
-  }, [countdown])
-
   const isFinished = match.status === 'finished'
 
-  if (showToss) {
-    return <TossScreen match={match} onComplete={handleTossComplete} saving={saving} />
-  }
+  if (showToss) return <TossScreen match={match} onComplete={handleTossComplete} saving={saving} />
+
+  const score = match.score as any
+  const t1Name = ((match.entry1 as any)?.player1?.last_name ?? '—').toUpperCase()
+  const t2Name = ((match.entry2 as any)?.player1?.last_name ?? '—').toUpperCase()
+  const t1Partner = (match.entry1 as any)?.player2?.last_name
+  const t2Partner = (match.entry2 as any)?.player2?.last_name
+  const setsWon1 = score?.sets_won?.t1 ?? 0
+  const setsWon2 = score?.sets_won?.t2 ?? 0
+  const game1 = tennisPoint(score?.current_game?.t1, score?.deuce, score?.advantage_team, 1)
+  const game2 = tennisPoint(score?.current_game?.t2, score?.deuce, score?.advantage_team, 2)
 
   return (
-    <div className="min-h-screen bg-[#111111] flex flex-col select-none overflow-hidden">
-      {/* Top bar */}
-      <div className="flex items-center justify-between px-5 pt-4 pb-2 border-b border-gray-800/50">
-        <div className="flex items-center gap-3">
-          <span className={`w-3 h-3 rounded-full ${isFinished ? 'bg-green-500' : 'bg-red-500 animate-pulse'}`} />
-          <span className="text-gray-300 text-base font-medium">{match.court?.name}</span>
-          <span className="text-gray-500 text-base">{match.round}</span>
+    <div className="fixed inset-0 flex flex-col bg-gray-950 select-none overflow-hidden">
+
+      {/* ─── TOP BAR ─────────────────────────────────────────── */}
+      <div className="flex items-center justify-between px-4 py-2 bg-gray-900 border-b border-gray-800 flex-shrink-0">
+        <div className="flex items-center gap-3 min-w-0">
+          <span className={`w-3 h-3 rounded-full flex-shrink-0 ${isFinished ? 'bg-green-500' : 'bg-red-500 animate-pulse'}`} />
+          <span className="text-white font-medium text-base truncate">{match.court?.name ?? '—'}</span>
+          <span className="text-gray-500 text-sm">· {match.round}</span>
         </div>
-        <div className="flex items-center gap-4">
-          {countdown !== null && countdown > 0 && (
-            <span className="text-brand-orange text-base font-score font-bold">{countdown}s</span>
-          )}
-          <span className="text-gray-300 text-base font-mono">{formatElapsed(elapsed)}</span>
-          {saving && <span className="text-gray-600 text-sm">guardando…</span>}
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <span className="text-gray-300 font-mono text-base">{fmt(elapsed)}</span>
+          <button onClick={handleUndo} disabled={saving}
+            className="h-10 px-4 bg-gray-800 hover:bg-gray-700 active:scale-95 rounded-lg text-yellow-400 font-bold text-sm transition-transform border border-gray-700">
+            ↩ Deshacer
+          </button>
+          <button onClick={handleFinish} disabled={saving}
+            className="h-10 px-4 bg-gray-800 hover:bg-red-900 active:scale-95 rounded-lg text-gray-300 hover:text-red-300 font-bold text-sm transition-transform border border-gray-700">
+            Fin
+          </button>
         </div>
       </div>
 
-      {/* Match finished banner */}
-      {isFinished && (
-        <div className="bg-green-900/30 border-b border-green-800 px-4 py-2 text-center">
-          <p className="text-green-300 font-bold font-score">
-            PARTIDO FINALIZADO · Ganador: Equipo {match.score?.winner_team ?? '?'}
-          </p>
-        </div>
-      )}
-
-      {/* Teams + Score */}
-      <div className="flex-1 flex flex-col">
+      {/* ─── TEAMS + SCORE COMPACTO ───────────────────────────── */}
+      <div className="flex-shrink-0">
         {/* Team 1 */}
-        <div className="flex-1 flex items-center justify-between px-6 py-5 border-b border-gray-800/30">
-          <div className="flex items-start gap-4 flex-1 min-w-0">
-            {match.serving_team === 1 && (
-              <span className="mt-2 w-4 h-4 rounded-full bg-brand-orange serving-pulse flex-shrink-0" />
-            )}
+        <div className={`flex items-center justify-between px-5 py-3 border-b border-gray-800 ${match.serving_team === 1 ? 'bg-gray-900' : 'bg-black'}`}>
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            {match.serving_team === 1 && <span className="w-3 h-3 rounded-full bg-brand-orange serving-pulse flex-shrink-0" />}
             <div className="min-w-0">
-              <p className="text-white font-bold text-2xl leading-tight truncate">
-                {(match.entry1 as any)?.player1?.first_name} {(match.entry1 as any)?.player1?.last_name}
-              </p>
-              {(match.entry1 as any)?.player2 && (
-                <p className="text-gray-300 text-xl leading-tight truncate">
-                  {(match.entry1 as any)?.player2?.first_name} {(match.entry1 as any)?.player2?.last_name}
-                </p>
-              )}
+              <p className="text-white font-bold text-xl leading-tight truncate">{t1Name}</p>
+              {t1Partner && <p className="text-gray-400 text-base leading-tight truncate">{t1Partner.toUpperCase()}</p>}
             </div>
           </div>
-          <div className="text-right ml-4">
-            <span className="text-7xl font-score font-black text-white leading-none">
-              {match.score?.sets_won?.t1 ?? 0}
-            </span>
+          <div className="flex items-baseline gap-5 flex-shrink-0">
+            <span className="text-white font-score font-black text-3xl tabular-nums">{setsWon1}</span>
+            <span className="text-brand-red font-score font-black text-4xl tabular-nums w-16 text-right">{game1}</span>
           </div>
         </div>
-
-        {/* Center scoreboard */}
-        <ScoreDisplay score={match.score} servingTeam={match.serving_team} />
-
         {/* Team 2 */}
-        <div className="flex-1 flex items-center justify-between px-6 py-5 border-t border-gray-800/30">
-          <div className="flex items-start gap-4 flex-1 min-w-0">
-            {match.serving_team === 2 && (
-              <span className="mt-2 w-4 h-4 rounded-full bg-brand-orange serving-pulse flex-shrink-0" />
-            )}
+        <div className={`flex items-center justify-between px-5 py-3 border-b border-gray-800 ${match.serving_team === 2 ? 'bg-gray-900' : 'bg-black'}`}>
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            {match.serving_team === 2 && <span className="w-3 h-3 rounded-full bg-brand-orange serving-pulse flex-shrink-0" />}
             <div className="min-w-0">
-              <p className="text-white font-bold text-2xl leading-tight truncate">
-                {(match.entry2 as any)?.player1?.first_name} {(match.entry2 as any)?.player1?.last_name}
-              </p>
-              {(match.entry2 as any)?.player2 && (
-                <p className="text-gray-300 text-xl leading-tight truncate">
-                  {(match.entry2 as any)?.player2?.first_name} {(match.entry2 as any)?.player2?.last_name}
-                </p>
-              )}
+              <p className="text-white font-bold text-xl leading-tight truncate">{t2Name}</p>
+              {t2Partner && <p className="text-gray-400 text-base leading-tight truncate">{t2Partner.toUpperCase()}</p>}
             </div>
           </div>
-          <div className="text-right ml-4">
-            <span className="text-7xl font-score font-black text-white leading-none">
-              {match.score?.sets_won?.t2 ?? 0}
-            </span>
+          <div className="flex items-baseline gap-5 flex-shrink-0">
+            <span className="text-white font-score font-black text-3xl tabular-nums">{setsWon2}</span>
+            <span className="text-brand-red font-score font-black text-4xl tabular-nums w-16 text-right">{game2}</span>
           </div>
         </div>
       </div>
 
-      {/* Action buttons */}
-      {!isFinished && (
-        <div className="px-5 pb-5 space-y-4">
-          {/* Main point buttons - HUGE for outdoor tablet */}
-          <div className="grid grid-cols-2 gap-4">
-            <button onClick={() => setShowPointModal(1)} disabled={saving}
-              className="h-32 bg-brand-red hover:bg-red-500 active:scale-95 disabled:opacity-50 rounded-2xl font-black text-white text-3xl font-score transition-transform shadow-xl leading-tight">
-              PUNTO<br />EQUIPO 1
-            </button>
-            <button onClick={() => setShowPointModal(2)} disabled={saving}
-              className="h-32 bg-brand-pink hover:bg-pink-500 active:scale-95 disabled:opacity-50 rounded-2xl font-black text-white text-3xl font-score transition-transform shadow-xl leading-tight">
-              PUNTO<br />EQUIPO 2
-            </button>
+      {/* ─── BIG POINT BUTTONS (fill rest of screen) ─────────── */}
+      {isFinished ? (
+        <div className="flex-1 flex items-center justify-center bg-green-900/20 p-8">
+          <div className="text-center">
+            <p className="text-green-400 font-score font-black text-5xl mb-3">✓ FINALIZADO</p>
+            <p className="text-gray-400 text-lg mb-6">Ganador: Equipo {match.score?.winner_team ?? '?'}</p>
+            <a href="/judge" className="inline-block bg-gray-800 hover:bg-gray-700 text-white px-6 py-3 rounded-xl text-lg">
+              ← Volver
+            </a>
           </div>
-
-          {/* Utility buttons - fewer, bigger */}
-          <div className="grid grid-cols-2 gap-3">
-            <button onClick={handleUndo} disabled={saving}
-              className="h-16 bg-gray-800 hover:bg-gray-700 active:scale-95 rounded-2xl text-white text-lg font-bold transition-transform border border-gray-700">
-              ↩ Deshacer
-            </button>
-            <button onClick={handleFinish} disabled={saving}
-              className="h-16 bg-gray-800 hover:bg-red-900 active:scale-95 rounded-2xl text-gray-300 hover:text-red-300 text-lg font-bold transition-transform border border-gray-700">
-              Finalizar partido
-            </button>
-          </div>
-
-          {lastAction && (
-            <p className="text-center text-gray-500 text-sm">{lastAction}</p>
-          )}
         </div>
-      )}
-
-      {isFinished && (
-        <div className="px-4 pb-4">
-          <a href="/judge" className="block text-center bg-gray-800 text-gray-300 py-3 rounded-xl text-sm">
-            ← Volver a mis partidos
-          </a>
+      ) : (
+        <div className="flex-1 grid grid-cols-2 gap-1 bg-gray-900 min-h-0">
+          <button onClick={() => setShowPointModal(1)} disabled={saving}
+            className="bg-sky-500 hover:bg-sky-400 active:bg-sky-600 disabled:opacity-50 text-white font-black font-score flex items-center justify-center transition-colors">
+            <div className="text-center">
+              <div className="text-3xl opacity-90 tracking-widest">PUNTO</div>
+              <div className="text-6xl mt-1 leading-none">{t1Name}</div>
+              {t1Partner && <div className="text-xl opacity-80 mt-1">+ {t1Partner.toUpperCase()}</div>}
+            </div>
+          </button>
+          <button onClick={() => setShowPointModal(2)} disabled={saving}
+            className="bg-sky-500 hover:bg-sky-400 active:bg-sky-600 disabled:opacity-50 text-white font-black font-score flex items-center justify-center transition-colors">
+            <div className="text-center">
+              <div className="text-3xl opacity-90 tracking-widest">PUNTO</div>
+              <div className="text-6xl mt-1 leading-none">{t2Name}</div>
+              {t2Partner && <div className="text-xl opacity-80 mt-1">+ {t2Partner.toUpperCase()}</div>}
+            </div>
+          </button>
         </div>
       )}
 
