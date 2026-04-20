@@ -171,8 +171,10 @@ export function VenueScoreboard({ initialMatch, config, tournamentName, sponsors
         html, body { margin:0; padding:0; background:#000; color:#fff; font-family:'Barlow Condensed',system-ui,sans-serif; overflow:hidden; height:100%; }
         @keyframes vsbBlink    { 0%,100%{opacity:1} 50%{opacity:.2} }
         @keyframes vsbSrvPulse { 0%,100%{box-shadow:0 0 0 0 rgba(239,106,76,.7)} 50%{box-shadow:0 0 0 18px rgba(239,106,76,0)} }
-        @keyframes vsbPop      { 0%{opacity:0;transform:scale(.92)} 100%{opacity:1;transform:scale(1)} }
-        @keyframes vsbPulseGlow{ 0%,100%{opacity:1} 50%{opacity:.6} }
+        @keyframes cardIn      { from{opacity:0;transform:translateY(40px) scale(.97);filter:blur(10px)} to{opacity:1;transform:none;filter:blur(0)} }
+        @keyframes vsIn        { from{opacity:0;transform:scale(.5) rotate(-8deg);filter:blur(10px)} to{opacity:1;transform:none;filter:blur(0)} }
+        @keyframes phaseIn     { from{opacity:0;transform:translateY(26px) scale(.985);filter:blur(12px)} to{opacity:1;transform:none;filter:blur(0)} }
+        @keyframes cntPulse    { 0%,100%{opacity:1} 50%{opacity:.55} }
       `}</style>
 
       <div className="fixed inset-0 bg-black overflow-hidden">
@@ -207,50 +209,31 @@ export function VenueScoreboard({ initialMatch, config, tournamentName, sponsors
 
           {/* ── PRE-MATCH ────────────────────────────────────── */}
           {isPreMatch && (
-            <div className="absolute z-10" style={{ inset:0, display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'center', gap:0, paddingTop:160, paddingBottom: showSponsors && sponsorList.length ? 240 : 60 }}>
+            <div className="absolute z-10" style={{ left:64, right:64, top:172, bottom: showSponsors&&sponsorList.length>0?252:60, display:'grid', gridTemplateColumns:'1fr auto 1fr', gap:40, alignItems:'stretch', animation:'phaseIn .75s cubic-bezier(.2,.9,.25,1) both' }}>
 
-              {/* Status badge */}
-              <div style={{ marginBottom:52, animation:'vsbPop .5s ease' }}>
-                <span style={{ display:'inline-block', padding:'18px 52px', background: hexAlpha(accentA, 0.18), border:`2px solid ${hexAlpha(accentA,.5)}`, borderRadius:999, fontWeight:900, fontSize:34, letterSpacing:'.32em', textTransform:'uppercase', color:accentA }}>
-                  {STATUS_LABELS[status] ?? status.toUpperCase()}
-                </span>
-              </div>
+              {/* Team A card */}
+              <PreMatchTeamCard team={teamA} accent={accentA} isRight={false} showFlags={showFlags} showSeed={showSeed} />
 
-              {/* Warmup countdown */}
-              {status === 'warmup' && countdown !== null && (
-                <div style={{ marginBottom:48, fontFamily:"'JetBrains Mono',monospace", fontWeight:900, fontSize:148, letterSpacing:'.06em', lineHeight:1, animation:'vsbPulseGlow 1s ease infinite', color: countdown.startsWith('+') ? '#f87171' : 'rgba(255,255,255,.95)' }}>
-                  {countdown}
+              {/* VS column */}
+              <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', animation:'vsIn .9s cubic-bezier(.2,.9,.25,1) .15s both', minWidth:320 }}>
+                <div style={{ fontSize:34, letterSpacing:'.48em', opacity:.72, textTransform:'uppercase', fontWeight:800, marginBottom:24, textAlign:'center', lineHeight:1.2 }}>
+                  {STATUS_LABELS[status] ?? 'PRÓXIMO PARTIDO'}
                 </div>
-              )}
-
-              {/* Teams side by side */}
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'center', width:'100%', maxWidth:1700, gap:60 }}>
-                {[{ t: teamA, acc: accentA }, { t: teamB, acc: accentB }].map(({ t, acc }, idx) => (
-                  <div key={idx} style={{ flex:1, display:'flex', flexDirection:'column', alignItems: idx===0 ? 'flex-end' : 'flex-start', gap:18, animation:`vsbPop ${.4+idx*.1}s ease` }}>
-                    {t.players.map((p: any, i: number) => (
-                      <div key={p?.id ?? i} style={{ display:'flex', alignItems:'center', gap:20, flexDirection: idx===0 ? 'row-reverse' : 'row' }}>
-                        {showFlags && p?.nationality && (
-                          <span style={{ flex:'none', width:72, height:50, borderRadius:6, overflow:'hidden', boxShadow:'0 4px 16px rgba(0,0,0,.5)' }}>
-                            <img src={`/Flags/${p.nationality.toUpperCase()}.jpg`} alt={p.nationality} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
-                          </span>
-                        )}
-                        <span style={{ fontWeight:900, fontSize: t.players.length===1 ? 110 : 80, lineHeight:.92, letterSpacing:'.02em', textTransform:'uppercase', whiteSpace:'nowrap', color:'rgba(255,255,255,.95)' }}>
-                          {(p?.last_name ?? p?.name ?? '').toUpperCase()}
-                        </span>
-                      </div>
-                    ))}
-                    {showSeed && t.seed && (
-                      <span style={{ fontWeight:800, fontSize:36, opacity:.55, letterSpacing:'.1em' }}>{`(${t.seed})`}</span>
-                    )}
-                  </div>
-                ))}
-
-                {/* VS divider */}
-                <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:12, flex:'none' }}>
-                  <span style={{ fontWeight:900, fontSize:64, opacity:.35, letterSpacing:'.1em' }}>VS</span>
-                  <div style={{ width:2, height:120, background:'rgba(255,255,255,.12)' }} />
+                <div style={{ fontSize:300, fontWeight:900, lineHeight:.82, color:accentA, letterSpacing:'-.04em', textShadow:`0 20px 80px ${hexAlpha(accentA,.5)}` }}>
+                  VS
+                </div>
+                <div style={{ marginTop:28, fontSize:34, letterSpacing:'.22em', opacity:.88, textTransform:'uppercase', fontWeight:800, textAlign:'center', lineHeight:1.3 }}>
+                  {status==='warmup' && countdown!=null
+                    ? <span style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:58, letterSpacing:'.06em', color: countdown.startsWith('+')?'#f87171':accentA, animation:'cntPulse 1s ease infinite', display:'block' }}>{countdown}</span>
+                    : match.scheduled_at
+                      ? `A LAS ${new Date(match.scheduled_at).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}`
+                      : match.court?.name ?? ''
+                  }
                 </div>
               </div>
+
+              {/* Team B card */}
+              <PreMatchTeamCard team={teamB} accent={accentB} isRight={true} showFlags={showFlags} showSeed={showSeed} />
             </div>
           )}
 
@@ -394,6 +377,80 @@ function SponsorBar({ sponsorList, carouselSpeed }: { sponsorList: Sponsor[]; ca
             ))
           )}
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Pre-match team card ───────────────────────────────────────────────────────
+interface PreMatchTeamCardProps {
+  team: { seed: number|undefined; players: any[]; games: number; point: string }
+  accent: string
+  isRight: boolean
+  showFlags: boolean
+  showSeed: boolean
+}
+function PreMatchTeamCard({ team, accent, isRight, showFlags, showSeed }: PreMatchTeamCardProps) {
+  const isDoubles = team.players.length > 1
+  const portraitSize = isDoubles ? 158 : 196
+  return (
+    <div style={{
+      display:'flex', flexDirection:'column', justifyContent:'center',
+      gap:22, padding:'40px 52px', borderRadius:14,
+      background:'linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.02))',
+      border:'1px solid rgba(255,255,255,.09)',
+      borderTop:`8px solid ${accent}`,
+      alignItems: isRight ? 'flex-end' : 'flex-start',
+      animation:`cardIn .75s cubic-bezier(.2,.9,.25,1) ${isRight?'.2s':'0s'} both`,
+      overflow:'hidden',
+    }}>
+      {/* Portrait placeholders / photos */}
+      <div style={{ display:'flex', gap:22, alignItems:'center', flexDirection: isRight?'row-reverse':'row' }}>
+        {team.players.map((p:any, i:number) => {
+          const initial = (p?.last_name ?? p?.name ?? '?').charAt(0).toUpperCase()
+          return (
+            <div key={p?.id??i} style={{
+              flex:'none', width:portraitSize, height:portraitSize, borderRadius:16,
+              background:`linear-gradient(135deg,${hexAlpha(accent,.32)},${hexAlpha(accent,.06)})`,
+              border:`1px solid ${hexAlpha(accent,.3)}`,
+              display:'grid', placeItems:'center', overflow:'hidden',
+              fontWeight:900, fontSize:Math.round(portraitSize*.43),
+              color:'rgba(255,255,255,.9)',
+              boxShadow:`0 18px 40px rgba(0,0,0,.35), inset 0 1px 0 ${hexAlpha(accent,.2)}`,
+            }}>
+              {p?.photo_url
+                ? <img src={p.photo_url} alt={initial} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                : <span style={{ lineHeight:1, textTransform:'uppercase' }}>{initial}</span>
+              }
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Seed */}
+      {showSeed && team.seed && (
+        <div style={{ fontWeight:900, fontSize:52, letterSpacing:'.24em', color:`${hexAlpha(accent,.75)}`, lineHeight:1 }}>
+          ({team.seed})
+        </div>
+      )}
+
+      {/* Player names with flags */}
+      <div style={{ display:'flex', flexDirection:'column', gap:14, alignItems: isRight?'flex-end':'flex-start' }}>
+        {team.players.map((p:any, i:number) => {
+          const nat = (p?.nationality ?? 'ESP').toUpperCase()
+          return (
+            <div key={p?.id??i} style={{ display:'flex', alignItems:'center', gap:18, flexDirection: isRight?'row-reverse':'row' }}>
+              {showFlags && (
+                <span style={{ flex:'none', width:78, height:54, borderRadius:6, overflow:'hidden', boxShadow:'0 2px 8px rgba(0,0,0,.4),inset 0 0 0 1px rgba(0,0,0,.25)' }}>
+                  <img src={`/Flags/${nat}.jpg`} alt={nat} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                </span>
+              )}
+              <span style={{ fontWeight:900, fontSize:96, lineHeight:.9, textTransform:'uppercase', letterSpacing:'.01em', whiteSpace:'nowrap' }}>
+                {(p?.last_name ?? p?.name ?? '').toUpperCase()}
+              </span>
+            </div>
+          )
+        })}
       </div>
     </div>
   )
