@@ -673,8 +673,9 @@ export function BigScoreboard({ visible, match, tournament, sponsor, opts }: { v
   const totalSecs = useTicker(match.started_at, match.finished_at)
   const showSponsor = opts?.show_sponsor !== false && !!sponsor
   const setCount = Math.max(1, Math.min(3, (score?.sets?.length ?? 0) + (score?.match_status==='in_progress' ? 1 : 0)))
-  const setColW = 120
-  const cardW = showSponsor ? 1640 : 1340
+  const setColW = 110
+  const cardW = showSponsor ? 1420 : 1140
+  const serving = match.serving_team as 1|2|null
 
   return (
     // Wrapper centrado por flex (translate no choca con animation transforms)
@@ -709,9 +710,9 @@ export function BigScoreboard({ visible, match, tournament, sponsor, opts }: { v
         {/* BODY — grid unificado: score area + sponsor spans 3 rows */}
         <div style={{ display:'grid',
           gridTemplateColumns: showSponsor
-            ? `12px minmax(440px, 1fr) repeat(${setCount}, ${setColW}px) 300px`
-            : `12px minmax(440px, 1fr) repeat(${setCount}, ${setColW}px)`,
-          gridTemplateRows: '40px 1fr 1fr' }}>
+            ? `12px minmax(420px, 1fr) repeat(${setCount}, ${setColW}px) 260px`
+            : `12px minmax(420px, 1fr) repeat(${setCount}, ${setColW}px)`,
+          gridTemplateRows: '36px 1fr 1fr' }}>
 
           {/* Set-time row */}
           <div style={{ gridColumn:`1 / span 2`, gridRow:1, borderBottom:'1px solid rgba(255,255,255,.05)' }}/>
@@ -732,18 +733,26 @@ export function BigScoreboard({ visible, match, tournament, sponsor, opts }: { v
             const sets = threeSetsFor(score, team).slice(0, setCount)
             const won = match.status==='finished' && score?.winner_team===team
             const players = [entry?.player1, isDoubles?entry?.player2:null].filter(Boolean)
-            const row = 1 + team  // team1 => row 2, team2 => row 3
+            const row = 1 + team
             return (
               <div key={team} style={{ display:'contents' }}>
                 <div style={{ gridColumn:1, gridRow:row, background:accent }}/>
-                <div style={{ gridColumn:2, gridRow:row, display:'flex', flexDirection:'column', justifyContent:'center', gap:6, padding:'14px 22px', background: won ? hexAlpha(accent,.1) : 'transparent', borderTop: team===2 ? '1px solid rgba(255,255,255,.05)' : 'none' }}>
-                  {players.map((p:any,i:number) => (
-                    <PlayerLine key={i} p={p} fs={players.length===1 ? 52 : 36} flagH={players.length===1 ? 42 : 32}/>
-                  ))}
-                  {entry?.seed && <span style={{ fontSize:14, letterSpacing:'.22em', opacity:.55, fontWeight:700 }}>CABEZA DE SERIE ({entry.seed})</span>}
+                <div style={{ gridColumn:2, gridRow:row, display:'flex', flexDirection:'column', justifyContent:'center', gap: isDoubles ? 6 : 4, padding:'12px 22px', background: won ? hexAlpha(accent,.1) : 'transparent', borderTop: team===2 ? '1px solid rgba(255,255,255,.05)' : 'none' }}>
+                  {players.map((p:any,i:number) => {
+                    const isServer = serving === team && (!isDoubles || p.id === match.current_server_id)
+                    return (
+                      <BigScoreboardPlayer key={i}
+                        player={p}
+                        accent={accent}
+                        isDoubles={isDoubles}
+                        isServer={isServer}
+                        servingColor={pal.serve}
+                      />
+                    )
+                  })}
                 </div>
                 {sets.map((v,i) => (
-                  <div key={i} style={{ gridColumn: 3+i, gridRow:row, display:'grid', placeItems:'center', fontSize:68, fontWeight:900, borderLeft:'1px solid rgba(255,255,255,.05)', borderTop: team===2 ? '1px solid rgba(255,255,255,.05)' : 'none',
+                  <div key={i} style={{ gridColumn: 3+i, gridRow:row, display:'grid', placeItems:'center', fontSize:64, fontWeight:900, borderLeft:'1px solid rgba(255,255,255,.05)', borderTop: team===2 ? '1px solid rgba(255,255,255,.05)' : 'none',
                     background: (score?.sets?.length ?? 0) === i ? hexAlpha(accent, .14) : 'rgba(0,0,0,.2)',
                     color: v===null ? 'rgba(255,255,255,.35)' : (won ? accent : '#fff'), fontVariantNumeric:'tabular-nums' }}>
                     {v===null ? '–' : v}
@@ -765,13 +774,47 @@ export function BigScoreboard({ visible, match, tournament, sponsor, opts }: { v
               <div style={{ fontSize:11, letterSpacing:'.32em', fontWeight:900, opacity:.5, textTransform:'uppercase', marginBottom:10 }}>Patrocinador oficial</div>
               <div style={{ flex:1, display:'grid', placeItems:'center', width:'100%' }}>
                 {sponsor?.logo_url
-                  ? <img src={sponsor.logo_url} alt={sponsor.name} style={{ maxWidth:240, maxHeight:140, objectFit:'contain' }}/>
-                  : <span style={{ fontSize:26, fontWeight:900, letterSpacing:'.08em', textAlign:'center', opacity:.85, textTransform:'uppercase' }}>{sponsor?.name ?? ''}</span>}
+                  ? <img src={sponsor.logo_url} alt={sponsor.name} style={{ maxWidth:220, maxHeight:130, objectFit:'contain' }}/>
+                  : <span style={{ fontSize:24, fontWeight:900, letterSpacing:'.08em', textAlign:'center', opacity:.85, textTransform:'uppercase' }}>{sponsor?.name ?? ''}</span>}
               </div>
             </div>
           )}
         </div>
       </div>
+    </div>
+  )
+}
+
+function BigScoreboardPlayer({ player, accent, isDoubles, isServer, servingColor }: {
+  player: any, accent: string, isDoubles: boolean, isServer: boolean, servingColor: string,
+}) {
+  if (!player) return null
+  const nameFs  = isDoubles ? 34 : 48
+  const firstFs = isDoubles ? 18 : 24
+  const flagSz  = isDoubles ? { w: 38, h: 26 } : { w: 48, h: 32 }
+  return (
+    <div style={{ display:'flex', alignItems:'center', gap:14, minWidth:0 }}>
+      <img src={flagPath(player.nationality)} alt="" style={{ flex:'none', width:flagSz.w, height:flagSz.h, borderRadius:4, objectFit:'cover' }}/>
+      <div style={{ display:'flex', flexDirection:'column', lineHeight:1, minWidth:0 }}>
+        {player.first_name && (
+          <span style={{ fontSize:firstFs, fontWeight:700, letterSpacing:'.02em', textTransform:'uppercase', color:'#ffffff', opacity:.95, whiteSpace:'nowrap' }}>
+            {player.first_name}
+          </span>
+        )}
+        <span style={{ fontSize:nameFs, fontWeight:900, lineHeight:.95, textTransform:'uppercase', letterSpacing:'-.005em', color:accent, whiteSpace:'nowrap' }}>
+          {(player.last_name ?? '').toUpperCase()}
+        </span>
+      </div>
+      {isServer && (
+        <span
+          title="Saca"
+          style={{
+            flex:'none', width:18, height:18, borderRadius:'50%', background:servingColor,
+            boxShadow:`0 0 0 3px ${hexAlpha(servingColor,.28)}`,
+            animation:'sgSrvPulse 1.4s infinite',
+          }}
+        />
+      )}
     </div>
   )
 }
@@ -956,46 +999,48 @@ export function WeatherCard({ visible, weather, tournament }: { visible:boolean,
   const pal = palette(tournament?.scoreboard_config)
   const header = [tournament?.venue_name, tournament?.venue_city].filter(Boolean).join(' · ')
   return (
-    <div style={{ position:'absolute', left:90, bottom:90, width:780, ...CARD, padding:0,
-      borderLeft:`8px solid ${pal.accentA}`, overflow:'hidden',
+    <div style={{ position:'absolute', left:90, bottom:90, width:560, ...CARD, padding:0,
+      borderLeft:`6px solid ${pal.accentA}`, overflow:'hidden',
       ...animStyle(visible, 'sgInR', 'sgOutR', 650) }}>
       {/* HEADER — VENUE · CITY */}
-      <div style={{ padding:'14px 26px', background:'rgba(255,255,255,.05)', borderBottom:'1px solid rgba(255,255,255,.07)' }}>
-        <span style={{ fontSize:30, letterSpacing:'.22em', textTransform:'uppercase', fontWeight:900, color:pal.text,
+      <div style={{ padding:'10px 18px', background:'rgba(255,255,255,.05)', borderBottom:'1px solid rgba(255,255,255,.07)' }}>
+        <span style={{ fontSize:22, letterSpacing:'.24em', textTransform:'uppercase', fontWeight:900, color:pal.text,
           whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', display:'block' }}>
           {header || 'SEDE'}
         </span>
       </div>
-      {/* BODY */}
-      <div style={{ padding:'24px 30px', display:'grid', gridTemplateColumns:'auto 1fr', gap:26, alignItems:'center' }}>
-        <div style={{ fontSize:130, lineHeight:1 }}>{WX_ICON[weather.condition] ?? '🌡️'}</div>
+      {/* BODY compacto */}
+      <div style={{ padding:'14px 22px 12px', display:'grid', gridTemplateColumns:'auto 1fr', gap:18, alignItems:'center' }}>
+        <div style={{ fontSize:92, lineHeight:1 }}>{WX_ICON[weather.condition] ?? '🌡️'}</div>
         <div style={{ minWidth:0 }}>
-          <div style={{ display:'flex', alignItems:'baseline', gap:18 }}>
-            <span style={{ fontSize:100, fontWeight:900, lineHeight:1, color:pal.text, fontVariantNumeric:'tabular-nums' }}>{Math.round(weather.temperature_c)}°</span>
-            <span style={{ fontSize:36, fontWeight:900, letterSpacing:'.12em', textTransform:'uppercase', color:pal.accentA }}>
+          <div style={{ display:'flex', alignItems:'baseline', gap:12 }}>
+            <span style={{ fontSize:84, fontWeight:900, lineHeight:1, color:pal.text, fontVariantNumeric:'tabular-nums' }}>{Math.round(weather.temperature_c)}°</span>
+            <span style={{ fontSize:28, fontWeight:900, letterSpacing:'.1em', textTransform:'uppercase', color:pal.accentA, lineHeight:1 }}>
               {weather.condition}
             </span>
           </div>
-          <div style={{ marginTop:6, fontSize:28, opacity:.8, fontWeight:800, letterSpacing:'.12em', textTransform:'uppercase' }}>
+          <div style={{ marginTop:3, fontSize:22, opacity:.78, fontWeight:800, letterSpacing:'.12em', textTransform:'uppercase' }}>
             SENSACIÓN {Math.round(weather.feels_like_c)}°
           </div>
         </div>
       </div>
-      {/* Metricas grandes */}
+      {/* Metricas compactas */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', borderTop:'1px solid rgba(255,255,255,.07)' }}>
-        <WxMetric icon="💨" value={`${Math.round(weather.wind_speed_kmh)} km/h`} label={`Viento · ${weather.wind_direction}`}/>
-        <WxMetric icon="💧" value={`${weather.humidity_pct}%`}                 label="Humedad"/>
-        <WxMetric icon="☂"  value={`${weather.rain_probability_pct}%`}         label="Prob. lluvia"/>
+        <WxMetric icon="💨" value={`${Math.round(weather.wind_speed_kmh)}`} unit={`km/h ${weather.wind_direction}`} label="Viento"/>
+        <WxMetric icon="💧" value={`${weather.humidity_pct}`}              unit="%"                                label="Humedad"/>
+        <WxMetric icon="☂"  value={`${weather.rain_probability_pct}`}       unit="%"                                label="Lluvia"/>
       </div>
     </div>
   )
 }
-function WxMetric({ icon, value, label }: { icon:string, value:string, label:string }) {
+function WxMetric({ icon, value, unit, label }: { icon:string, value:string, unit:string, label:string }) {
   return (
-    <div style={{ padding:'16px 12px', textAlign:'center', borderLeft:'1px solid rgba(255,255,255,.06)' }}>
-      <div style={{ fontSize:12, letterSpacing:'.28em', textTransform:'uppercase', fontWeight:800, opacity:.55, marginBottom:4 }}>{label}</div>
-      <div style={{ fontSize:40, fontWeight:900, lineHeight:1, fontVariantNumeric:'tabular-nums' }}>
-        <span style={{ marginRight:6, fontSize:32 }}>{icon}</span>{value}
+    <div style={{ padding:'10px 8px', textAlign:'center', borderLeft:'1px solid rgba(255,255,255,.06)' }}>
+      <div style={{ fontSize:12, letterSpacing:'.28em', textTransform:'uppercase', fontWeight:800, opacity:.55, marginBottom:2 }}>
+        <span style={{ marginRight:6 }}>{icon}</span>{label}
+      </div>
+      <div style={{ fontSize:30, fontWeight:900, lineHeight:1, fontVariantNumeric:'tabular-nums' }}>
+        {value}<span style={{ fontSize:14, marginLeft:2, opacity:.65, fontWeight:700, letterSpacing:'.04em' }}>{unit}</span>
       </div>
     </div>
   )
