@@ -49,6 +49,7 @@ export const STREAM_KEYFRAMES = `
 @keyframes sgOutZC  { from{opacity:1;transform:translate(-50%,-50%) scale(1)}         to{opacity:0;transform:translate(-50%,-50%) scale(.94)} }
 @keyframes sgInClip { from{clip-path:inset(0 100% 0 0);opacity:0}                     to{clip-path:inset(0 0 0 0);opacity:1} }
 @keyframes sgOutClip{ from{clip-path:inset(0 0 0 0);opacity:1}                        to{clip-path:inset(0 0 0 100%);opacity:0} }
+@keyframes sgBlink    { 0%,100%{opacity:1} 50%{opacity:.3} }
 @keyframes sgSrvPulse { 0%,100%{box-shadow:0 0 0 0 rgba(239,106,76,.7)} 50%{box-shadow:0 0 0 12px rgba(239,106,76,0)} }
 @keyframes sgSheen    { 0%{transform:translateX(-110%)} 60%,100%{transform:translateX(210%)} }
 /* Digit pop-in — usado al cambiar puntos/sets para darle vida */

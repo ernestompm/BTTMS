@@ -110,7 +110,7 @@ export const GRAPHICS: Record<GraphicKey, GraphicMeta> = {
     key: 'bracket',
     label: 'Bracket',
     group: 'utility',
-    hotkey: 'T',
+    hotkey: 'B',
     description: 'Cuadro knockout con el camino del partido resaltado',
     zIndex: 500,
     defaultHoldMs: 12000,
