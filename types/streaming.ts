@@ -15,6 +15,8 @@ export type GraphicKey =
   | 'coin_toss'
   | 'weather'
   | 'bracket'
+  | 'awards_podium'
+  | 'stats_ticker'
 
 export interface GraphicState<T = any> {
   visible: boolean
@@ -43,6 +45,23 @@ export interface CoinTossData {
 export interface ResultsGridData {
   category?: string
   highlight_match_id?: string
+}
+
+export interface AwardsPodiumData {
+  rank: 'champion' | 'runner_up' | 'third'
+  players: Array<{
+    first_name: string
+    last_name: string
+    nationality?: string | null
+    photo_url?: string | null
+  }>
+  category_label?: string
+}
+
+export interface StatsTickerData {
+  scope?: 'auto' | 'set_1' | 'set_2' | 'set_3' | 'match'
+  /** ms por estadística antes de rotar a la siguiente */
+  interval_ms?: number
 }
 
 // ─── Session + state ─────────────────────────────────────────────────────────

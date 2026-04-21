@@ -19,6 +19,7 @@ import {
   TournamentIntro, VenueCard, MatchPresentation, PlayerBio,
   RefereeLowerThird, StatsPanel, Scorebug, BigScoreboard,
   ResultsGrid, CoinToss, WeatherCard, BracketView,
+  AwardsPodium, StatsTicker,
 } from './graphics'
 import { deriveLiveFlag } from '@/lib/streaming/flags'
 
@@ -61,6 +62,8 @@ export function StageCanvas({ match, tournament, allMatches, referee, mainSponso
   const bigScoreOpts = (d('big_scoreboard') as any) ?? {}
   const resultsCat = (d('results_grid') as any)?.category ?? match.category
   const bracketCat = (d('bracket') as any)?.category ?? match.category
+  const awardsData = (d('awards_podium') as any) ?? null
+  const tickerInterval = (d('stats_ticker') as any)?.interval_ms ?? 5000
 
   return (
     <>
@@ -74,6 +77,8 @@ export function StageCanvas({ match, tournament, allMatches, referee, mainSponso
       <Presence show={v('player_bio') && !!bioPlayer} exitMs={700}>{(vis) => <PlayerBio    visible={vis} player={bioPlayer!} team={bioTeam} category={match.category} tournament={tournament}/>}</Presence>
       <Presence show={v('weather')}             exitMs={650}>{(vis) => <WeatherCard       visible={vis} weather={weather} tournament={tournament}/>}</Presence>
       <Presence show={v('big_scoreboard')}      exitMs={700}>{(vis) => <BigScoreboard     visible={vis} match={match} tournament={tournament} sponsor={mainSponsor} opts={bigScoreOpts}/>}</Presence>
+      <Presence show={v('awards_podium') && !!awardsData} exitMs={750}>{(vis) => <AwardsPodium visible={vis} data={awardsData} tournament={tournament}/>}</Presence>
+      <Presence show={v('stats_ticker')}        exitMs={650}>{(vis) => <StatsTicker       visible={vis} match={match} tournament={tournament} interval_ms={tickerInterval}/>}</Presence>
       <Presence show={v('referee_lower_third')} exitMs={700}>{(vis) => <RefereeLowerThird visible={vis} referee={referee} tournament={tournament}/>}</Presence>
       <Presence show={v('scorebug')}            exitMs={500}>{(vis) => <Scorebug          visible={vis} match={match} tournament={tournament} flag={flag}/>}</Presence>
     </>

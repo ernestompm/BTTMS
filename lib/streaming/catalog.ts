@@ -124,12 +124,30 @@ export const GRAPHICS: Record<GraphicKey, GraphicMeta> = {
     zIndex: 650,
     defaultHoldMs: 10000,
   },
+  awards_podium: {
+    key: 'awards_podium',
+    label: 'Premiación',
+    group: 'presentation',
+    hotkey: 'P',
+    description: 'Lower third de premiación (Campeón / Subcampeón / Tercero)',
+    zIndex: 900,
+    defaultHoldMs: 12000,
+  },
+  stats_ticker: {
+    key: 'stats_ticker',
+    label: 'Stats ticker',
+    group: 'stats',
+    hotkey: 'X',
+    description: 'Ticker rotativo con estadísticas en vivo',
+    zIndex: 750,
+    defaultHoldMs: 0, // persistente mientras esté visible
+  },
 }
 
 export const GRAPHIC_ORDER: GraphicKey[] = [
   'tournament_intro','venue_card','match_presentation','coin_toss','player_bio',
-  'referee_lower_third','scorebug','big_scoreboard','stats_panel','results_grid',
-  'bracket','weather',
+  'referee_lower_third','scorebug','big_scoreboard','stats_panel','stats_ticker',
+  'results_grid','bracket','weather','awards_podium',
 ]
 
 export const GROUP_LABELS: Record<GraphicMeta['group'], string> = {

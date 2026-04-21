@@ -31,8 +31,8 @@ export default async function OverlayPreviewPage({ params }: { params: Promise<{
   const { data: allMatches } = await service.from('matches')
     .select(`id, round, status, category, match_type, score, scheduled_at, match_number,
       court:courts(name),
-      entry1:draw_entries!entry1_id(seed, player1:players!player1_id(last_name,nationality), player2:players!player2_id(last_name,nationality)),
-      entry2:draw_entries!entry2_id(seed, player1:players!player1_id(last_name,nationality), player2:players!player2_id(last_name,nationality))`)
+      entry1:draw_entries!entry1_id(id, seed, player1:players!player1_id(id,first_name,last_name,nationality,photo_url), player2:players!player2_id(id,first_name,last_name,nationality,photo_url)),
+      entry2:draw_entries!entry2_id(id, seed, player1:players!player1_id(id,first_name,last_name,nationality,photo_url), player2:players!player2_id(id,first_name,last_name,nationality,photo_url))`)
     .eq('tournament_id', match.tournament_id).eq('category', match.category).order('match_number')
 
   let { data: session } = await service.from('stream_sessions').select('*').eq('match_id', matchId).single()

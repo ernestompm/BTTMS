@@ -11,7 +11,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import type { Tournament, WeatherData } from '@/types'
-import { categoryLabel, roundLabel } from '@/types'
+import { categoryLabel, roundLabel, CATEGORY_LABELS } from '@/types'
 import type { GraphicsMap, GraphicKey } from '@/types/streaming'
 import { GRAPHICS, GRAPHIC_ORDER, GROUP_LABELS } from '@/lib/streaming/catalog'
 import { AutomationRunner } from '@/lib/streaming/automation'
@@ -214,8 +214,8 @@ export function OperatorPanel({ session, initialMatch, tournament, rules, allMat
     { team:2 as const, p: match.entry2?.player2 },
   ].filter(x => x.p)
 
-  // Graphics agrupados (sin player_bio — tiene sus botones per-player)
-  const grouped = GRAPHIC_ORDER.filter(k => k !== 'player_bio').reduce<Record<string, GraphicKey[]>>((acc, k) => {
+  // Graphics agrupados (sin player_bio ni awards_podium — tienen UIs propias)
+  const grouped = GRAPHIC_ORDER.filter(k => k !== 'player_bio' && k !== 'awards_podium').reduce<Record<string, GraphicKey[]>>((acc, k) => {
     const g = GRAPHICS[k].group; (acc[g] ??= []).push(k); return acc
   }, {})
 
@@ -333,6 +333,9 @@ export function OperatorPanel({ session, initialMatch, tournament, rules, allMat
             setStatsScope={setStatsScope}
             showSponsor={showSponsor}
             setShowSponsor={setShowSponsor}
+            allMatches={allMatches}
+            isDoubles={match.match_type === 'doubles'}
+            categoryLbl={(match.category ?? '').toString()}
           />
         ) : (
           <AutoTab
@@ -374,7 +377,7 @@ function Monitor({ label, color, indicator, children }: { label:string, color:st
 }
 
 // ─── Manual Tab ──────────────────────────────────────────────────────────────
-function ManualTab({ grouped, playersList, selectGraphic, resolveData, previewKey, previewData, program, mode, statsScope, setStatsScope, showSponsor, setShowSponsor }: {
+function ManualTab({ grouped, playersList, selectGraphic, resolveData, previewKey, previewData, program, mode, statsScope, setStatsScope, showSponsor, setShowSponsor, allMatches, isDoubles, categoryLbl }: {
   grouped: Record<string, GraphicKey[]>
   playersList: Array<{ team:1|2, p:any }>
   selectGraphic: (k:GraphicKey, data?:any, direct?:boolean) => void
@@ -387,6 +390,9 @@ function ManualTab({ grouped, playersList, selectGraphic, resolveData, previewKe
   setStatsScope: (v:any) => void
   showSponsor: boolean
   setShowSponsor: (v:any) => void
+  allMatches: any[]
+  isDoubles: boolean
+  categoryLbl: string
 }) {
   const isInProgram = (k: GraphicKey) => !!program[k]?.visible
   const isInPreview = (k: GraphicKey, data?: any) => {
@@ -439,6 +445,17 @@ function ManualTab({ grouped, playersList, selectGraphic, resolveData, previewKe
         </div>
       </section>
 
+      {/* PREMIACIÓN */}
+      <AwardsSection
+        allMatches={allMatches}
+        isDoubles={isDoubles}
+        categoryLbl={categoryLbl}
+        selectGraphic={selectGraphic}
+        inProgram={isInProgram('awards_podium')}
+        inPreview={previewKey === 'awards_podium'}
+        mode={mode}
+      />
+
       {/* Resto de graphics agrupados */}
       {Object.entries(grouped).map(([group, keys]) => (
         <section key={group} style={panel()}>
@@ -466,6 +483,90 @@ function ManualTab({ grouped, playersList, selectGraphic, resolveData, previewKe
     </div>
   )
 }
+// ─── Awards section (Campeón / Subcampeón / Tercero) ───────────────────────
+function AwardsSection({ allMatches, isDoubles, categoryLbl, selectGraphic, inProgram, inPreview, mode }: {
+  allMatches: any[]
+  isDoubles: boolean
+  categoryLbl: string
+  selectGraphic: (k:GraphicKey, data?:any, direct?:boolean) => void
+  inProgram: boolean
+  inPreview: boolean
+  mode: Mode
+}) {
+  const [rank, setRank] = useState<'champion'|'runner_up'|'third'>('champion')
+  const [entryId, setEntryId] = useState<string>('')
+
+  const uniqueEntries = useMemo(() => {
+    const map = new Map<string, any>()
+    allMatches.forEach(m => {
+      for (const e of [m.entry1, m.entry2]) {
+        if (e?.id && e?.player1 && !map.has(e.id)) map.set(e.id, e)
+      }
+    })
+    return Array.from(map.values())
+  }, [allMatches])
+
+  function entryLabel(e: any): string {
+    const names = [e.player1, e.player2].filter(Boolean).map((p: any) => `${p.last_name}`)
+    return names.join(' / ')
+  }
+
+  function go(direct = false) {
+    const entry = uniqueEntries.find(e => e.id === entryId)
+    if (!entry) return
+    const players = [entry.player1, isDoubles ? entry.player2 : null].filter(Boolean).map((p: any) => ({
+      first_name: p.first_name ?? '', last_name: p.last_name ?? '',
+      nationality: p.nationality ?? null, photo_url: p.photo_url ?? null,
+    }))
+    const data = {
+      rank, players,
+      category_label: (CATEGORY_LABELS as any)[categoryLbl] ?? categoryLbl,
+    }
+    selectGraphic('awards_podium', data, direct)
+  }
+
+  const rankColor: Record<typeof rank, string> = { champion:'#fcd34d', runner_up:'#cbd5e1', third:'#b45309' } as any
+
+  return (
+    <section style={panel()}>
+      <Title t="Premiación (Campeón / Subcampeón / Tercero)"/>
+      <div style={{ display:'grid', gridTemplateColumns:'auto 1fr auto', gap:12, alignItems:'end' }}>
+        <div>
+          <div style={labelSm()}>Posición</div>
+          <div style={{ display:'flex', gap:6, marginTop:6 }}>
+            {(['champion','runner_up','third'] as const).map(r => (
+              <button key={r} onClick={() => setRank(r)} style={chip(rank===r, rankColor[r])}>
+                {r === 'champion' ? '🏆 Campeón' : r === 'runner_up' ? '🥈 Subcampeón' : '🥉 Tercero'}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <div style={labelSm()}>Equipo / pareja</div>
+          <select value={entryId} onChange={(e) => setEntryId(e.target.value)}
+            className=""
+            style={{ marginTop:6, width:'100%', background:'#0a101e', border:'1px solid #243250', borderRadius:10, padding:'8px 12px', color:'#cfd9ea', fontSize:13 }}>
+            <option value="">— seleccionar —</option>
+            {uniqueEntries.map(e => (
+              <option key={e.id} value={e.id}>{entryLabel(e)}</option>
+            ))}
+          </select>
+        </div>
+        <div style={{ display:'flex', gap:6 }}>
+          <button onClick={(ev) => go(ev.shiftKey)} disabled={!entryId}
+            title="Click = preview · Shift+Click = directo a programa"
+            style={{ ...btn('primary'), opacity: entryId ? 1 : .4 }}>
+            CARGAR
+          </button>
+        </div>
+      </div>
+      <div style={{ marginTop:8 }}>
+        <StateBadge inProg={inProgram} inPreview={inPreview} mode={mode}/>
+      </div>
+    </section>
+  )
+}
+
 function StateBadge({ inProg, inPreview, mode }: { inProg:boolean, inPreview:boolean, mode:Mode }) {
   return (
     <div style={{ marginTop:8, display:'flex', gap:6, fontSize:10, letterSpacing:'.22em', fontWeight:900 }}>

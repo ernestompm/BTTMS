@@ -8,7 +8,7 @@
 //  · dark glass card  · 6-8px accent top bar  · 'Barlow Condensed'
 // ============================================================================
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import type { Score, Player, Sponsor, Tournament, WeatherData, Category } from '@/types'
 import { CATEGORY_LABELS } from '@/types'
 import { animStyle, hexAlpha, flagPath, palette, firstSurname, CARD, KICKER } from './stage-shared'
@@ -1181,6 +1181,158 @@ function BracketLine({ entry, score, team, accent, isDoubles }:{ entry:any, scor
           {v===null?'':v}
         </span>
       ))}
+    </div>
+  )
+}
+
+// ╔══════════════════════════════════════════════════════════════════════════╗
+// ║ 13) AWARDS PODIUM — Campeón / Subcampeón / Tercero (lower third grande)  ║
+// ╚══════════════════════════════════════════════════════════════════════════╝
+const RANK_CFG: Record<string, { label:string, medal:string, gradFrom:string, gradTo:string, text:string }> = {
+  champion:  { label: 'CAMPEÓN',    medal: '🏆', gradFrom: '#fde68a', gradTo: '#d97706', text: '#1f1200' },
+  runner_up: { label: 'SUBCAMPEÓN', medal: '🥈', gradFrom: '#e2e8f0', gradTo: '#64748b', text: '#0f172a' },
+  third:     { label: 'TERCERO',    medal: '🥉', gradFrom: '#fdba74', gradTo: '#7c2d12', text: '#1a0800' },
+}
+
+interface AwardsData {
+  rank: 'champion'|'runner_up'|'third'
+  players: Array<{ first_name:string, last_name:string, nationality?:string|null, photo_url?:string|null }>
+  category_label?: string
+}
+
+export function AwardsPodium({ visible, data, tournament }: { visible:boolean, data:AwardsData|null, tournament: Tournament | null }) {
+  if (!data || !data.players || data.players.length === 0) return null
+  const pal = palette(tournament?.scoreboard_config)
+  const cfg = RANK_CFG[data.rank] ?? RANK_CFG.champion
+  return (
+    <div style={{ position:'absolute', left:'50%', bottom:90, transform:'translateX(-50%)', width:1440, ...CARD, padding:0, overflow:'hidden',
+      borderTop:`10px solid ${cfg.gradFrom}`,
+      ...animStyle(visible, 'sgInU', 'sgOutU', 750) }}>
+      <div style={{ display:'grid', gridTemplateColumns:'240px 1fr auto', alignItems:'center', padding:'26px 32px', gap:30,
+        background:`linear-gradient(90deg, ${hexAlpha(cfg.gradFrom,.22)} 0%, ${hexAlpha(cfg.gradTo,.08)} 60%, transparent 100%)` }}>
+
+        {/* Left: medal + rank label */}
+        <div style={{ textAlign:'center' }}>
+          <div style={{ fontSize:140, lineHeight:1 }}>{cfg.medal}</div>
+          <div style={{ marginTop:6, padding:'8px 18px', borderRadius:999,
+            background:`linear-gradient(90deg, ${cfg.gradFrom} 0%, ${cfg.gradTo} 100%)`,
+            color:cfg.text, fontSize:26, fontWeight:900, letterSpacing:'.28em', textTransform:'uppercase', display:'inline-block' }}>
+            {cfg.label}
+          </div>
+        </div>
+
+        {/* Center: players */}
+        <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+          {data.category_label && (
+            <div style={{ fontSize:28, fontWeight:800, letterSpacing:'.22em', textTransform:'uppercase', color:pal.text2 }}>
+              {data.category_label}
+            </div>
+          )}
+          {data.players.map((p, i) => (
+            <div key={i} style={{ display:'flex', alignItems:'center', gap:18 }}>
+              {p.nationality && (
+                <img src={flagPath(p.nationality)} alt="" style={{ flex:'none', width:72, height:48, borderRadius:5, objectFit:'cover', boxShadow:'0 4px 14px rgba(0,0,0,.4)' }}/>
+              )}
+              <div style={{ lineHeight:1 }}>
+                <div style={{ fontSize:32, fontWeight:700, letterSpacing:'.02em', textTransform:'uppercase', opacity:.85 }}>
+                  {p.first_name}
+                </div>
+                <div style={{ fontSize:64, fontWeight:900, lineHeight:.94, textTransform:'uppercase', color:cfg.gradFrom, textShadow:`0 4px 18px ${hexAlpha(cfg.gradFrom,.35)}` }}>
+                  {p.last_name}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Right: tournament logo */}
+        <div style={{ textAlign:'right' }}>
+          {tournament?.logo_url && <img src={tournament.logo_url} alt="" style={{ height:140, objectFit:'contain' }}/>}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ╔══════════════════════════════════════════════════════════════════════════╗
+// ║ 14) STATS TICKER — banda inferior con estadísticas rotativas             ║
+// ╚══════════════════════════════════════════════════════════════════════════╝
+export function StatsTicker({ visible, match, tournament, interval_ms = 5000 }: { visible:boolean, match:any, tournament: Tournament | null, interval_ms?:number }) {
+  const pal = palette(tournament?.scoreboard_config)
+  const isDoubles = match.match_type === 'doubles'
+  const advanced = !!tournament?.advanced_stats_enabled
+  const s = match?.stats
+
+  const items = useMemo(() => {
+    if (!s?.t1 || !s?.t2) return [] as Array<{label:string, a:string, b:string}>
+    return [
+      { label: 'Aces',               a: String(s.t1.aces),           b: String(s.t2.aces) },
+      { label: 'Dobles faltas',      a: String(s.t1.double_faults),  b: String(s.t2.double_faults) },
+      ...(advanced ? [
+        { label: 'Winners',              a: String(s.t1.winners),         b: String(s.t2.winners) },
+        { label: 'Errores no forzados',  a: String(s.t1.unforced_errors), b: String(s.t2.unforced_errors) },
+      ] : []),
+      { label: '% Puntos saque',     a: `${Math.round(s.t1.serve_points_won_pct||0)}%`,  b: `${Math.round(s.t2.serve_points_won_pct||0)}%` },
+      { label: '% Puntos resto',     a: `${Math.round(s.t1.return_points_won_pct||0)}%`, b: `${Math.round(s.t2.return_points_won_pct||0)}%` },
+      { label: 'Breaks ganados',     a: String(s.t1.break_points_won),  b: String(s.t2.break_points_won) },
+      { label: 'Puntos totales',     a: String(s.t1.total_points_won),  b: String(s.t2.total_points_won) },
+    ]
+  }, [s, advanced])
+
+  const [idx, setIdx] = useState(0)
+  useEffect(() => {
+    if (!visible || items.length === 0) return
+    setIdx(0)
+    const id = setInterval(() => setIdx(i => (i+1) % items.length), Math.max(2000, interval_ms))
+    return () => clearInterval(id)
+  }, [visible, items.length, interval_ms])
+
+  if (items.length === 0 || !match?.entry1 || !match?.entry2) return null
+  const item = items[idx] ?? items[0]
+
+  const team1Name = isDoubles
+    ? `${firstSurname(match.entry1?.player1)} / ${firstSurname(match.entry1?.player2)}`
+    : (match.entry1?.player1?.last_name ?? '—')
+  const team2Name = isDoubles
+    ? `${firstSurname(match.entry2?.player1)} / ${firstSurname(match.entry2?.player2)}`
+    : (match.entry2?.player1?.last_name ?? '—')
+  const nat1 = match.entry1?.player1?.nationality
+  const nat2 = match.entry2?.player1?.nationality
+
+  const numA = parseFloat(String(item.a).replace('%','')) || 0
+  const numB = parseFloat(String(item.b).replace('%','')) || 0
+  const aWins = numA > numB, bWins = numB > numA
+
+  return (
+    <div style={{ position:'absolute', left:'50%', bottom:60, transform:'translateX(-50%)', width:1280, height:110, ...CARD, padding:0, overflow:'hidden',
+      borderTop:`4px solid ${pal.accentA}`,
+      display:'grid', gridTemplateColumns:'1fr auto 1fr',
+      ...animStyle(visible, 'sgInU', 'sgOutU', 650) }}>
+
+      {/* Team 1 side */}
+      <div style={{ display:'grid', gridTemplateColumns:'1fr auto', alignItems:'center', gap:16, padding:'0 24px', borderRight:'1px solid rgba(255,255,255,.06)', background: aWins ? hexAlpha(pal.accentA,.08) : 'transparent' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:12, minWidth:0 }}>
+          <img src={flagPath(nat1)} alt="" style={{ flex:'none', width:44, height:30, borderRadius:4, objectFit:'cover' }}/>
+          <span style={{ fontSize:28, fontWeight:900, textTransform:'uppercase', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{team1Name.toUpperCase()}</span>
+        </div>
+        <span key={`a${idx}`} style={{ fontSize:56, fontWeight:900, fontVariantNumeric:'tabular-nums', color: aWins ? pal.accentA : '#fff', animation:'sgDigitIn 420ms both', lineHeight:1 }}>{item.a}</span>
+      </div>
+
+      {/* Label */}
+      <div style={{ padding:'0 26px', display:'grid', placeItems:'center' }}>
+        <span key={`l${idx}`} style={{ fontSize:24, fontWeight:900, letterSpacing:'.3em', textTransform:'uppercase', opacity:.9, color:pal.accentA, animation:'sgDigitIn 420ms both', textAlign:'center', lineHeight:1 }}>
+          {item.label.toUpperCase()}
+        </span>
+      </div>
+
+      {/* Team 2 side */}
+      <div style={{ display:'grid', gridTemplateColumns:'auto 1fr', alignItems:'center', gap:16, padding:'0 24px', borderLeft:'1px solid rgba(255,255,255,.06)', background: bWins ? hexAlpha(pal.accentB,.08) : 'transparent' }}>
+        <span key={`b${idx}`} style={{ fontSize:56, fontWeight:900, fontVariantNumeric:'tabular-nums', color: bWins ? pal.accentB : '#fff', animation:'sgDigitIn 420ms both', lineHeight:1 }}>{item.b}</span>
+        <div style={{ display:'flex', alignItems:'center', gap:12, minWidth:0, justifyContent:'flex-end' }}>
+          <span style={{ fontSize:28, fontWeight:900, textTransform:'uppercase', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{team2Name.toUpperCase()}</span>
+          <img src={flagPath(nat2)} alt="" style={{ flex:'none', width:44, height:30, borderRadius:4, objectFit:'cover' }}/>
+        </div>
+      </div>
     </div>
   )
 }
