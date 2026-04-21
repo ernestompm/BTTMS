@@ -54,10 +54,17 @@ export function OperatorPanel({ session, initialMatch, tournament, rules, allMat
   }, [])
   useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('stream:mode', mode) }, [mode])
 
-  // URLs
-  const overlayUrl     = typeof window === 'undefined' ? '' : `${window.location.origin}/overlay/${session.match_id}`
-  const previewUrl     = typeof window === 'undefined' ? '' : `${window.location.origin}/overlay/${session.match_id}/preview`
-  const venueUrl       = typeof window === 'undefined' ? '' : `${window.location.origin}/scoreboard/${session.match_id}`
+  // URLs — se calculan SOLO en cliente (window no existe en SSR).
+  // Evita mismatch de hidrataci\u00f3n que dejaba iframes con src="" en algunos renders.
+  const [overlayUrl, setOverlayUrl] = useState('')
+  const [previewUrl, setPreviewUrl] = useState('')
+  const [venueUrl,   setVenueUrl]   = useState('')
+  useEffect(() => {
+    const o = window.location.origin
+    setOverlayUrl(`${o}/overlay/${session.match_id}`)
+    setPreviewUrl(`${o}/overlay/${session.match_id}/preview`)
+    setVenueUrl(  `${o}/scoreboard/${session.match_id}`)
+  }, [session.match_id])
 
   // Suscripciones
   useEffect(() => {
@@ -253,7 +260,7 @@ export function OperatorPanel({ session, initialMatch, tournament, rules, allMat
       {/* MONITORES — height natural 16:9 basado en ancho */}
       <div style={{ flex:'0 0 auto', padding:'10px 16px', display:'grid', gridTemplateColumns: mode==='preview-take' ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)', gap:12 }}>
         <Monitor label="VENUE" color="#8ea2c6">
-          <iframe src={venueUrl} style={{ width:'100%', height:'100%', border:0, background:'#050810', pointerEvents:'none' }}/>
+          {venueUrl && <iframe src={venueUrl} style={{ position:'absolute', inset:0, width:'100%', height:'100%', border:0, background:'#050810', pointerEvents:'none' }}/>}
         </Monitor>
 
         {mode === 'preview-take' && (
@@ -262,14 +269,16 @@ export function OperatorPanel({ session, initialMatch, tournament, rules, allMat
             color="#22d3ee"
             indicator={previewKey ? 'ready' : undefined}
           >
-            <div style={{ width:'100%', height:'100%', background:'repeating-conic-gradient(#141a2a 0 25%, #0a0f1c 0 50%) 50% / 40px 40px' }}>
+            <div style={{ position:'absolute', inset:0, background:'repeating-conic-gradient(#141a2a 0 25%, #0a0f1c 0 50%) 50% / 40px 40px' }}>
               <MiniStage graphics={previewGraphics} match={match} tournament={tournament} allMatches={allMatches} referee={referee} mainSponsor={mainSponsor} weather={weather}/>
             </div>
           </Monitor>
         )}
 
         <Monitor label="PROGRAMA · EN AIRE" color="#ef4444" indicator="live">
-          <iframe src={overlayUrl} style={{ width:'100%', height:'100%', border:0, background:'repeating-conic-gradient(#141a2a 0 25%, #0a0f1c 0 50%) 50% / 40px 40px', pointerEvents:'none' }}/>
+          <div style={{ position:'absolute', inset:0, background:'repeating-conic-gradient(#141a2a 0 25%, #0a0f1c 0 50%) 50% / 40px 40px' }}>
+            {overlayUrl && <iframe src={overlayUrl} style={{ width:'100%', height:'100%', border:0, background:'transparent', pointerEvents:'none' }}/>}
+          </div>
         </Monitor>
       </div>
 
@@ -348,14 +357,18 @@ export function OperatorPanel({ session, initialMatch, tournament, rules, allMat
 // ─── Monitor ─────────────────────────────────────────────────────────────────
 function Monitor({ label, color, indicator, children }: { label:string, color:string, indicator?:'live'|'ready', children:React.ReactNode }) {
   return (
-    <div style={{ background:'#0a101e', border:'1px solid #141a2a', borderRadius:12, overflow:'hidden', display:'flex', flexDirection:'column' }}>
+    <div style={{ background:'#0a101e', border:'1px solid #141a2a', borderRadius:12, overflow:'hidden', display:'flex', flexDirection:'column', minWidth:0 }}>
       <div style={{ flex:'0 0 auto', display:'flex', alignItems:'center', gap:10, padding:'6px 12px', borderBottom:'1px solid #141a2a' }}>
         {indicator === 'live' && <span style={{ width:8, height:8, borderRadius:'50%', background:'#ef4444', boxShadow:'0 0 10px #ef4444', animation:'sgBlink 1.2s infinite' }}/>}
         {indicator === 'ready' && <span style={{ width:8, height:8, borderRadius:'50%', background:'#22d3ee' }}/>}
         <span style={{ fontSize:11, letterSpacing:'.3em', fontWeight:900, textTransform:'uppercase', color }}>{label}</span>
       </div>
-      {/* Contenedor 16:9 natural a partir del ancho */}
-      <div style={{ position:'relative', width:'100%', aspectRatio:'16 / 9', flex:'0 0 auto' }}>{children}</div>
+      {/* 16:9 robusto via padding-bottom trick (56.25%). Funciona en todos
+          los motores incluso dentro de grid+flex; el hijo se posiciona
+          absolute:inset:0 y rellena el hueco. */}
+      <div style={{ position:'relative', width:'100%', paddingBottom:'56.25%', flex:'0 0 auto' }}>
+        {children}
+      </div>
     </div>
   )
 }
