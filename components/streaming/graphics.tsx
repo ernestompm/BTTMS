@@ -246,9 +246,8 @@ export function PlayerBio({ visible, player, team, category, tournament }: { vis
   const enter = side==='left' ? 'sgInR' : 'sgInL'
   const exit  = side==='left' ? 'sgOutR' : 'sgOutL'
 
-  // FICHA rows (excluyendo rankings que tienen sección propia)
+  // FICHA rows (sin nacionalidad — la bandera ya la indica; rankings en seccion aparte)
   const ficha: Array<[string,string]> = []
-  if (player.nationality)            ficha.push(['Nacionalidad', player.nationality.toUpperCase()])
   if (player.birth_date)             ficha.push(['Edad', String(ageFrom(player.birth_date))])
   else if (player.age_manual)        ficha.push(['Edad', String(player.age_manual)])
   if (player.birth_city)             ficha.push(['Nacimiento', player.birth_city])
@@ -267,7 +266,7 @@ export function PlayerBio({ visible, player, team, category, tournament }: { vis
   if (side==='right') pos.right = 60
 
   const sectionTitle: React.CSSProperties = {
-    fontSize:20, letterSpacing:'.34em', textTransform:'uppercase', fontWeight:900, color:accent,
+    fontSize:26, letterSpacing:'.34em', textTransform:'uppercase', fontWeight:900, color:accent,
   }
   const divider: React.CSSProperties = { height:1, background:'rgba(255,255,255,.1)', margin:'22px 0' }
 
@@ -277,7 +276,7 @@ export function PlayerBio({ visible, player, team, category, tournament }: { vis
       display:'flex', flexDirection:'column',
       ...animStyle(visible, enter, exit, 700) } as any}>
 
-      {/* HEADER — foto + nombre grande */}
+      {/* HEADER — foto (si hay) + nombre con bandera alineada junto al nombre */}
       <div style={{ padding:'30px 36px 26px', display:'flex', gap:24, alignItems:'center' }}>
         {hasPhoto && (
           <div style={{ flex:'none', width:240, height:240, borderRadius:16, overflow:'hidden',
@@ -285,21 +284,20 @@ export function PlayerBio({ visible, player, team, category, tournament }: { vis
             <img src={player.photo_url!} style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
           </div>
         )}
-        <div style={{ minWidth:0, flex:1 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:6 }}>
-            <img src={flagPath(player.nationality)} alt="" style={{ width:60, height:40, borderRadius:4, objectFit:'cover' }}/>
-            <span style={{ fontSize:22, letterSpacing:'.3em', textTransform:'uppercase', fontWeight:900, opacity:.6 }}>JUGADOR</span>
-          </div>
-          <div style={{ fontSize:38, fontWeight:700, letterSpacing:'.02em', textTransform:'uppercase', lineHeight:1, opacity:.88 }}>
-            {player.first_name}
-          </div>
-          <div style={{ fontSize:80, fontWeight:900, lineHeight:.92, textTransform:'uppercase', color:accent, letterSpacing:'-.005em' }}>
-            {player.last_name}
+        <div style={{ minWidth:0, flex:1, display:'flex', alignItems:'center', gap:20 }}>
+          <img src={flagPath(player.nationality)} alt="" style={{ flex:'none', width:96, height:64, borderRadius:6, objectFit:'cover', boxShadow:'0 4px 14px rgba(0,0,0,.4)' }}/>
+          <div style={{ minWidth:0 }}>
+            <div style={{ fontSize:42, fontWeight:700, letterSpacing:'.02em', textTransform:'uppercase', lineHeight:1, opacity:.88 }}>
+              {player.first_name}
+            </div>
+            <div style={{ fontSize:82, fontWeight:900, lineHeight:.92, textTransform:'uppercase', color:accent, letterSpacing:'-.005em' }}>
+              {player.last_name}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* BODY scrollable-like: flex column with gaps */}
+      {/* BODY */}
       <div style={{ padding:'0 36px 30px', display:'flex', flexDirection:'column', flex:1, overflow:'hidden' }}>
 
         {/* FICHA */}
@@ -307,11 +305,11 @@ export function PlayerBio({ visible, player, team, category, tournament }: { vis
           <>
             <div style={divider}/>
             <div style={sectionTitle}>FICHA</div>
-            <div style={{ marginTop:14, display:'grid', gridTemplateColumns:'1fr 1fr', gap:'14px 28px' }}>
+            <div style={{ marginTop:16, display:'grid', gridTemplateColumns:'1fr 1fr', gap:'16px 30px' }}>
               {ficha.map(([k,v]) => (
                 <div key={k}>
-                  <div style={{ fontSize:15, letterSpacing:'.22em', textTransform:'uppercase', fontWeight:800, opacity:.55 }}>{k}</div>
-                  <div style={{ fontSize:30, fontWeight:900, marginTop:2, lineHeight:1.05 }}>{v}</div>
+                  <div style={{ fontSize:18, letterSpacing:'.24em', textTransform:'uppercase', fontWeight:800, opacity:.6 }}>{k}</div>
+                  <div style={{ fontSize:36, fontWeight:900, marginTop:3, lineHeight:1.05 }}>{v}</div>
                 </div>
               ))}
             </div>
@@ -323,17 +321,17 @@ export function PlayerBio({ visible, player, team, category, tournament }: { vis
           <>
             <div style={divider}/>
             <div style={sectionTitle}>RANKING</div>
-            <div style={{ marginTop:12, display:'flex', gap:40 }}>
+            <div style={{ marginTop:14, display:'flex', gap:22 }}>
               {player.ranking_rfet && (
-                <div style={{ flex:1, background:hexAlpha(accent,.12), border:`1px solid ${hexAlpha(accent,.3)}`, borderRadius:14, padding:'14px 20px' }}>
-                  <div style={{ fontSize:16, letterSpacing:'.28em', textTransform:'uppercase', fontWeight:900, opacity:.75 }}>RFET</div>
-                  <div style={{ fontSize:72, fontWeight:900, lineHeight:1, color:accent, fontVariantNumeric:'tabular-nums' }}>#{player.ranking_rfet}</div>
+                <div style={{ flex:1, background:hexAlpha(accent,.14), border:`1px solid ${hexAlpha(accent,.35)}`, borderRadius:14, padding:'16px 22px' }}>
+                  <div style={{ fontSize:20, letterSpacing:'.28em', textTransform:'uppercase', fontWeight:900, opacity:.8 }}>RFET</div>
+                  <div style={{ fontSize:82, fontWeight:900, lineHeight:1, color:accent, fontVariantNumeric:'tabular-nums' }}>#{player.ranking_rfet}</div>
                 </div>
               )}
               {player.ranking_itf && (
-                <div style={{ flex:1, background:hexAlpha(accent,.12), border:`1px solid ${hexAlpha(accent,.3)}`, borderRadius:14, padding:'14px 20px' }}>
-                  <div style={{ fontSize:16, letterSpacing:'.28em', textTransform:'uppercase', fontWeight:900, opacity:.75 }}>ITF</div>
-                  <div style={{ fontSize:72, fontWeight:900, lineHeight:1, color:accent, fontVariantNumeric:'tabular-nums' }}>#{player.ranking_itf}</div>
+                <div style={{ flex:1, background:hexAlpha(accent,.14), border:`1px solid ${hexAlpha(accent,.35)}`, borderRadius:14, padding:'16px 22px' }}>
+                  <div style={{ fontSize:20, letterSpacing:'.28em', textTransform:'uppercase', fontWeight:900, opacity:.8 }}>ITF</div>
+                  <div style={{ fontSize:82, fontWeight:900, lineHeight:1, color:accent, fontVariantNumeric:'tabular-nums' }}>#{player.ranking_itf}</div>
                 </div>
               )}
             </div>
@@ -345,11 +343,11 @@ export function PlayerBio({ visible, player, team, category, tournament }: { vis
           <>
             <div style={divider}/>
             <div style={sectionTitle}>PALMARÉS</div>
-            <div style={{ marginTop:10, display:'flex', flexDirection:'column', gap:8 }}>
+            <div style={{ marginTop:12, display:'flex', flexDirection:'column', gap:10 }}>
               {player.titles.slice(0,4).map((t,i) => (
-                <div key={i} style={{ display:'grid', gridTemplateColumns:'90px 1fr', gap:16, alignItems:'baseline' }}>
-                  <span style={{ fontSize:28, fontWeight:900, color:accent, fontVariantNumeric:'tabular-nums' }}>{t.year}</span>
-                  <span style={{ fontSize:24, fontWeight:700, lineHeight:1.15 }}>{t.name}</span>
+                <div key={i} style={{ display:'grid', gridTemplateColumns:'110px 1fr', gap:18, alignItems:'baseline' }}>
+                  <span style={{ fontSize:32, fontWeight:900, color:accent, fontVariantNumeric:'tabular-nums' }}>{t.year}</span>
+                  <span style={{ fontSize:28, fontWeight:700, lineHeight:1.15 }}>{t.name}</span>
                 </div>
               ))}
             </div>
@@ -361,7 +359,7 @@ export function PlayerBio({ visible, player, team, category, tournament }: { vis
           <>
             <div style={divider}/>
             <div style={sectionTitle}>BIO</div>
-            <div style={{ marginTop:10, fontSize:24, lineHeight:1.4, opacity:.9, overflow:'hidden', flex:1 }}>
+            <div style={{ marginTop:12, fontSize:26, lineHeight:1.4, opacity:.9, overflow:'hidden', flex:1 }}>
               {player.bio}
             </div>
           </>
@@ -481,6 +479,17 @@ export function StatsPanel({ visible, match, tournament, scope }: { visible:bool
           <StatRow key={i} label={r.label} a={r.a} b={r.b} accentA={pal.accentA} accentB={pal.accentB}/>
         ))}
       </div>
+
+      {/* FOOTER — fase del partido + categoria */}
+      <div style={{ marginTop:18, paddingTop:16, borderTop:'1px solid rgba(255,255,255,.08)', display:'flex', alignItems:'center', justifyContent:'center', gap:18, flexWrap:'wrap' }}>
+        <span style={{ fontSize:20, letterSpacing:'.28em', textTransform:'uppercase', fontWeight:900, color:pal.accentA }}>
+          {roundLabel(match.round)}
+        </span>
+        <span style={{ width:6, height:6, borderRadius:'50%', background:'rgba(255,255,255,.3)' }}/>
+        <span style={{ fontSize:18, letterSpacing:'.22em', textTransform:'uppercase', fontWeight:800, opacity:.75 }}>
+          {CATEGORY_LABELS[match.category as Category] ?? match.category}
+        </span>
+      </div>
     </div>
   )
 }
@@ -570,68 +579,57 @@ export function Scorebug({ visible, match, tournament, flag }: { visible:boolean
   }
   const flagColor = flag.kind ? (flagColors[flag.kind] ?? pal.accentA) : null
 
-  const setColW = 60
-  const ptsColW = 92
-  const gridCols = `14px 1fr ${Array(setCount).fill(`${setColW}px`).join(' ')} ${ptsColW}px`
-  const cardW = 420 + setCount * setColW + ptsColW  // ~572-692px
+  const colW = 54                                         // sets y puntos misma anchura
+  const gridCols = `12px 1fr ${Array(setCount + 1).fill(`${colW}px`).join(' ')}`
+  const cardW = 12 + 230 + colW * (setCount + 1)          // 296 - 404px (< 1/4 pantalla)
 
   return (
     <div style={{ position:'absolute', top:40, left:40, width: cardW, ...CARD, padding:0, overflow:'hidden',
       ...animStyle(visible, 'sgInR', 'sgOutR', 500) }}>
-      {/* Header — tournament name + round (full label) */}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr auto', alignItems:'center', padding:'10px 16px', background:'rgba(255,255,255,.04)', borderBottom:'1px solid rgba(255,255,255,.06)', gap:14 }}>
-        <span style={{ fontSize:18, letterSpacing:'.2em', textTransform:'uppercase', opacity:.9, fontWeight:900, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-          {tournament?.name ?? ''}
-        </span>
-        <span style={{ fontSize:16, letterSpacing:'.22em', textTransform:'uppercase', opacity:.65, fontWeight:800, whiteSpace:'nowrap' }}>
-          {roundLabel(match.round)}
-        </span>
-      </div>
-
-      {/* Rows */}
+      {/* Rows (sin header) */}
       {rows.map((r,ri) => (
-        <div key={r.team} style={{ display:'grid', gridTemplateColumns:gridCols, alignItems:'stretch', borderBottom: ri===0 ? '1px solid rgba(255,255,255,.06)' : 'none', height:68 }}>
+        <div key={r.team} style={{ display:'grid', gridTemplateColumns:gridCols, alignItems:'stretch', borderBottom: ri===0 ? '1px solid rgba(255,255,255,.06)' : 'none', height:54 }}>
           <div style={{ background:r.accent }}/>
-          <div style={{ padding:'0 14px', display:'flex', alignItems:'center', gap:12, minWidth:0 }}>
+          <div style={{ padding:'0 12px', display:'flex', alignItems:'center', gap:10, minWidth:0 }}>
             {isDoubles ? (
               <>
-                <div style={{ display:'flex', gap:4, flex:'none' }}>
+                <div style={{ display:'flex', gap:3, flex:'none' }}>
                   {r.players.map((p:any,i:number) => (
-                    <img key={i} src={flagPath(p.nationality)} alt="" style={{ width:32, height:22, borderRadius:3, objectFit:'cover' }}/>
+                    <img key={i} src={flagPath(p.nationality)} alt="" style={{ width:26, height:18, borderRadius:3, objectFit:'cover' }}/>
                   ))}
                 </div>
-                <span style={{ fontSize:34, fontWeight:900, textTransform:'uppercase', letterSpacing:'.005em', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:1, flex:1 }}>
+                <span style={{ fontSize:28, fontWeight:900, textTransform:'uppercase', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:1, flex:1 }}>
                   {r.players.map((p:any) => firstSurname(p).toUpperCase()).join(' / ')}
                 </span>
                 {r.serving && (
-                  <span style={{ width:14, height:14, borderRadius:'50%', background:pal.serve, flex:'none', animation:'sgSrvPulse 1.4s infinite' }}/>
+                  <span style={{ width:12, height:12, borderRadius:'50%', background:pal.serve, flex:'none', animation:'sgSrvPulse 1.4s infinite' }}/>
                 )}
               </>
             ) : (
               <>
-                <img src={flagPath(r.players[0]?.nationality)} alt="" style={{ width:40, height:28, borderRadius:4, objectFit:'cover', flex:'none' }}/>
-                <span style={{ fontSize:42, fontWeight:900, textTransform:'uppercase', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:1, flex:1 }}>
+                <img src={flagPath(r.players[0]?.nationality)} alt="" style={{ width:34, height:23, borderRadius:3, objectFit:'cover', flex:'none' }}/>
+                <span style={{ fontSize:36, fontWeight:900, textTransform:'uppercase', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:1, flex:1 }}>
                   {(r.players[0]?.last_name ?? '').toUpperCase()}
                 </span>
                 {r.serving && (
-                  <span style={{ width:14, height:14, borderRadius:'50%', background:pal.serve, flex:'none', animation:'sgSrvPulse 1.4s infinite' }}/>
+                  <span style={{ width:12, height:12, borderRadius:'50%', background:pal.serve, flex:'none', animation:'sgSrvPulse 1.4s infinite' }}/>
                 )}
               </>
             )}
           </div>
           {r.sets.map((v,i) => (
-            <div key={i} style={{ display:'grid', placeItems:'center', fontSize:40, fontWeight:900, borderLeft:'1px solid rgba(255,255,255,.06)',
+            <div key={i} style={{ display:'grid', placeItems:'center', fontSize:32, fontWeight:900, borderLeft:'1px solid rgba(255,255,255,.06)',
               background: i === currentSetIdx ? hexAlpha(r.accent,.18) : 'rgba(0,0,0,.2)',
               color: v===null ? 'rgba(255,255,255,.3)' : '#fff', fontVariantNumeric:'tabular-nums' }}>
               {v===null ? '–' : v}
             </div>
           ))}
-          <div style={{ display:'grid', placeItems:'center', background:r.accent, color:'#fff', fontSize:46, fontWeight:900, letterSpacing:'-.01em' }}>{r.pt}</div>
+          <div style={{ display:'grid', placeItems:'center', background:r.accent, color:'#fff', fontSize:32, fontWeight:900, letterSpacing:'-.01em' }}>{r.pt}</div>
         </div>
       ))}
       {/* Flag banner — NO blink */}
       {flag.kind && flag.label && (
-        <div style={{ padding:'9px 14px', background:flagColor!, color:'#000', fontSize:22, fontWeight:900, letterSpacing:'.3em', textAlign:'center', textTransform:'uppercase' }}>
+        <div style={{ padding:'7px 12px', background:flagColor!, color:'#000', fontSize:18, fontWeight:900, letterSpacing:'.28em', textAlign:'center', textTransform:'uppercase' }}>
           {flag.label}
         </div>
       )}
@@ -640,11 +638,11 @@ export function Scorebug({ visible, match, tournament, flag }: { visible:boolean
 }
 
 // ╔══════════════════════════════════════════════════════════════════════════╗
-// ║ 8) BIG SCOREBOARD — bounded card, phase in header, per-set times         ║
+// ║ 8) BIG SCOREBOARD — centrado, sponsor como panel lateral armonico        ║
 // ╚══════════════════════════════════════════════════════════════════════════╝
 export interface BigScoreboardOpts {
   show_sponsor?: boolean
-  set_durations?: number[] // seconds per completed set, optional
+  set_durations?: number[]
 }
 export function BigScoreboard({ visible, match, tournament, sponsor, opts }: { visible:boolean, match:any, tournament: Tournament | null, sponsor: Sponsor | null, opts?: BigScoreboardOpts }) {
   if (!match) return null
@@ -655,93 +653,124 @@ export function BigScoreboard({ visible, match, tournament, sponsor, opts }: { v
   const showSponsor = opts?.show_sponsor !== false && !!sponsor
   const setCount = Math.max(1, Math.min(3, (score?.sets?.length ?? 0) + (score?.match_status==='in_progress' ? 1 : 0)))
   const setColW = 120
-  const nameColMin = 540
+  const cardW = showSponsor ? 1640 : 1340
 
   return (
-    <div style={{ position:'absolute', left:'50%', bottom:50, transform:'translateX(-50%)', width:1580, ...CARD, padding:0, overflow:'hidden',
-      borderTop:`8px solid ${pal.accentA}`,
-      ...animStyle(visible, 'sgInU', 'sgOutU', 700) }}>
+    // Wrapper centrado por flex (translate no choca con animation transforms)
+    <div style={{ position:'absolute', left:0, right:0, bottom:50, display:'flex', justifyContent:'center', pointerEvents:'none' }}>
+      <div style={{ width:cardW, ...CARD, padding:0, overflow:'hidden', pointerEvents:'auto',
+        borderTop:`8px solid ${pal.accentA}`,
+        ...animStyle(visible, 'sgInU', 'sgOutU', 700) }}>
 
-      {/* HEADER — tournament (big) + phase + total time */}
-      <div style={{ display:'grid', gridTemplateColumns:'auto 1fr auto', alignItems:'center', padding:'14px 28px', borderBottom:'1px solid rgba(255,255,255,.07)', gap:24 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:14 }}>
-          {tournament?.logo_url && <img src={tournament.logo_url} alt="" style={{ height:54, objectFit:'contain' }}/>}
-          <div style={{ display:'flex', flexDirection:'column', lineHeight:1 }}>
-            <span style={{ fontSize:30, fontWeight:900, letterSpacing:'.04em', textTransform:'uppercase' }}>{tournament?.name}</span>
-            <span style={{ fontSize:16, letterSpacing:'.24em', textTransform:'uppercase', opacity:.6, fontWeight:700, marginTop:4 }}>
-              {CATEGORY_LABELS[match.category as Category] ?? match.category}
+        {/* HEADER */}
+        <div style={{ display:'grid', gridTemplateColumns:'auto 1fr auto', alignItems:'center', padding:'16px 30px', borderBottom:'1px solid rgba(255,255,255,.07)', gap:24 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:16 }}>
+            {tournament?.logo_url && <img src={tournament.logo_url} alt="" style={{ height:60, objectFit:'contain' }}/>}
+            <div style={{ display:'flex', flexDirection:'column', lineHeight:1 }}>
+              <span style={{ fontSize:32, fontWeight:900, letterSpacing:'.02em', textTransform:'uppercase' }}>{tournament?.name}</span>
+              <span style={{ fontSize:18, letterSpacing:'.24em', textTransform:'uppercase', opacity:.65, fontWeight:800, marginTop:5 }}>
+                {CATEGORY_LABELS[match.category as Category] ?? match.category}
+              </span>
+            </div>
+          </div>
+          <div style={{ textAlign:'center' }}>
+            <span style={{ padding:'10px 36px', borderRadius:999, background:hexAlpha(pal.accentA,.18), border:`2px solid ${hexAlpha(pal.accentA,.55)}`,
+              fontSize:28, fontWeight:900, letterSpacing:'.2em', textTransform:'uppercase', color:pal.accentA }}>
+              {roundLabel(match.round) || '—'}
             </span>
           </div>
-        </div>
-        <div style={{ textAlign:'center' }}>
-          <span style={{ padding:'10px 36px', borderRadius:999, background:hexAlpha(pal.accentA,.18), border:`2px solid ${hexAlpha(pal.accentA,.55)}`,
-            fontSize:26, fontWeight:900, letterSpacing:'.2em', textTransform:'uppercase', color:pal.accentA }}>
-            {roundLabel(match.round) || '—'}
-          </span>
-        </div>
-        <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:2 }}>
-          <span style={{ ...KICKER, fontSize:12 }}>TIEMPO TOTAL</span>
-          <span style={{ fontFamily:"'JetBrains Mono', monospace", fontSize:30, fontWeight:800 }}>{fmtClock(totalSecs)}</span>
-        </div>
-      </div>
-
-      {/* Set time row — one cell above each set column */}
-      <div style={{ display:'grid', gridTemplateColumns:`12px minmax(${nameColMin}px, 1fr) repeat(${setCount}, ${setColW}px)${showSponsor ? ' 260px' : ''}`, alignItems:'center', padding:'6px 0', borderBottom:'1px solid rgba(255,255,255,.05)' }}>
-        <div/><div/>
-        {Array.from({ length: setCount }).map((_, i) => {
-          const dur = opts?.set_durations?.[i]
-          return (
-            <div key={i} style={{ textAlign:'center', fontSize:13, letterSpacing:'.2em', fontWeight:800, opacity:.55, textTransform:'uppercase' }}>
-              SET {i+1}{dur ? ` · ${fmtClock(dur)}` : ''}
-            </div>
-          )
-        })}
-        {showSponsor && <div style={{ fontSize:11, letterSpacing:'.22em', opacity:.5, textAlign:'center', fontWeight:800 }}>PATROCINADOR</div>}
-      </div>
-
-      {/* TEAM ROWS */}
-      {[1,2].map(tn => {
-        const team = tn as 1|2
-        const entry = team===1 ? match.entry1 : match.entry2
-        const accent = team===1 ? pal.accentA : pal.accentB
-        const sets = threeSetsFor(score, team).slice(0, setCount)
-        const won = match.status==='finished' && score?.winner_team===team
-        const players = [entry?.player1, isDoubles?entry?.player2:null].filter(Boolean)
-        return (
-          <div key={team} style={{ display:'grid', gridTemplateColumns:`12px minmax(${nameColMin}px, 1fr) repeat(${setCount}, ${setColW}px)${showSponsor ? ' 260px' : ''}`, alignItems:'stretch', borderBottom: team===1 ? '1px solid rgba(255,255,255,.05)' : 'none', height: isDoubles ? 112 : 100, background: won ? hexAlpha(accent,.1) : 'transparent' }}>
-            <div style={{ background: accent }}/>
-            <div style={{ display:'flex', flexDirection:'column', justifyContent:'center', gap:6, padding:'0 18px' }}>
-              {players.map((p:any,i:number) => (
-                <PlayerLine key={i} p={p} fs={players.length===1 ? 52 : 36} flagH={players.length===1 ? 42 : 32}/>
-              ))}
-              {entry?.seed && <span style={{ fontSize:14, letterSpacing:'.22em', opacity:.6, fontWeight:700 }}>CABEZA DE SERIE ({entry.seed})</span>}
-            </div>
-            {sets.map((v,i) => (
-              <div key={i} style={{ display:'grid', placeItems:'center', fontSize:64, fontWeight:900, borderLeft:'1px solid rgba(255,255,255,.05)',
-                background: (score?.sets?.length ?? 0) === i ? hexAlpha(accent, .14) : 'rgba(0,0,0,.2)',
-                color: v===null ? 'rgba(255,255,255,.35)' : '#fff', fontVariantNumeric:'tabular-nums' }}>
-                {v===null ? '–' : v}
-              </div>
-            ))}
-            {showSponsor && (
-              team===1 ? (
-                <div style={{ gridRow:'1 / span 2', borderLeft:'1px solid rgba(255,255,255,.05)', display:'grid', placeItems:'center', padding:'10px' }}>
-                  {sponsor?.logo_url
-                    ? <img src={sponsor.logo_url} alt={sponsor.name} style={{ maxWidth:220, maxHeight:160, objectFit:'contain' }}/>
-                    : <span style={{ fontSize:24, fontWeight:900, letterSpacing:'.1em', textAlign:'center', opacity:.8, textTransform:'uppercase' }}>{sponsor?.name ?? ''}</span>}
-                </div>
-              ) : null
-            )}
+          <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:2 }}>
+            <span style={{ ...KICKER, fontSize:13 }}>TIEMPO TOTAL</span>
+            <span style={{ fontFamily:"'JetBrains Mono', monospace", fontSize:32, fontWeight:800 }}>{fmtClock(totalSecs)}</span>
           </div>
-        )
-      })}
+        </div>
+
+        {/* BODY — grid unificado: score area + sponsor spans 3 rows */}
+        <div style={{ display:'grid',
+          gridTemplateColumns: showSponsor
+            ? `12px minmax(440px, 1fr) repeat(${setCount}, ${setColW}px) 300px`
+            : `12px minmax(440px, 1fr) repeat(${setCount}, ${setColW}px)`,
+          gridTemplateRows: '40px 1fr 1fr' }}>
+
+          {/* Set-time row */}
+          <div style={{ gridColumn:`1 / span 2`, gridRow:1, borderBottom:'1px solid rgba(255,255,255,.05)' }}/>
+          {Array.from({ length: setCount }).map((_, i) => {
+            const dur = opts?.set_durations?.[i]
+            return (
+              <div key={`st${i}`} style={{ gridColumn: 3+i, gridRow:1, display:'grid', placeItems:'center', fontSize:14, letterSpacing:'.22em', fontWeight:800, opacity:.6, textTransform:'uppercase', borderLeft:'1px solid rgba(255,255,255,.05)', borderBottom:'1px solid rgba(255,255,255,.05)' }}>
+                SET {i+1}{dur ? ` · ${fmtClock(dur)}` : ''}
+              </div>
+            )
+          })}
+
+          {/* TEAM ROWS */}
+          {[1,2].map(tn => {
+            const team = tn as 1|2
+            const entry = team===1 ? match.entry1 : match.entry2
+            const accent = team===1 ? pal.accentA : pal.accentB
+            const sets = threeSetsFor(score, team).slice(0, setCount)
+            const won = match.status==='finished' && score?.winner_team===team
+            const players = [entry?.player1, isDoubles?entry?.player2:null].filter(Boolean)
+            const row = 1 + team  // team1 => row 2, team2 => row 3
+            return (
+              <div key={team} style={{ display:'contents' }}>
+                <div style={{ gridColumn:1, gridRow:row, background:accent }}/>
+                <div style={{ gridColumn:2, gridRow:row, display:'flex', flexDirection:'column', justifyContent:'center', gap:6, padding:'14px 22px', background: won ? hexAlpha(accent,.1) : 'transparent', borderTop: team===2 ? '1px solid rgba(255,255,255,.05)' : 'none' }}>
+                  {players.map((p:any,i:number) => (
+                    <PlayerLine key={i} p={p} fs={players.length===1 ? 52 : 36} flagH={players.length===1 ? 42 : 32}/>
+                  ))}
+                  {entry?.seed && <span style={{ fontSize:14, letterSpacing:'.22em', opacity:.55, fontWeight:700 }}>CABEZA DE SERIE ({entry.seed})</span>}
+                </div>
+                {sets.map((v,i) => (
+                  <div key={i} style={{ gridColumn: 3+i, gridRow:row, display:'grid', placeItems:'center', fontSize:68, fontWeight:900, borderLeft:'1px solid rgba(255,255,255,.05)', borderTop: team===2 ? '1px solid rgba(255,255,255,.05)' : 'none',
+                    background: (score?.sets?.length ?? 0) === i ? hexAlpha(accent, .14) : 'rgba(0,0,0,.2)',
+                    color: v===null ? 'rgba(255,255,255,.35)' : (won ? accent : '#fff'), fontVariantNumeric:'tabular-nums' }}>
+                    {v===null ? '–' : v}
+                  </div>
+                ))}
+              </div>
+            )
+          })}
+
+          {/* SPONSOR — span las 3 filas del body */}
+          {showSponsor && (
+            <div style={{
+              gridColumn: 3 + setCount,
+              gridRow: '1 / 4',
+              borderLeft: '1px solid rgba(255,255,255,.08)',
+              background: 'rgba(255,255,255,.02)',
+              display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'16px',
+            }}>
+              <div style={{ fontSize:11, letterSpacing:'.32em', fontWeight:900, opacity:.5, textTransform:'uppercase', marginBottom:10 }}>Patrocinador oficial</div>
+              <div style={{ flex:1, display:'grid', placeItems:'center', width:'100%' }}>
+                {sponsor?.logo_url
+                  ? <img src={sponsor.logo_url} alt={sponsor.name} style={{ maxWidth:240, maxHeight:140, objectFit:'contain' }}/>
+                  : <span style={{ fontSize:26, fontWeight:900, letterSpacing:'.08em', textAlign:'center', opacity:.85, textTransform:'uppercase' }}>{sponsor?.name ?? ''}</span>}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
 
 // ╔══════════════════════════════════════════════════════════════════════════╗
-// ║ 9) RESULTS GRID — centrado, tipografia grande, agrupado por ronda        ║
+// ║ 9) RESULTS GRID — Order of Play: todos los partidos; hora si no empezo   ║
 // ╚══════════════════════════════════════════════════════════════════════════╝
+function fmtSchedule(iso: string | null | undefined, courtName?: string | null) {
+  if (!iso && !courtName) return '— POR CONFIRMAR —'
+  const parts: string[] = []
+  if (iso) {
+    const d = new Date(iso)
+    const day = d.toLocaleDateString('es-ES', { weekday:'short', day:'2-digit', month:'short' }).toUpperCase().replace('.', '')
+    const time = d.toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' })
+    parts.push(day, time)
+  }
+  if (courtName) parts.push(courtName)
+  return parts.join(' · ')
+}
+
 export function ResultsGrid({ visible, matches, highlightMatchId, tournament, category }:
   { visible:boolean, matches:any[], highlightMatchId?:string|null, tournament: Tournament | null, category?: string }) {
   const pal = palette(tournament?.scoreboard_config)
@@ -752,25 +781,25 @@ export function ResultsGrid({ visible, matches, highlightMatchId, tournament, ca
   const rounds = Object.keys(groups).sort((a,b) => (ROUND_ORDER.indexOf(a)+1 || 99) - (ROUND_ORDER.indexOf(b)+1 || 99))
 
   return (
-    <div style={{ position:'absolute', left:'50%', top:'50%', transform:'translate(-50%,-50%)', width:1600, maxHeight:940, ...CARD, padding:0, overflow:'hidden',
+    <div style={{ position:'absolute', left:'50%', top:'50%', transform:'translate(-50%,-50%)', width:1680, maxHeight:980, ...CARD, padding:0, overflow:'hidden',
       borderTop:`10px solid ${pal.accentA}`,
       ...animStyle(visible, 'sgInZC', 'sgOutZC', 700) }}>
 
       {/* HEADER */}
       <div style={{ padding:'22px 40px', borderBottom:'1px solid rgba(255,255,255,.08)', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
         <div>
-          <div style={{ fontSize:20, letterSpacing:'.34em', textTransform:'uppercase', fontWeight:900, opacity:.55, marginBottom:4 }}>Resultados</div>
-          <div style={{ fontSize:52, fontWeight:900, lineHeight:.95, letterSpacing:'-.005em', textTransform:'uppercase' }}>
+          <div style={{ fontSize:20, letterSpacing:'.34em', textTransform:'uppercase', fontWeight:900, opacity:.55, marginBottom:4 }}>Orden de juego · Resultados</div>
+          <div style={{ fontSize:50, fontWeight:900, lineHeight:.95, letterSpacing:'-.005em', textTransform:'uppercase' }}>
             {CATEGORY_LABELS[(category ?? matches[0]?.category) as Category] ?? tournament?.name}
           </div>
         </div>
-        {tournament?.logo_url && <img src={tournament.logo_url} alt="" style={{ height:74 }}/>}
+        {tournament?.logo_url && <img src={tournament.logo_url} alt="" style={{ height:72 }}/>}
       </div>
 
-      {/* BODY — rondas apiladas con encabezado de progresion */}
-      <div style={{ padding:'18px 32px 24px', display:'flex', flexDirection:'column', gap:20, maxHeight:820, overflow:'hidden' }}>
-        {rounds.slice(0,4).map(r => {
-          const matchList = groups[r].slice(0, 6)
+      {/* BODY — rondas apiladas, todos los partidos */}
+      <div style={{ padding:'18px 32px 24px', display:'flex', flexDirection:'column', gap:22, maxHeight:860, overflow:'hidden' }}>
+        {rounds.map(r => {
+          const matchList = groups[r]
           return (
             <div key={r}>
               <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:10 }}>
@@ -779,26 +808,10 @@ export function ResultsGrid({ visible, matches, highlightMatchId, tournament, ca
                   {roundLabel(r)}
                 </span>
                 <span style={{ flex:1, height:1, background:'rgba(255,255,255,.08)' }}/>
-                <span style={{ fontSize:14, letterSpacing:'.26em', fontWeight:800, opacity:.5 }}>{groups[r].length} PARTIDOS</span>
+                <span style={{ fontSize:14, letterSpacing:'.26em', fontWeight:800, opacity:.5 }}>{matchList.length} PARTIDOS</span>
               </div>
-              <div style={{ display:'grid', gridTemplateColumns: matchList.length > 3 ? '1fr 1fr' : '1fr', gap:'10px 22px' }}>
-                {matchList.map(m => {
-                  const hot = m.id === highlightMatchId
-                  const isDoubles = m.match_type === 'doubles'
-                  const score = m.score as Score | null
-                  return (
-                    <div key={m.id} style={{ padding:'12px 16px', borderRadius:10,
-                      background: hot ? hexAlpha(pal.accentA,.2) : 'rgba(255,255,255,.04)',
-                      border: hot ? `2px solid ${pal.accentA}` : '1px solid rgba(255,255,255,.07)' }}>
-                      <ResultMatchRow entry={m.entry1} score={score} team={1} accent={pal.accentA} isDoubles={isDoubles}/>
-                      <div style={{ height:1, background:'rgba(255,255,255,.07)', margin:'4px 0' }}/>
-                      <ResultMatchRow entry={m.entry2} score={score} team={2} accent={pal.accentB} isDoubles={isDoubles}/>
-                      {m.status === 'in_progress' && (
-                        <div style={{ marginTop:6, fontSize:13, letterSpacing:'.28em', fontWeight:900, color:pal.accentA, textAlign:'right' }}>● EN VIVO</div>
-                      )}
-                    </div>
-                  )
-                })}
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(370px, 1fr))', gap:12 }}>
+                {matchList.map(m => <OopMatchCard key={m.id} m={m} hot={m.id===highlightMatchId} accentA={pal.accentA} accentB={pal.accentB}/>)}
               </div>
             </div>
           )
@@ -807,7 +820,33 @@ export function ResultsGrid({ visible, matches, highlightMatchId, tournament, ca
     </div>
   )
 }
-function ResultMatchRow({ entry, score, team, accent, isDoubles }:{ entry:any, score:Score|null, team:1|2, accent:string, isDoubles:boolean }) {
+
+function OopMatchCard({ m, hot, accentA, accentB }: { m:any, hot:boolean, accentA:string, accentB:string }) {
+  const score = m.score as Score | null
+  const hasStarted = !!(score && ((score.sets && score.sets.length > 0) || m.status === 'in_progress' || m.status === 'finished'))
+  const isDoubles = m.match_type === 'doubles'
+  return (
+    <div style={{ padding:'10px 14px', borderRadius:10,
+      background: hot ? hexAlpha(accentA,.2) : 'rgba(255,255,255,.04)',
+      border: hot ? `2px solid ${accentA}` : '1px solid rgba(255,255,255,.07)' }}>
+      <OopMatchLine entry={m.entry1} score={score} team={1} accent={accentA} isDoubles={isDoubles} hasStarted={hasStarted}/>
+      <div style={{ height:1, background:'rgba(255,255,255,.07)', margin:'4px 0' }}/>
+      <OopMatchLine entry={m.entry2} score={score} team={2} accent={accentB} isDoubles={isDoubles} hasStarted={hasStarted}/>
+      {!hasStarted && (
+        <div style={{ marginTop:6, fontSize:14, letterSpacing:'.22em', textTransform:'uppercase', fontWeight:800, color:'rgba(255,255,255,.6)', textAlign:'center' }}>
+          {fmtSchedule(m.scheduled_at, m.court?.name)}
+        </div>
+      )}
+      {m.status === 'in_progress' && (
+        <div style={{ marginTop:4, fontSize:12, letterSpacing:'.28em', fontWeight:900, color:accentA, textAlign:'right' }}>● EN VIVO</div>
+      )}
+      {m.status === 'finished' && (
+        <div style={{ marginTop:4, fontSize:12, letterSpacing:'.28em', fontWeight:900, color:'#22c55e', textAlign:'right' }}>FINAL</div>
+      )}
+    </div>
+  )
+}
+function OopMatchLine({ entry, score, team, accent, isDoubles, hasStarted }:{ entry:any, score:Score|null, team:1|2, accent:string, isDoubles:boolean, hasStarted:boolean }) {
   const players = [entry?.player1, isDoubles?entry?.player2:null].filter(Boolean)
   const sets = threeSetsFor(score, team)
   const winner = (score?.winner_team ?? null) === team
@@ -818,17 +857,17 @@ function ResultMatchRow({ entry, score, team, accent, isDoubles }:{ entry:any, s
     <div style={{ display:'grid', gridTemplateColumns:'auto 1fr auto auto auto', alignItems:'center', gap:10, padding:'3px 0' }}>
       <div style={{ display:'flex', gap:3, flex:'none' }}>
         {players.map((p:any,i:number) => (
-          <img key={i} src={flagPath(p?.nationality)} alt="" style={{ width:32, height:22, borderRadius:3, objectFit:'cover' }}/>
+          <img key={i} src={flagPath(p?.nationality)} alt="" style={{ width:28, height:19, borderRadius:3, objectFit:'cover' }}/>
         ))}
       </div>
-      <span style={{ fontSize:24, fontWeight: winner?900:700, color: winner?'#fff':'rgba(255,255,255,.8)', textTransform:'uppercase', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+      <span style={{ fontSize:20, fontWeight: winner?900:700, color: winner?'#fff':'rgba(255,255,255,.8)', textTransform:'uppercase', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
         {nameStr.toUpperCase()}
       </span>
-      {sets.map((v,i) => (
-        <span key={i} style={{ fontSize:26, fontWeight:900, minWidth:28, textAlign:'center', color: v===null?'rgba(255,255,255,.22)':winner?accent:'rgba(255,255,255,.75)', fontVariantNumeric:'tabular-nums' }}>
+      {hasStarted ? sets.map((v,i) => (
+        <span key={i} style={{ fontSize:22, fontWeight:900, minWidth:24, textAlign:'center', color: v===null?'rgba(255,255,255,.22)':winner?accent:'rgba(255,255,255,.78)', fontVariantNumeric:'tabular-nums' }}>
           {v===null ? '' : v}
         </span>
-      ))}
+      )) : <></>}
     </div>
   )
 }
@@ -848,22 +887,22 @@ export function CoinToss({ visible, match, tournament }: { visible:boolean, matc
   const players = [winnerEntry?.player1, isDoubles?winnerEntry?.player2:null].filter(Boolean)
 
   return (
-    <div style={{ position:'absolute', left:'50%', top:'50%', transform:'translate(-50%,-50%)', width:720, ...CARD, padding:'28px 44px',
-      borderTop:`8px solid ${accent}`,
-      ...animStyle(visible, 'sgInZC', 'sgOutZC', 700) }}>
-      <div style={{ textAlign:'center', fontSize:28, fontWeight:900, letterSpacing:'.28em', textTransform:'uppercase', color:pal.text }}>
+    <div style={{ position:'absolute', right:90, bottom:90, width:520, ...CARD, padding:'22px 28px',
+      borderTop:`6px solid ${accent}`,
+      ...animStyle(visible, 'sgInL', 'sgOutL', 650) }}>
+      <div style={{ textAlign:'center', fontSize:20, fontWeight:900, letterSpacing:'.26em', textTransform:'uppercase', color:pal.text, opacity:.9 }}>
         Ganador del sorteo
       </div>
 
-      <div style={{ marginTop:22, display:'flex', flexDirection:'column', gap:14, alignItems:'center' }}>
+      <div style={{ marginTop:14, display:'flex', flexDirection:'column', gap:8, alignItems:'center' }}>
         {players.map((p:any,i:number) => (
-          <div key={i} style={{ display:'flex', alignItems:'center', gap:16 }}>
-            <img src={flagPath(p?.nationality)} alt="" style={{ flex:'none', width:64, height:44, borderRadius:5, objectFit:'cover' }}/>
+          <div key={i} style={{ display:'flex', alignItems:'center', gap:12 }}>
+            <img src={flagPath(p?.nationality)} alt="" style={{ flex:'none', width:48, height:32, borderRadius:4, objectFit:'cover' }}/>
             <div style={{ display:'flex', flexDirection:'column', lineHeight:1 }}>
               {p?.first_name && (
-                <span style={{ fontSize:24, fontWeight:700, letterSpacing:'.02em', opacity:.85, textTransform:'uppercase' }}>{p.first_name}</span>
+                <span style={{ fontSize:16, fontWeight:700, letterSpacing:'.02em', opacity:.82, textTransform:'uppercase' }}>{p.first_name}</span>
               )}
-              <span style={{ fontSize:52, fontWeight:900, lineHeight:.95, textTransform:'uppercase', whiteSpace:'nowrap', color:accent }}>
+              <span style={{ fontSize:34, fontWeight:900, lineHeight:.95, textTransform:'uppercase', whiteSpace:'nowrap', color:accent }}>
                 {(p?.last_name ?? '').toUpperCase()}
               </span>
             </div>
@@ -871,9 +910,9 @@ export function CoinToss({ visible, match, tournament }: { visible:boolean, matc
         ))}
       </div>
 
-      <div style={{ marginTop:26, display:'grid', placeItems:'center' }}>
-        <div style={{ padding:'14px 40px', borderRadius:999, background:hexAlpha(accent,.18), border:`2px solid ${hexAlpha(accent,.55)}`,
-          fontSize:34, fontWeight:900, letterSpacing:'.2em', textTransform:'uppercase', color:'#fff' }}>
+      <div style={{ marginTop:16, display:'grid', placeItems:'center' }}>
+        <div style={{ padding:'10px 26px', borderRadius:999, background:hexAlpha(accent,.18), border:`2px solid ${hexAlpha(accent,.55)}`,
+          fontSize:22, fontWeight:900, letterSpacing:'.18em', textTransform:'uppercase', color:'#fff' }}>
           {label}
         </div>
       </div>
@@ -896,87 +935,153 @@ export function WeatherCard({ visible, weather, tournament }: { visible:boolean,
   const pal = palette(tournament?.scoreboard_config)
   const header = [tournament?.venue_name, tournament?.venue_city].filter(Boolean).join(' · ')
   return (
-    <div style={{ position:'absolute', left:90, bottom:90, width:620, ...CARD, padding:0,
-      borderLeft:`6px solid ${pal.accentA}`, overflow:'hidden',
+    <div style={{ position:'absolute', left:90, bottom:90, width:780, ...CARD, padding:0,
+      borderLeft:`8px solid ${pal.accentA}`, overflow:'hidden',
       ...animStyle(visible, 'sgInR', 'sgOutR', 650) }}>
       {/* HEADER — VENUE · CITY */}
-      <div style={{ padding:'12px 22px', background:'rgba(255,255,255,.04)', borderBottom:'1px solid rgba(255,255,255,.06)' }}>
-        <span style={{ fontSize:18, letterSpacing:'.26em', textTransform:'uppercase', fontWeight:900, color:pal.text, opacity:.95,
+      <div style={{ padding:'14px 26px', background:'rgba(255,255,255,.05)', borderBottom:'1px solid rgba(255,255,255,.07)' }}>
+        <span style={{ fontSize:30, letterSpacing:'.22em', textTransform:'uppercase', fontWeight:900, color:pal.text,
           whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', display:'block' }}>
           {header || 'SEDE'}
         </span>
       </div>
       {/* BODY */}
-      <div style={{ padding:'22px 26px', display:'grid', gridTemplateColumns:'auto 1fr', gap:24, alignItems:'center' }}>
-        <div style={{ fontSize:110, lineHeight:1 }}>{WX_ICON[weather.condition] ?? '🌡️'}</div>
+      <div style={{ padding:'24px 30px', display:'grid', gridTemplateColumns:'auto 1fr', gap:26, alignItems:'center' }}>
+        <div style={{ fontSize:130, lineHeight:1 }}>{WX_ICON[weather.condition] ?? '🌡️'}</div>
         <div style={{ minWidth:0 }}>
-          <div style={{ fontSize:18, letterSpacing:'.24em', textTransform:'uppercase', fontWeight:900, color:pal.accentA, marginBottom:4 }}>
-            {weather.condition}
+          <div style={{ display:'flex', alignItems:'baseline', gap:18 }}>
+            <span style={{ fontSize:100, fontWeight:900, lineHeight:1, color:pal.text, fontVariantNumeric:'tabular-nums' }}>{Math.round(weather.temperature_c)}°</span>
+            <span style={{ fontSize:36, fontWeight:900, letterSpacing:'.12em', textTransform:'uppercase', color:pal.accentA }}>
+              {weather.condition}
+            </span>
           </div>
-          <div style={{ display:'flex', alignItems:'baseline', gap:14 }}>
-            <span style={{ fontSize:80, fontWeight:900, lineHeight:1, color:pal.text, fontVariantNumeric:'tabular-nums' }}>{Math.round(weather.temperature_c)}°</span>
-            <span style={{ fontSize:22, opacity:.7, fontWeight:700 }}>SENSACIÓN {Math.round(weather.feels_like_c)}°</span>
-          </div>
-          <div style={{ marginTop:10, display:'grid', gridTemplateColumns:'auto auto auto', gap:'0 24px', fontSize:20, fontWeight:700, opacity:.92 }}>
-            <span>💨 {Math.round(weather.wind_speed_kmh)} km/h {weather.wind_direction}</span>
-            <span>💧 {weather.humidity_pct}%</span>
-            <span>☂ {weather.rain_probability_pct}%</span>
+          <div style={{ marginTop:6, fontSize:28, opacity:.8, fontWeight:800, letterSpacing:'.12em', textTransform:'uppercase' }}>
+            SENSACIÓN {Math.round(weather.feels_like_c)}°
           </div>
         </div>
+      </div>
+      {/* Metricas grandes */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', borderTop:'1px solid rgba(255,255,255,.07)' }}>
+        <WxMetric icon="💨" value={`${Math.round(weather.wind_speed_kmh)} km/h`} label={`Viento · ${weather.wind_direction}`}/>
+        <WxMetric icon="💧" value={`${weather.humidity_pct}%`}                 label="Humedad"/>
+        <WxMetric icon="☂"  value={`${weather.rain_probability_pct}%`}         label="Prob. lluvia"/>
+      </div>
+    </div>
+  )
+}
+function WxMetric({ icon, value, label }: { icon:string, value:string, label:string }) {
+  return (
+    <div style={{ padding:'16px 12px', textAlign:'center', borderLeft:'1px solid rgba(255,255,255,.06)' }}>
+      <div style={{ fontSize:12, letterSpacing:'.28em', textTransform:'uppercase', fontWeight:800, opacity:.55, marginBottom:4 }}>{label}</div>
+      <div style={{ fontSize:40, fontWeight:900, lineHeight:1, fontVariantNumeric:'tabular-nums' }}>
+        <span style={{ marginRight:6, fontSize:32 }}>{icon}</span>{value}
       </div>
     </div>
   )
 }
 
 // ╔══════════════════════════════════════════════════════════════════════════╗
-// ║ 12) BRACKET — knockout cuadro with highlighted current match             ║
+// ║ 12) BRACKET — llaves QF → SF → F con conectores                          ║
 // ╚══════════════════════════════════════════════════════════════════════════╝
-const BRACKET_ORDER: string[] = ['R32','R16','QF','SF','F']
 export function BracketView({ visible, matches, highlightMatchId, tournament, category }:
   { visible:boolean, matches:any[], highlightMatchId?:string|null, tournament: Tournament | null, category?: string }) {
   const pal = palette(tournament?.scoreboard_config)
-  const byRound: Record<string, any[]> = {}
-  matches.forEach(m => { if (!BRACKET_ORDER.includes(m.round)) return; (byRound[m.round] ??= []).push(m) })
-  const rounds = BRACKET_ORDER.filter(r => byRound[r]?.length)
+
+  const byRound: Record<string, any[]> = { QF:[], SF:[], F:[] }
+  matches.forEach(m => { if (byRound[m.round]) byRound[m.round].push(m) })
+  ;(['QF','SF','F'] as const).forEach(r => byRound[r].sort((a,b) => (a.match_number||0) - (b.match_number||0)))
+  const qf = [...byRound.QF]; while (qf.length < 4) qf.push(null as any)
+  const sf = [...byRound.SF]; while (sf.length < 2) sf.push(null as any)
+  const f  = [...byRound.F];  while (f.length  < 1) f.push(null as any)
+
+  const LC = 'rgba(255,255,255,.3)' // line color
 
   return (
-    <div style={{ position:'absolute', left:'50%', top:'50%', transform:'translate(-50%,-50%)', width:1600, maxHeight:840, ...CARD, padding:0, overflow:'hidden',
-      borderTop:`8px solid ${pal.accentA}`,
+    <div style={{ position:'absolute', left:'50%', top:'50%', transform:'translate(-50%,-50%)', width:1720, height:940, ...CARD, padding:0, overflow:'hidden',
+      borderTop:`10px solid ${pal.accentA}`,
       ...animStyle(visible, 'sgInZC', 'sgOutZC', 700) }}>
-      <div style={{ padding:'18px 32px', borderBottom:'1px solid rgba(255,255,255,.07)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+      {/* HEADER */}
+      <div style={{ padding:'22px 40px', borderBottom:'1px solid rgba(255,255,255,.08)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
         <div>
-          <div style={{ ...KICKER, fontSize:14, marginBottom:2 }}>Cuadro</div>
-          <div style={{ fontSize:32, fontWeight:900, textTransform:'uppercase' }}>{CATEGORY_LABELS[(category ?? matches[0]?.category) as Category] ?? ''}</div>
+          <div style={{ fontSize:20, letterSpacing:'.34em', textTransform:'uppercase', fontWeight:900, opacity:.55, marginBottom:4 }}>Cuadro final</div>
+          <div style={{ fontSize:46, fontWeight:900, textTransform:'uppercase', lineHeight:.95 }}>{CATEGORY_LABELS[(category ?? matches[0]?.category) as Category] ?? ''}</div>
         </div>
-        {tournament?.logo_url && <img src={tournament.logo_url} alt="" style={{ height:50 }}/>}
+        {tournament?.logo_url && <img src={tournament.logo_url} alt="" style={{ height:66 }}/>}
       </div>
-      <div style={{ display:'grid', gridTemplateColumns:`repeat(${rounds.length || 1}, 1fr)`, gap:24, padding:'18px 26px', maxHeight:720, overflow:'hidden' }}>
-        {rounds.map(r => (
-          <div key={r} style={{ display:'flex', flexDirection:'column', gap:10 }}>
-            <div style={{ ...KICKER, fontSize:14, color:pal.accentA, opacity:1 }}>{roundLabel(r)}</div>
-            <div style={{ display:'flex', flexDirection:'column', gap:10, justifyContent:'space-around', flex:1 }}>
-              {byRound[r].slice(0, 16).map(m => <BracketMatch key={m.id} m={m} hot={m.id===highlightMatchId} accentA={pal.accentA} accentB={pal.accentB}/>)}
-            </div>
+
+      {/* ROUND HEADERS */}
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 70px 1fr 70px 1fr', padding:'16px 40px 0' }}>
+        {['CUARTOS DE FINAL','','SEMIFINALES','','FINAL'].map((t,i) => (
+          t ? <div key={i} style={{ textAlign:'center', fontSize:24, letterSpacing:'.3em', fontWeight:900, color:pal.accentA, textTransform:'uppercase' }}>{t}</div> : <div key={i}/>
+        ))}
+      </div>
+
+      {/* BRACKET GRID */}
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 70px 1fr 70px 1fr', gridTemplateRows:'repeat(8, 1fr)', height:720, padding:'14px 40px 28px' }}>
+        {/* QF slots (rows 1/3, 3/5, 5/7, 7/9) */}
+        {qf.map((m,i) => (
+          <div key={`qf${i}`} style={{ gridColumn:1, gridRow:`${i*2+1}/${i*2+3}`, display:'flex', alignItems:'center', padding:'6px 0' }}>
+            <BracketSlot m={m} hot={m?.id===highlightMatchId} accentA={pal.accentA} accentB={pal.accentB}/>
           </div>
         ))}
+        {/* Connectors QF→SF */}
+        <div style={{ gridColumn:2, gridRow:'1/9', position:'relative' }}>
+          {/* Pair 1 (QF1+QF2 → SF1) */}
+          <div style={{ position:'absolute', left:0, width:'50%', top:'calc(12.5% - 1px)', height:2, background:LC }}/>
+          <div style={{ position:'absolute', left:0, width:'50%', top:'calc(37.5% - 1px)', height:2, background:LC }}/>
+          <div style={{ position:'absolute', left:'calc(50% - 1px)', top:'12.5%', height:'25%', width:2, background:LC }}/>
+          <div style={{ position:'absolute', left:'50%', right:0, top:'calc(25% - 1px)', height:2, background:LC }}/>
+          {/* Pair 2 (QF3+QF4 → SF2) */}
+          <div style={{ position:'absolute', left:0, width:'50%', top:'calc(62.5% - 1px)', height:2, background:LC }}/>
+          <div style={{ position:'absolute', left:0, width:'50%', top:'calc(87.5% - 1px)', height:2, background:LC }}/>
+          <div style={{ position:'absolute', left:'calc(50% - 1px)', top:'62.5%', height:'25%', width:2, background:LC }}/>
+          <div style={{ position:'absolute', left:'50%', right:0, top:'calc(75% - 1px)', height:2, background:LC }}/>
+        </div>
+        {/* SF slots (rows 2/4 and 6/8) */}
+        <div style={{ gridColumn:3, gridRow:'2/4', display:'flex', alignItems:'center', padding:'6px 0' }}>
+          <BracketSlot m={sf[0]} hot={sf[0]?.id===highlightMatchId} accentA={pal.accentA} accentB={pal.accentB}/>
+        </div>
+        <div style={{ gridColumn:3, gridRow:'6/8', display:'flex', alignItems:'center', padding:'6px 0' }}>
+          <BracketSlot m={sf[1]} hot={sf[1]?.id===highlightMatchId} accentA={pal.accentA} accentB={pal.accentB}/>
+        </div>
+        {/* Connectors SF→F */}
+        <div style={{ gridColumn:4, gridRow:'1/9', position:'relative' }}>
+          <div style={{ position:'absolute', left:0, width:'50%', top:'calc(25% - 1px)', height:2, background:LC }}/>
+          <div style={{ position:'absolute', left:0, width:'50%', top:'calc(75% - 1px)', height:2, background:LC }}/>
+          <div style={{ position:'absolute', left:'calc(50% - 1px)', top:'25%', height:'50%', width:2, background:LC }}/>
+          <div style={{ position:'absolute', left:'50%', right:0, top:'calc(50% - 1px)', height:2, background:LC }}/>
+        </div>
+        {/* F slot (rows 4/6) */}
+        <div style={{ gridColumn:5, gridRow:'4/6', display:'flex', alignItems:'center', padding:'6px 0' }}>
+          <BracketSlot m={f[0]} hot={f[0]?.id===highlightMatchId} accentA={pal.accentA} accentB={pal.accentB} isFinal/>
+        </div>
       </div>
     </div>
   )
 }
-function BracketMatch({ m, hot, accentA, accentB }: { m:any, hot:boolean, accentA:string, accentB:string }) {
+
+function BracketSlot({ m, hot, accentA, accentB, isFinal=false }: { m:any, hot:boolean, accentA:string, accentB:string, isFinal?:boolean }) {
+  if (!m) {
+    return (
+      <div style={{ flex:1, padding:'18px 16px', borderRadius:10, background:'rgba(255,255,255,.02)', border:'1px dashed rgba(255,255,255,.15)', textAlign:'center' }}>
+        <span style={{ fontSize:18, letterSpacing:'.22em', fontWeight:800, opacity:.4, textTransform:'uppercase' }}>Por determinar</span>
+      </div>
+    )
+  }
   const score = m.score as Score | null
   const isDoubles = m.match_type === 'doubles'
   return (
-    <div style={{ padding:'12px 14px', borderRadius:10,
-      background: hot ? hexAlpha(accentA, .2) : 'rgba(255,255,255,.04)',
-      border: hot ? `2px solid ${accentA}` : '1px solid rgba(255,255,255,.08)' }}>
+    <div style={{ flex:1, padding:'10px 12px', borderRadius:10,
+      background: hot ? hexAlpha(accentA,.22) : isFinal ? hexAlpha(accentA,.1) : 'rgba(255,255,255,.04)',
+      border: hot ? `2px solid ${accentA}` : isFinal ? `1px solid ${hexAlpha(accentA,.5)}` : '1px solid rgba(255,255,255,.1)' }}>
       <BracketLine entry={m.entry1} score={score} team={1} accent={accentA} isDoubles={isDoubles}/>
-      <div style={{ height:1, background:'rgba(255,255,255,.08)', margin:'6px 0' }}/>
+      <div style={{ height:1, background:'rgba(255,255,255,.08)', margin:'4px 0' }}/>
       <BracketLine entry={m.entry2} score={score} team={2} accent={accentB} isDoubles={isDoubles}/>
     </div>
   )
 }
 function BracketLine({ entry, score, team, accent, isDoubles }:{ entry:any, score:Score|null, team:1|2, accent:string, isDoubles:boolean }) {
+  if (!entry) return <div style={{ padding:'3px 0', fontSize:18, opacity:.35 }}>—</div>
   const players = [entry?.player1, isDoubles?entry?.player2:null].filter(Boolean)
   const sets = threeSetsFor(score, team)
   const winner = (score?.winner_team ?? null) === team
@@ -984,18 +1089,17 @@ function BracketLine({ entry, score, team, accent, isDoubles }:{ entry:any, scor
     ? players.map((p:any) => firstSurname(p)).filter(Boolean).join(' / ')
     : (players[0]?.last_name ?? '')
   return (
-    <div style={{ display:'grid', gridTemplateColumns:'auto auto 1fr auto auto auto', alignItems:'center', gap:10 }}>
-      <span style={{ fontSize:16, fontWeight:900, opacity:.6, minWidth:20, textAlign:'center' }}>{entry?.seed ?? ''}</span>
+    <div style={{ display:'grid', gridTemplateColumns:'auto 1fr auto auto auto', alignItems:'center', gap:8 }}>
       <div style={{ display:'flex', gap:3 }}>
         {players.map((p:any,i:number) => (
-          <img key={i} src={flagPath(p?.nationality)} alt="" style={{ width:28, height:19, borderRadius:3, objectFit:'cover' }}/>
+          <img key={i} src={flagPath(p?.nationality)} alt="" style={{ width:26, height:18, borderRadius:3, objectFit:'cover' }}/>
         ))}
       </div>
-      <span style={{ fontSize:24, fontWeight: winner?900:700, textTransform:'uppercase', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', color: winner?'#fff':'rgba(255,255,255,.78)' }}>
+      <span style={{ fontSize:22, fontWeight: winner?900:700, textTransform:'uppercase', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', color: winner?'#fff':'rgba(255,255,255,.8)' }}>
         {nameStr.toUpperCase()}
       </span>
       {sets.map((v,i) => (
-        <span key={i} style={{ fontSize:24, fontWeight:900, minWidth:26, textAlign:'center', fontVariantNumeric:'tabular-nums', color: v===null?'rgba(255,255,255,.2)':winner?accent:'rgba(255,255,255,.75)' }}>
+        <span key={i} style={{ fontSize:22, fontWeight:900, minWidth:22, textAlign:'center', fontVariantNumeric:'tabular-nums', color: v===null?'rgba(255,255,255,.2)':winner?accent:'rgba(255,255,255,.78)' }}>
           {v===null?'':v}
         </span>
       ))}
