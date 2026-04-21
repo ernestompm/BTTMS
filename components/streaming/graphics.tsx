@@ -140,7 +140,7 @@ export function VenueCard({ visible, tournament }: { visible: boolean, tournamen
       display:'grid', gridTemplateColumns:'1fr auto', gap:20, alignItems:'center',
       ...animStyle(visible, 'sgInL', 'sgOutL', 650) }}>
       <div style={{ minWidth:0 }}>
-        <div style={{ ...KICKER, fontSize:14, marginBottom:6 }}>SEDE</div>
+        <div style={{ ...KICKER, fontSize:18, marginBottom:6 }}>SEDE</div>
         <div style={{ fontSize:44, fontWeight:900, lineHeight:.95, textTransform:'uppercase', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', color:pal.text }}>
           {tournament.venue_name || tournament.venue_city}
         </div>
@@ -529,7 +529,7 @@ function ScoreMini({ visibleSets }: { visibleSets: Array<{num:number, t1:number,
     <div style={{ display:'flex', flexDirection:'column', gap:4, alignItems:'center', minWidth:200 }}>
       {visibleSets.map(s => (
         <div key={s.num} style={{ display:'flex', alignItems:'baseline', gap:14 }}>
-          <span style={{ fontSize:15, letterSpacing:'.26em', fontWeight:900, opacity:.55 }}>SET {s.num}</span>
+          <span style={{ fontSize:18, letterSpacing:'.26em', fontWeight:900, opacity:.55 }}>SET {s.num}</span>
           <span style={{ fontSize:36, fontWeight:900, fontVariantNumeric:'tabular-nums', lineHeight:1 }}>
             {s.t1}<span style={{ opacity:.35, margin:'0 10px' }}>—</span>{s.t2}
           </span>
@@ -695,7 +695,7 @@ export function BigScoreboard({ visible, match, tournament, sponsor, opts }: { v
             {tournament?.logo_url && <img src={tournament.logo_url} alt="" style={{ height:52, objectFit:'contain' }}/>}
             <div style={{ display:'flex', flexDirection:'column', lineHeight:1 }}>
               <span style={{ fontSize:26, fontWeight:900, letterSpacing:'.02em', textTransform:'uppercase', whiteSpace:'nowrap' }}>{tournament?.name}</span>
-              <span style={{ fontSize:14, letterSpacing:'.26em', textTransform:'uppercase', opacity:.6, fontWeight:800, marginTop:4 }}>
+              <span style={{ fontSize:18, letterSpacing:'.24em', textTransform:'uppercase', opacity:.7, fontWeight:800, marginTop:4 }}>
                 {CATEGORY_LABELS[match.category as Category] ?? match.category}
               </span>
             </div>
@@ -707,8 +707,8 @@ export function BigScoreboard({ visible, match, tournament, sponsor, opts }: { v
             </span>
           </div>
           <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:0 }}>
-            <span style={{ ...KICKER, fontSize:11 }}>TIEMPO TOTAL</span>
-            <span style={{ fontFamily:"'JetBrains Mono', monospace", fontSize:26, fontWeight:800, letterSpacing:'.02em' }}>{fmtHHmm(totalSecs)}</span>
+            <span style={{ ...KICKER, fontSize:18 }}>TIEMPO TOTAL</span>
+            <span style={{ fontFamily:"'JetBrains Mono', monospace", fontSize:30, fontWeight:800, letterSpacing:'.02em' }}>{fmtHHmm(totalSecs)}</span>
           </div>
         </div>
 
@@ -724,7 +724,7 @@ export function BigScoreboard({ visible, match, tournament, sponsor, opts }: { v
           {Array.from({ length: setCount }).map((_, i) => {
             const dur = opts?.set_durations?.[i]
             return (
-              <div key={`st${i}`} style={{ gridColumn: 3+i, gridRow:1, display:'grid', placeItems:'center', fontSize:14, letterSpacing:'.22em', fontWeight:800, opacity:.6, textTransform:'uppercase', borderLeft:'1px solid rgba(255,255,255,.05)', borderBottom:'1px solid rgba(255,255,255,.05)' }}>
+              <div key={`st${i}`} style={{ gridColumn: 3+i, gridRow:1, display:'grid', placeItems:'center', fontSize:18, letterSpacing:'.22em', fontWeight:800, opacity:.65, textTransform:'uppercase', borderLeft:'1px solid rgba(255,255,255,.05)', borderBottom:'1px solid rgba(255,255,255,.05)' }}>
                 SET {i+1}{dur ? ` · ${fmtClock(dur)}` : ''}
               </div>
             )
@@ -776,7 +776,7 @@ export function BigScoreboard({ visible, match, tournament, sponsor, opts }: { v
               background: 'rgba(255,255,255,.02)',
               display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'16px',
             }}>
-              <div style={{ fontSize:11, letterSpacing:'.32em', fontWeight:900, opacity:.5, textTransform:'uppercase', marginBottom:10 }}>Patrocinador oficial</div>
+              <div style={{ fontSize:18, letterSpacing:'.3em', fontWeight:900, opacity:.6, textTransform:'uppercase', marginBottom:10 }}>Patrocinador oficial</div>
               <div style={{ flex:1, display:'grid', placeItems:'center', width:'100%' }}>
                 {sponsor?.logo_url
                   ? <img src={sponsor.logo_url} alt={sponsor.name} style={{ maxWidth:220, maxHeight:130, objectFit:'contain' }}/>
@@ -876,7 +876,7 @@ export function ResultsGrid({ visible, matches, highlightMatchId, tournament, ca
                   {roundLabel(r)}
                 </span>
                 <span style={{ flex:1, height:1, background:'rgba(255,255,255,.08)' }}/>
-                <span style={{ fontSize:14, letterSpacing:'.26em', fontWeight:800, opacity:.5 }}>{matchList.length} PARTIDOS</span>
+                <span style={{ fontSize:18, letterSpacing:'.24em', fontWeight:800, opacity:.55 }}>{matchList.length} PARTIDOS</span>
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(370px, 1fr))', gap:12 }}>
                 {matchList.map(m => <OopMatchCard key={m.id} m={m} hot={m.id===highlightMatchId} accentA={pal.accentA} accentB={pal.accentB}/>)}
@@ -901,15 +901,15 @@ function OopMatchCard({ m, hot, accentA, accentB }: { m:any, hot:boolean, accent
       <div style={{ height:1, background:'rgba(255,255,255,.07)', margin:'4px 0' }}/>
       <OopMatchLine entry={m.entry2} score={score} team={2} accent={accentB} isDoubles={isDoubles} hasStarted={hasStarted}/>
       {!hasStarted && (
-        <div style={{ marginTop:6, fontSize:14, letterSpacing:'.22em', textTransform:'uppercase', fontWeight:800, color:'rgba(255,255,255,.6)', textAlign:'center' }}>
+        <div style={{ marginTop:6, fontSize:18, letterSpacing:'.2em', textTransform:'uppercase', fontWeight:800, color:'rgba(255,255,255,.65)', textAlign:'center' }}>
           {fmtSchedule(m.scheduled_at, m.court?.name)}
         </div>
       )}
       {m.status === 'in_progress' && (
-        <div style={{ marginTop:4, fontSize:12, letterSpacing:'.28em', fontWeight:900, color:accentA, textAlign:'right' }}>● EN VIVO</div>
+        <div style={{ marginTop:4, fontSize:18, letterSpacing:'.28em', fontWeight:900, color:accentA, textAlign:'right' }}>● EN VIVO</div>
       )}
       {m.status === 'finished' && (
-        <div style={{ marginTop:4, fontSize:12, letterSpacing:'.28em', fontWeight:900, color:'#22c55e', textAlign:'right' }}>FINAL</div>
+        <div style={{ marginTop:4, fontSize:18, letterSpacing:'.28em', fontWeight:900, color:'#22c55e', textAlign:'right' }}>FINAL</div>
       )}
     </div>
   )
@@ -968,7 +968,7 @@ export function CoinToss({ visible, match, tournament }: { visible:boolean, matc
             <img src={flagPath(p?.nationality)} alt="" style={{ flex:'none', width:48, height:32, borderRadius:4, objectFit:'cover' }}/>
             <div style={{ display:'flex', flexDirection:'column', lineHeight:1 }}>
               {p?.first_name && (
-                <span style={{ fontSize:16, fontWeight:700, letterSpacing:'.02em', opacity:.82, textTransform:'uppercase' }}>{p.first_name}</span>
+                <span style={{ fontSize:18, fontWeight:700, letterSpacing:'.02em', opacity:.85, textTransform:'uppercase' }}>{p.first_name}</span>
               )}
               <span style={{ fontSize:34, fontWeight:900, lineHeight:.95, textTransform:'uppercase', whiteSpace:'nowrap', color:accent }}>
                 {(p?.last_name ?? '').toUpperCase()}
@@ -1025,7 +1025,7 @@ export function WeatherCard({ visible, weather, tournament }: { visible:boolean,
           <div style={{ marginTop:2, fontSize:22, fontWeight:900, letterSpacing:'.18em', textTransform:'uppercase', color:pal.accentA, lineHeight:1.15 }}>
             {weather.condition}
           </div>
-          <div style={{ marginTop:3, fontSize:16, fontWeight:800, letterSpacing:'.22em', textTransform:'uppercase', opacity:.6, lineHeight:1.2 }}>
+          <div style={{ marginTop:4, fontSize:20, fontWeight:800, letterSpacing:'.2em', textTransform:'uppercase', opacity:.7, lineHeight:1.2 }}>
             SENSACIÓN {Math.round(weather.feels_like_c)}°
           </div>
         </div>
@@ -1049,7 +1049,7 @@ function WxMetric({ icon, value, unit, extra }: { icon:string, value:string, uni
           <span style={{ fontSize:18, fontWeight:800, opacity:.75, letterSpacing:'.05em' }}>{unit}</span>
         </div>
         {extra && (
-          <span style={{ fontSize:14, fontWeight:800, opacity:.65, letterSpacing:'.18em', textTransform:'uppercase', marginTop:3 }}>
+          <span style={{ fontSize:18, fontWeight:800, opacity:.7, letterSpacing:'.16em', textTransform:'uppercase', marginTop:3 }}>
             {extra}
           </span>
         )}
