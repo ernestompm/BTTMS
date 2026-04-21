@@ -176,6 +176,9 @@ export function JudgeClient({ initialMatch, userId, judgeName, timerConfig, adva
   const [saving, setSaving] = useState(false)
   const [elapsed, setElapsed] = useState(0)
   const [toasts, setToasts] = useState<Toast[]>([])
+  const [judgeFirstName, setJudgeFirstName] = useState('')
+  const [judgeLastName,  setJudgeLastName]  = useState('')
+  const [arriveError,    setArriveError]    = useState<string | null>(null)
   const [breakMode, setBreakMode] = useState<'side_change' | 'set_break' | null>(null)
   const toastId = useRef(0)
   const lastPointRef = useRef(0)
@@ -328,7 +331,21 @@ export function JudgeClient({ initialMatch, userId, judgeName, timerConfig, adva
     return res
   }
 
-  async function handleArrive()         { setSaving(true); await post('arrive');           setSaving(false) }
+  async function handleArrive() {
+    setArriveError(null)
+    const fn = judgeFirstName.trim(), ln = judgeLastName.trim()
+    if (fn.length < 2 || ln.length < 2) {
+      setArriveError('Nombre y apellidos obligatorios (mínimo 2 caracteres cada uno)')
+      return
+    }
+    const judge_name = `${fn} ${ln}`
+    setSaving(true)
+    const res = await post('arrive', { judge_name })
+    setSaving(false)
+    if (!res.ok) {
+      try { const j = await res.json(); setArriveError(j?.error ?? 'Error al registrar entrada en pista') } catch {}
+    }
+  }
   async function handlePlayersArrived() { setSaving(true); await post('players-arrived');  setSaving(false) }
   async function handleWarmupComplete() { setSaving(true); await post('warmup-complete');  warmupTimer.stop(); setSaving(false) }
 
@@ -494,10 +511,10 @@ export function JudgeClient({ initialMatch, userId, judgeName, timerConfig, adva
 
   // ── STATE SCREENS ─────────────────────────────────────────────
 
-  // Scheduled: judge not yet on court
+  // Scheduled: judge not yet on court → identificación del árbitro + entrar en pista
   if (match.status === 'scheduled') {
     return (
-      <div className="fixed inset-0 bg-gray-950 flex flex-col items-center justify-center gap-8 p-8">
+      <div className="fixed inset-0 bg-gray-950 flex flex-col items-center justify-center gap-6 p-6 overflow-y-auto">
         <div className="text-center">
           <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-2">Partido</p>
           <p className="text-white font-black font-score text-2xl">{t1Label}</p>
@@ -505,12 +522,33 @@ export function JudgeClient({ initialMatch, userId, judgeName, timerConfig, adva
           <p className="text-white font-black font-score text-2xl">{t2Label}</p>
           {(match as any).court && <p className="text-gray-500 text-sm mt-3">{(match as any).court.name}</p>}
         </div>
+
+        <div className="w-full max-w-sm bg-gray-900 border border-gray-800 rounded-2xl p-5 space-y-3">
+          <p className="text-white font-bold text-sm">Identifícate para arbitrar este partido</p>
+          <p className="text-gray-500 text-xs">Se mostrará en el lower third de TV y en la firma del acta.</p>
+          <div>
+            <label className="text-gray-400 text-xs font-bold uppercase tracking-widest block mb-1">Nombre</label>
+            <input value={judgeFirstName} onChange={(e) => setJudgeFirstName(e.target.value)}
+              placeholder="Juan"
+              className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white text-base focus:outline-none focus:border-brand-red"/>
+          </div>
+          <div>
+            <label className="text-gray-400 text-xs font-bold uppercase tracking-widest block mb-1">Apellidos</label>
+            <input value={judgeLastName} onChange={(e) => setJudgeLastName(e.target.value)}
+              placeholder="García Martínez"
+              className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white text-base focus:outline-none focus:border-brand-red"/>
+          </div>
+          {arriveError && <p className="text-red-400 text-xs">{arriveError}</p>}
+        </div>
+
         <button onClick={handleArrive} disabled={saving}
           className="w-full max-w-sm h-20 rounded-2xl font-black font-score text-2xl text-white disabled:opacity-50 active:scale-95 transition-transform"
           style={{ background: 'linear-gradient(90deg,#f31948,#fc6f43)' }}>
           {saving ? '...' : '🏃 ESTOY EN LA PISTA'}
         </button>
-        <p className="text-gray-600 text-xs text-center">Pulsa cuando llegues a la pista asignada</p>
+        <p className="text-gray-600 text-xs text-center max-w-sm">
+          Tu nombre queda vinculado a este partido. Si otro árbitro arbitra otro partido después, se identificará de nuevo.
+        </p>
       </div>
     )
   }

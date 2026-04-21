@@ -45,7 +45,10 @@ export default async function OverlayPage({ params }: { params: Promise<{ matchI
   }
 
   const mainSponsor = (tournament?.sponsors ?? []).find((s:any) => s.tier === 'main' || s.tier === 'principal') ?? (tournament?.sponsors ?? [])[0] ?? null
-  const referee = (match as any).judge ? { full_name: (match as any).judge.full_name } : null
+  // Preferir el judge_name que cada arbitro registra al entrar en pista
+  // (usuario juez puede ser compartido por varios arbitros fisicos).
+  const refereeName = (match as any).judge_name || (match as any).judge?.full_name || null
+  const referee = refereeName ? { full_name: refereeName } : null
 
   // Weather (open-meteo, cached)
   let weather = null

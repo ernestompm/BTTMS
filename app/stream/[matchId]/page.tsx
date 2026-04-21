@@ -41,7 +41,8 @@ export default async function StreamOperatorPage({ params }: { params: Promise<{
     .eq('tournament_id', match.tournament_id).eq('category', match.category).order('match_number')
 
   const mainSponsor = (tournament?.sponsors ?? []).find((s:any) => s.tier === 'main' || s.tier === 'principal') ?? (tournament?.sponsors ?? [])[0] ?? null
-  const referee = (match as any).judge ? { full_name: (match as any).judge.full_name } : null
+  const refereeName = (match as any).judge_name || (match as any).judge?.full_name || null
+  const referee = refereeName ? { full_name: refereeName } : null
 
   let weather = null
   try {
