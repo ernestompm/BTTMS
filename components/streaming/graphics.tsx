@@ -599,13 +599,6 @@ export function Scorebug({ visible, match, tournament, flag, tickerStat }: { vis
     <div style={{ position:'absolute', top:40, left:40, minWidth: 420, maxWidth: 820, ...CARD, padding:0, overflow:'hidden',
       ...animStyle(visible, 'sgInR', 'sgOutR', 500) }}>
 
-      {/* Mini header de stat (solo cuando el ticker esta activo) */}
-      {showTicker && (
-        <div key={`tlab-${tickerStat}`} style={{ padding:'4px 14px 4px 0', textAlign:'right', fontSize:18, letterSpacing:'.28em', textTransform:'uppercase', fontWeight:900, color:pal.accentA, borderBottom:'1px solid rgba(255,255,255,.06)', background:'rgba(255,255,255,.02)', animation:'sgDigitIn 320ms both' }}>
-          {tickerLabel}
-        </div>
-      )}
-
       <div style={{ display:'grid', gridTemplateColumns:gridCols, gridTemplateRows:'54px 54px' }}>
         {rows.map((r, ri) => {
           const row = ri + 1
@@ -649,20 +642,27 @@ export function Scorebug({ visible, match, tournament, flag, tickerStat }: { vis
                   </span>
                 </div>
               ))}
-              {/* Puntos / Stat (misma celda, contenido cambia) */}
+              {/* Puntos / Stat (misma celda 54px, sin cambio de layout) */}
               <div style={{ gridRow:row, gridColumn:3+setCount, display:'grid', placeItems:'center',
                 background: showTicker ? 'rgba(0,0,0,.35)' : hexAlpha(r.accent,.92),
-                color:'#fff', fontSize: showTicker ? 28 : 32, fontWeight:900, letterSpacing:'-.01em',
+                color:'#fff', fontWeight:900, letterSpacing:'-.01em',
                 borderBottom: ri===0 ? '1px solid rgba(255,255,255,.12)' : 'none',
                 borderLeft: showTicker ? '1px solid rgba(255,255,255,.06)' : 'none',
-                overflow:'hidden', fontVariantNumeric:'tabular-nums' }}>
+                overflow:'hidden', fontVariantNumeric:'tabular-nums', padding:'0 4px' }}>
                 {showTicker
-                  ? <span key={`st-${r.team}-${tickerStat}-${tickerVal}`} style={{ display:'inline-block', animation:'sgDigitIn 380ms cubic-bezier(.22,.9,.25,1) both', color: r.accent }}>
-                      {tickerVal}
-                    </span>
-                  : <span key={`pt${r.team}-${r.pt}`} style={{ display:'inline-block', animation:'sgDigitIn 380ms cubic-bezier(.22,.9,.25,1) both' }}>
+                  ? (
+                    <div key={`st-${r.team}-${tickerStat}`} style={{ display:'flex', flexDirection:'column', alignItems:'center', lineHeight:1, animation:'sgDigitIn 380ms cubic-bezier(.22,.9,.25,1) both' }}>
+                      <span style={{ fontSize:28, color: r.accent, fontWeight:900 }}>{tickerVal}</span>
+                      <span style={{ fontSize:11, opacity:.6, letterSpacing:'.16em', fontWeight:800, marginTop:3, textTransform:'uppercase', whiteSpace:'nowrap' }}>
+                        {tickerLabel}
+                      </span>
+                    </div>
+                  )
+                  : (
+                    <span key={`pt${r.team}-${r.pt}`} style={{ display:'inline-block', fontSize:32, animation:'sgDigitIn 380ms cubic-bezier(.22,.9,.25,1) both' }}>
                       {r.pt}
                     </span>
+                  )
                 }
               </div>
             </div>
