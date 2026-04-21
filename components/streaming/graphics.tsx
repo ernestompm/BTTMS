@@ -236,7 +236,7 @@ function TeamBlock({ entry, accent, align, isDoubles, pal }: { entry:any, accent
 }
 
 // ╔══════════════════════════════════════════════════════════════════════════╗
-// ║ 4) PLAYER BIO — no photo → name takes full width                         ║
+// ║ 4) PLAYER BIO — card alto, tipografía grande y secciones diferenciadas   ║
 // ╚══════════════════════════════════════════════════════════════════════════╝
 export function PlayerBio({ visible, player, team, category, tournament }: { visible:boolean, player: Player | null, team: 1|2, category?: Category, tournament: Tournament | null }) {
   if (!player) return null
@@ -246,68 +246,127 @@ export function PlayerBio({ visible, player, team, category, tournament }: { vis
   const enter = side==='left' ? 'sgInR' : 'sgInL'
   const exit  = side==='left' ? 'sgOutR' : 'sgOutL'
 
-  const rows: Array<[string,string]> = []
-  if (player.nationality)         rows.push(['Nacionalidad', player.nationality.toUpperCase()])
-  if (player.birth_date)          rows.push(['Edad', String(ageFrom(player.birth_date))])
-  else if (player.age_manual)     rows.push(['Edad', String(player.age_manual)])
-  if (player.birth_city)          rows.push(['Nacimiento', player.birth_city])
-  if (player.height_cm)           rows.push(['Altura', `${player.height_cm} cm`])
-  if (player.laterality)          rows.push(['Lateralidad', lateralityText(player.laterality, category)])
-  if (player.ranking_rfet)        rows.push(['Ranking RFET', `#${player.ranking_rfet}`])
-  if (player.ranking_itf)         rows.push(['Ranking ITF',  `#${player.ranking_itf}`])
-  if (player.club)                rows.push(['Club', player.club])
-  if (player.federacion_autonomica) rows.push(['Federación', player.federacion_autonomica])
+  // FICHA rows (excluyendo rankings que tienen sección propia)
+  const ficha: Array<[string,string]> = []
+  if (player.nationality)            ficha.push(['Nacionalidad', player.nationality.toUpperCase()])
+  if (player.birth_date)             ficha.push(['Edad', String(ageFrom(player.birth_date))])
+  else if (player.age_manual)        ficha.push(['Edad', String(player.age_manual)])
+  if (player.birth_city)             ficha.push(['Nacimiento', player.birth_city])
+  if (player.height_cm)              ficha.push(['Altura', `${player.height_cm} cm`])
+  if (player.laterality)             ficha.push(['Lateralidad', lateralityText(player.laterality, category)])
+  if (player.club)                   ficha.push(['Club', player.club])
+  if (player.federacion_autonomica)  ficha.push(['Federación', player.federacion_autonomica])
 
-  const pos: React.CSSProperties = { position:'absolute', top:110, width:700 }
+  const hasPhoto    = !!player.photo_url
+  const hasRanking  = !!(player.ranking_rfet || player.ranking_itf)
+  const hasTitles   = (player.titles?.length ?? 0) > 0
+  const hasBio      = !!player.bio
+
+  const pos: React.CSSProperties = { position:'absolute', top:60, bottom:60, width:740 }
   if (side==='left')  pos.left = 60
   if (side==='right') pos.right = 60
 
-  const hasPhoto = !!player.photo_url
+  const sectionTitle: React.CSSProperties = {
+    fontSize:20, letterSpacing:'.34em', textTransform:'uppercase', fontWeight:900, color:accent,
+  }
+  const divider: React.CSSProperties = { height:1, background:'rgba(255,255,255,.1)', margin:'22px 0' }
 
   return (
-    <div style={{ ...pos, ...CARD, padding:'26px 32px',
-      borderTop:`8px solid ${accent}`,
-      ...animStyle(visible, enter, exit, 700) }}>
-      <div style={{ ...KICKER, fontSize:14, marginBottom:10 }}>JUGADOR</div>
-      <div style={{ display:'grid', gridTemplateColumns: hasPhoto ? 'auto 1fr' : '1fr', gap:22, alignItems:'center' }}>
+    <div style={{ ...pos, ...CARD, padding:'0',
+      borderTop:`10px solid ${accent}`,
+      display:'flex', flexDirection:'column',
+      ...animStyle(visible, enter, exit, 700) } as any}>
+
+      {/* HEADER — foto + nombre grande */}
+      <div style={{ padding:'30px 36px 26px', display:'flex', gap:24, alignItems:'center' }}>
         {hasPhoto && (
-          <div style={{ width:170, height:170, borderRadius:14, overflow:'hidden', border:`1px solid ${hexAlpha(accent,.35)}` }}>
+          <div style={{ flex:'none', width:240, height:240, borderRadius:16, overflow:'hidden',
+            border:`1px solid ${hexAlpha(accent,.35)}`, boxShadow:`0 12px 30px rgba(0,0,0,.45)` }}>
             <img src={player.photo_url!} style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
           </div>
         )}
-        <div style={{ minWidth:0 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:4 }}>
-            <img src={flagPath(player.nationality)} alt="" style={{ width:48, height:32, borderRadius:4, objectFit:'cover' }}/>
-            <span style={{ fontSize:26, fontWeight:700, letterSpacing:'.02em', opacity:.75, textTransform:'uppercase' }}>{player.first_name}</span>
+        <div style={{ minWidth:0, flex:1 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:6 }}>
+            <img src={flagPath(player.nationality)} alt="" style={{ width:60, height:40, borderRadius:4, objectFit:'cover' }}/>
+            <span style={{ fontSize:22, letterSpacing:'.3em', textTransform:'uppercase', fontWeight:900, opacity:.6 }}>JUGADOR</span>
           </div>
-          <div style={{ fontSize:60, fontWeight:900, lineHeight:.92, textTransform:'uppercase', color:accent }}>{player.last_name}</div>
+          <div style={{ fontSize:38, fontWeight:700, letterSpacing:'.02em', textTransform:'uppercase', lineHeight:1, opacity:.88 }}>
+            {player.first_name}
+          </div>
+          <div style={{ fontSize:80, fontWeight:900, lineHeight:.92, textTransform:'uppercase', color:accent, letterSpacing:'-.005em' }}>
+            {player.last_name}
+          </div>
         </div>
       </div>
 
-      {rows.length > 0 && (
-        <div style={{ marginTop:20, display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px 28px' }}>
-          {rows.map(([k,v]) => (
-            <div key={k}>
-              <div style={{ ...KICKER, fontSize:12, marginBottom:2 }}>{k}</div>
-              <div style={{ fontSize:26, fontWeight:800 }}>{v}</div>
-            </div>
-          ))}
-        </div>
-      )}
+      {/* BODY scrollable-like: flex column with gaps */}
+      <div style={{ padding:'0 36px 30px', display:'flex', flexDirection:'column', flex:1, overflow:'hidden' }}>
 
-      {(player.titles?.length ?? 0) > 0 && (
-        <div style={{ marginTop:18, padding:'14px 18px', background:hexAlpha(accent,.1), borderRadius:12, border:`1px solid ${hexAlpha(accent,.3)}` }}>
-          <div style={{ ...KICKER, fontSize:12, marginBottom:6 }}>PALMARÉS</div>
-          {player.titles.slice(0,3).map((t,i) => (
-            <div key={i} style={{ fontSize:20, fontWeight:700 }}>• {t.year} — {t.name}</div>
-          ))}
-        </div>
-      )}
-      {player.bio && (
-        <div style={{ marginTop:14, fontSize:20, lineHeight:1.4, opacity:.85, maxHeight:140, overflow:'hidden' }}>
-          {player.bio}
-        </div>
-      )}
+        {/* FICHA */}
+        {ficha.length > 0 && (
+          <>
+            <div style={divider}/>
+            <div style={sectionTitle}>FICHA</div>
+            <div style={{ marginTop:14, display:'grid', gridTemplateColumns:'1fr 1fr', gap:'14px 28px' }}>
+              {ficha.map(([k,v]) => (
+                <div key={k}>
+                  <div style={{ fontSize:15, letterSpacing:'.22em', textTransform:'uppercase', fontWeight:800, opacity:.55 }}>{k}</div>
+                  <div style={{ fontSize:30, fontWeight:900, marginTop:2, lineHeight:1.05 }}>{v}</div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* RANKING */}
+        {hasRanking && (
+          <>
+            <div style={divider}/>
+            <div style={sectionTitle}>RANKING</div>
+            <div style={{ marginTop:12, display:'flex', gap:40 }}>
+              {player.ranking_rfet && (
+                <div style={{ flex:1, background:hexAlpha(accent,.12), border:`1px solid ${hexAlpha(accent,.3)}`, borderRadius:14, padding:'14px 20px' }}>
+                  <div style={{ fontSize:16, letterSpacing:'.28em', textTransform:'uppercase', fontWeight:900, opacity:.75 }}>RFET</div>
+                  <div style={{ fontSize:72, fontWeight:900, lineHeight:1, color:accent, fontVariantNumeric:'tabular-nums' }}>#{player.ranking_rfet}</div>
+                </div>
+              )}
+              {player.ranking_itf && (
+                <div style={{ flex:1, background:hexAlpha(accent,.12), border:`1px solid ${hexAlpha(accent,.3)}`, borderRadius:14, padding:'14px 20px' }}>
+                  <div style={{ fontSize:16, letterSpacing:'.28em', textTransform:'uppercase', fontWeight:900, opacity:.75 }}>ITF</div>
+                  <div style={{ fontSize:72, fontWeight:900, lineHeight:1, color:accent, fontVariantNumeric:'tabular-nums' }}>#{player.ranking_itf}</div>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* PALMARÉS */}
+        {hasTitles && (
+          <>
+            <div style={divider}/>
+            <div style={sectionTitle}>PALMARÉS</div>
+            <div style={{ marginTop:10, display:'flex', flexDirection:'column', gap:8 }}>
+              {player.titles.slice(0,4).map((t,i) => (
+                <div key={i} style={{ display:'grid', gridTemplateColumns:'90px 1fr', gap:16, alignItems:'baseline' }}>
+                  <span style={{ fontSize:28, fontWeight:900, color:accent, fontVariantNumeric:'tabular-nums' }}>{t.year}</span>
+                  <span style={{ fontSize:24, fontWeight:700, lineHeight:1.15 }}>{t.name}</span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* BIO */}
+        {hasBio && (
+          <>
+            <div style={divider}/>
+            <div style={sectionTitle}>BIO</div>
+            <div style={{ marginTop:10, fontSize:24, lineHeight:1.4, opacity:.9, overflow:'hidden', flex:1 }}>
+              {player.bio}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   )
 }
