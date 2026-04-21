@@ -91,34 +91,32 @@ function PlayerLine({ p, fs, bold=900, flagH=40 }: { p:any, fs:number, bold?:num
 }
 
 // ╔══════════════════════════════════════════════════════════════════════════╗
-// ║ 1) TOURNAMENT INTRO — bounded centered card                              ║
+// ║ 1) TOURNAMENT INTRO — vertical centered card                             ║
 // ╚══════════════════════════════════════════════════════════════════════════╝
 export function TournamentIntro({ visible, tournament }: { visible: boolean, tournament: Tournament | null }) {
   if (!tournament) return null
   const pal = palette(tournament.scoreboard_config)
+  const start = new Date(tournament.start_date).toLocaleDateString('es-ES', { day:'2-digit', month:'short' })
+  const end   = new Date(tournament.end_date  ).toLocaleDateString('es-ES', { day:'2-digit', month:'short', year:'numeric' })
+  const subtitle = [tournament.venue_name, tournament.venue_city, `${start} — ${end}`].filter(Boolean).join('  ·  ')
+
   return (
-    <div style={{ position:'absolute', left:260, right:260, top:240, ...CARD, padding:'56px 72px',
-      borderTop:`8px solid ${pal.accentA}`, ...animStyle(visible, 'sgInZ', 'sgOutZ', 700) }}>
-      <div style={{ display:'grid', gridTemplateColumns:'auto 1fr', gap:44, alignItems:'center' }}>
-        {tournament.logo_url
-          ? <img src={tournament.logo_url} alt="" style={{ width:220, height:220, objectFit:'contain' }}/>
-          : <div style={{ width:200, height:200, borderRadius:28, background:`linear-gradient(135deg,${pal.accentA} 0%,${pal.accentB} 100%)` }}/>
-        }
-        <div style={{ minWidth:0 }}>
-          <div style={{ ...KICKER, color:pal.accentA, opacity:1, marginBottom:14 }}>
-            {tournament.edition ? `${tournament.edition}ª EDICIÓN` : 'TORNEO OFICIAL'}
-          </div>
-          <div style={{ fontSize:110, fontWeight:900, lineHeight:.88, letterSpacing:'-.012em', textTransform:'uppercase', color:pal.text }}>
-            {tournament.name}
-          </div>
-          <div style={{ marginTop:22, display:'flex', alignItems:'center', gap:28, fontSize:32, fontWeight:800, letterSpacing:'.14em', textTransform:'uppercase', color:pal.text2 }}>
-            <span>{tournament.venue_city}</span>
-            <span style={{ width:8, height:8, borderRadius:'50%', background:pal.accentA }}/>
-            <span>
-              {new Date(tournament.start_date).toLocaleDateString('es-ES',{day:'2-digit',month:'short'})} — {new Date(tournament.end_date).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'})}
-            </span>
-          </div>
-        </div>
+    <div style={{ position:'absolute', left:'50%', top:'50%', transform:'translate(-50%,-50%)',
+      width:1400, height:720, ...CARD, padding:'60px 80px',
+      borderTop:`8px solid ${pal.accentA}`,
+      display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:36, textAlign:'center',
+      ...animStyle(visible, 'sgInZ', 'sgOutZ', 750) }}>
+
+      {tournament.logo_url && (
+        <img src={tournament.logo_url} alt="" style={{ maxWidth:320, maxHeight:280, objectFit:'contain' }}/>
+      )}
+
+      <div style={{ fontSize:120, fontWeight:900, lineHeight:.9, letterSpacing:'-.012em', textTransform:'uppercase', color:pal.text, maxWidth:'100%' }}>
+        {tournament.name}
+      </div>
+
+      <div style={{ fontSize:30, fontWeight:800, letterSpacing:'.16em', textTransform:'uppercase', color:pal.accentA }}>
+        {subtitle}
       </div>
     </div>
   )
