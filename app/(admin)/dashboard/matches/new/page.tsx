@@ -60,6 +60,14 @@ export default function NewMatchPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
+    if (form.entry1_id && form.entry2_id && form.entry1_id === form.entry2_id) {
+      setError('Los dos lados del partido no pueden ser el mismo equipo.')
+      return
+    }
+    if (form.scheduled_at) {
+      const when = new Date(form.scheduled_at)
+      if (isNaN(when.getTime())) { setError('Fecha/hora programada inválida.'); return }
+    }
     setLoading(true)
     const { error } = await supabase.from('matches').insert({
       tournament_id: TOURNAMENT_ID,

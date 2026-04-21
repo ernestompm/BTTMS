@@ -1,19 +1,20 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { TossScreen } from './toss-screen'
 import { PointModal } from './point-modal'
 import { WarningModal } from './warning-modal'
-import { isBreakPoint, isSetPoint, isMatchPoint } from '@/lib/score-engine'
-import type { Match, PointType, ShotDirection, MatchWarnings, WarningType, Score } from '@/types'
+import { applyPoint, isBreakPoint, isSetPoint, isMatchPoint, INITIAL_SCORE } from '@/lib/score-engine'
+import type { Match, PointType, ShotDirection, MatchWarnings, WarningType, Score, ScoringSystem } from '@/types'
 
 interface TimerConfig { warmup: number; sideChange: number; setBreak: number }
 
 interface Props {
   initialMatch: Match & { entry1: any; entry2: any; court: any }
   userId: string
+  judgeName: string
   timerConfig: TimerConfig
   advancedStats: boolean
 }
@@ -158,9 +159,11 @@ function BreakOverlay({ title, subtitle, secs, onDismiss }: {
 }
 
 // ── Main component ─────────────────────────────────────────────────
-export function JudgeClient({ initialMatch, userId, timerConfig, advancedStats }: Props) {
+export function JudgeClient({ initialMatch, userId, judgeName, timerConfig, advancedStats }: Props) {
+  const router = useRouter()
   const supabase = createClient()
   const [match, setMatch] = useState(initialMatch)
+  const [isOnline, setIsOnline] = useState(true)
   const [classifyModal, setClassifyModal] = useState<{ team: 1 | 2; servingTeam: 1 | 2 } | null>(null)
   const [showWarningModal, setShowWarningModal] = useState(false)
   const [showRetireModal, setShowRetireModal] = useState(false)
@@ -196,6 +199,32 @@ export function JudgeClient({ initialMatch, userId, timerConfig, advancedStats }
     const id = setInterval(() => setElapsed(Math.floor((Date.now() - t0) / 1000)), 1000)
     return () => clearInterval(id)
   }, [match.status, match.started_at])
+
+  // ── screen wake lock & landscape (tablet on court) ────────────
+  useEffect(() => {
+    let sentinel: any = null
+    async function acquire() {
+      try { sentinel = await (navigator as any).wakeLock?.request?.('screen') } catch {}
+    }
+    acquire()
+    const onVis = () => { if (document.visibilityState === 'visible') acquire() }
+    document.addEventListener('visibilitychange', onVis)
+    try { (screen.orientation as any)?.lock?.('landscape').catch?.(() => {}) } catch {}
+    return () => {
+      document.removeEventListener('visibilitychange', onVis)
+      try { sentinel?.release?.() } catch {}
+    }
+  }, [])
+
+  // ── online / offline detection ────────────────────────────────
+  useEffect(() => {
+    const up = () => setIsOnline(true)
+    const down = () => setIsOnline(false)
+    setIsOnline(navigator.onLine)
+    window.addEventListener('online', up)
+    window.addEventListener('offline', down)
+    return () => { window.removeEventListener('online', up); window.removeEventListener('offline', down) }
+  }, [])
 
   // ── auto-start warmup countdown when entering warmup state ────
   useEffect(() => {
@@ -281,43 +310,85 @@ export function JudgeClient({ initialMatch, userId, timerConfig, advancedStats }
 
     const servingTeamAtPress = (match.serving_team ?? 1) as 1 | 2
 
-    const res = await fetch(`/api/matches/${match.id}/point`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ winner_team: wt, point_type: 'winner', shot_direction: null }),
-    })
-    if (res.ok) {
-      const u = await res.json()
-      const ctx = u._context ?? {}
-      setMatch((m) => ({ ...m, ...u }))
+    // ── OPTIMISTIC UPDATE ───────────────────────────────────────
+    // Score is mirrored client-side (lib/score-engine) so we can render the
+    // new marker BEFORE the API round-trip. The server response then
+    // reconciles stats and _context. This is what makes the tap feel instant.
+    const prevScore: Score = (match.score as Score)
+      ?? INITIAL_SCORE((match.scoring_system ?? 'best_of_2_sets_super_tb') as ScoringSystem)
+    const optimisticScore = applyPoint(prevScore, wt)
+    const optimisticFinished = optimisticScore.match_status === 'finished'
+    const gameChanged =
+      optimisticScore.current_set?.t1 !== prevScore.current_set?.t1 ||
+      optimisticScore.current_set?.t2 !== prevScore.current_set?.t2 ||
+      (optimisticScore.sets?.length ?? 0) > (prevScore.sets?.length ?? 0) ||
+      (optimisticScore.super_tiebreak_active && !prevScore.super_tiebreak_active)
+    const optimisticServing = gameChanged
+      ? (servingTeamAtPress === 1 ? 2 : 1) as 1 | 2
+      : servingTeamAtPress
+    setMatch((m) => ({
+      ...m,
+      score: optimisticScore,
+      serving_team: optimisticServing,
+      status: optimisticFinished ? 'finished' : m.status,
+    }))
 
-      // Show classification panel after score is updated (non-blocking)
-      if (advancedStats) {
-        setClassifyModal({ team: wt, servingTeam: servingTeamAtPress })
-      }
+    // Haptic confirmation for the judge (if supported)
+    try { (navigator as any).vibrate?.(35) } catch {}
 
-      if (ctx.match_finished) addToast('PARTIDO FINALIZADO', 'green')
+    // Fire-and-reconcile: render is already updated, network happens in background
+    let res: Response
+    try {
+      res = await fetch(`/api/matches/${match.id}/point`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ winner_team: wt, point_type: 'winner', shot_direction: null }),
+        signal: AbortSignal.timeout(12000),
+      })
+    } catch {
+      addToast('SIN CONEXIÓN — reintenta', 'red')
+      // Roll back optimistic update
+      setMatch((m) => ({ ...m, score: prevScore, serving_team: servingTeamAtPress, status: m.status === 'finished' && !optimisticFinished ? m.status : (optimisticFinished ? 'in_progress' : m.status) }))
+      return
+    }
 
-      if (ctx.side_change && !ctx.match_finished) {
-        addToast('↔ CAMBIO DE LADO', 'blue')
-        setBreakMode('side_change')
-        sideChangeTimer.start()
-      }
-      if (ctx.new_super_tb) addToast('SUPER TIEBREAK', 'amber')
-      else if (ctx.new_tb) addToast('TIEBREAK', 'blue')
-      else if (ctx.new_set && !ctx.match_finished) {
-        addToast('NUEVO SET', 'teal')
-        if (!ctx.side_change) { setBreakMode('set_break'); setBreakTimer.start() }
-      }
+    if (!res.ok) {
+      addToast('ERROR DEL SERVIDOR', 'red')
+      setMatch((m) => ({ ...m, score: prevScore, serving_team: servingTeamAtPress }))
+      return
+    }
 
-      if (ctx.match_point_t1 || ctx.match_point_t2) {
-        addToast(`PARTIDO · ${ctx.match_point_t1 ? t1.main : t2.main}`, 'red')
-      } else if (ctx.set_point_t1 || ctx.set_point_t2) {
-        addToast(`SET · ${ctx.set_point_t1 ? t1.main : t2.main}`, 'orange')
-      } else if (ctx.golden_point) {
-        addToast('PUNTO DE ORO', 'yellow')
-      } else if (ctx.break_point) {
-        addToast('PUNTO DE BREAK', 'purple')
-      }
+    const u = await res.json()
+    const ctx = u._context ?? {}
+    // Reconcile with authoritative server state (stats, sequences, etc.)
+    setMatch((m) => ({ ...m, ...u }))
+
+    // Show classification panel after score is updated (non-blocking)
+    if (advancedStats) {
+      setClassifyModal({ team: wt, servingTeam: servingTeamAtPress })
+    }
+
+    if (ctx.match_finished) addToast('PARTIDO FINALIZADO', 'green')
+
+    if (ctx.side_change && !ctx.match_finished) {
+      addToast('↔ CAMBIO DE LADO', 'blue')
+      setBreakMode('side_change')
+      sideChangeTimer.start()
+    }
+    if (ctx.new_super_tb) addToast('SUPER TIEBREAK', 'amber')
+    else if (ctx.new_tb) addToast('TIEBREAK', 'blue')
+    else if (ctx.new_set && !ctx.match_finished) {
+      addToast('NUEVO SET', 'teal')
+      if (!ctx.side_change) { setBreakMode('set_break'); setBreakTimer.start() }
+    }
+
+    if (ctx.match_point_t1 || ctx.match_point_t2) {
+      addToast(`PARTIDO · ${ctx.match_point_t1 ? t1.main : t2.main}`, 'red')
+    } else if (ctx.set_point_t1 || ctx.set_point_t2) {
+      addToast(`SET · ${ctx.set_point_t1 ? t1.main : t2.main}`, 'orange')
+    } else if (ctx.golden_point) {
+      addToast('PUNTO DE ORO', 'yellow')
+    } else if (ctx.break_point) {
+      addToast('PUNTO DE BREAK', 'purple')
     }
   }
 
@@ -337,6 +408,14 @@ export function JudgeClient({ initialMatch, userId, timerConfig, advancedStats }
   async function handleFinish() {
     if (!confirm('¿Finalizar el partido?')) return
     setSaving(true); await post('finish'); setSaving(false)
+  }
+
+  async function handleConfirmAndExit() {
+    setSaving(true)
+    // Make sure the match is properly closed on the server even if status
+    // was already 'finished' (idempotent) — then bounce to the list.
+    try { await post('finish') } catch {}
+    router.push('/judge')
   }
 
   async function handleWarning(team: 1 | 2, type: WarningType) {
@@ -451,7 +530,7 @@ export function JudgeClient({ initialMatch, userId, timerConfig, advancedStats }
       : null
     return (
       <div className="fixed inset-0 flex flex-col bg-gray-950 select-none overflow-hidden">
-        <TopBar match={match} elapsed={elapsed} saving={saving} onFinish={handleFinish} isFinished />
+        <TopBar match={match} elapsed={elapsed} saving={saving} onFinish={handleFinish} isFinished judgeName={judgeName} isOnline={isOnline} />
 
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {isRetired ? (
@@ -484,10 +563,11 @@ export function JudgeClient({ initialMatch, userId, timerConfig, advancedStats }
             className="flex-1 bg-yellow-950 hover:bg-yellow-900 disabled:opacity-40 py-5 flex items-center justify-center gap-2 font-bold text-yellow-400 transition-colors">
             ↩ Deshacer último punto
           </button>
-          <Link href="/judge" className="flex-1 py-5 flex items-center justify-center gap-2 font-black font-score text-white text-lg"
+          <button onClick={handleConfirmAndExit} disabled={saving}
+            className="flex-1 py-5 flex items-center justify-center gap-2 font-black font-score text-white text-lg disabled:opacity-50"
             style={{ background: 'linear-gradient(90deg,#f31948,#fc6f43)' }}>
-            ✓ CONFIRMAR
-          </Link>
+            {saving ? '...' : '✓ CONFIRMAR Y CERRAR ACTA'}
+          </button>
         </div>
       </div>
     )
@@ -497,7 +577,7 @@ export function JudgeClient({ initialMatch, userId, timerConfig, advancedStats }
   return (
     <div className="fixed inset-0 flex flex-col bg-gray-950 select-none overflow-hidden">
 
-      <TopBar match={match} elapsed={elapsed} saving={saving} onFinish={handleFinish} isFinished={false} />
+      <TopBar match={match} elapsed={elapsed} saving={saving} onFinish={handleFinish} isFinished={false} judgeName={judgeName} isOnline={isOnline} />
 
       {/* Classic scoreboard */}
       <div className="flex-shrink-0 bg-gray-900 border-b border-gray-700">
@@ -725,15 +805,25 @@ export function JudgeClient({ initialMatch, userId, timerConfig, advancedStats }
 }
 
 // ── Sub-components ─────────────────────────────────────────────────
-function TopBar({ match, elapsed, saving, onFinish, isFinished }: any) {
+function TopBar({ match, elapsed, saving, onFinish, isFinished, judgeName, isOnline }: any) {
   return (
-    <div className="flex items-center justify-between px-4 py-3 bg-gray-900 border-b border-gray-800 flex-shrink-0">
-      <div className="flex items-center gap-2 min-w-0">
+    <div className="flex items-center justify-between px-4 py-3 bg-gray-900 border-b border-gray-800 flex-shrink-0 gap-3">
+      <div className="flex items-center gap-2 min-w-0 flex-1">
         <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${isFinished ? 'bg-green-500' : 'bg-red-500 animate-pulse'}`} />
         <span className="text-white font-semibold truncate text-sm">{match.court?.name ?? '—'}</span>
         {match.round && <span className="text-gray-500 text-sm flex-shrink-0">· {match.round}</span>}
+        {judgeName && (
+          <span className="hidden sm:inline text-gray-500 text-xs truncate" title={`Juez: ${judgeName}`}>
+            · 🧑‍⚖️ {judgeName}
+          </span>
+        )}
       </div>
       <div className="flex items-center gap-3 flex-shrink-0">
+        {isOnline === false && (
+          <span className="text-red-400 text-xs font-bold uppercase tracking-wide bg-red-950/60 border border-red-800 px-2 py-0.5 rounded">
+            OFFLINE
+          </span>
+        )}
         <span className="text-gray-300 font-mono tabular-nums text-sm">{fmtTime(elapsed)}</span>
         {!isFinished && (
           <button onClick={onFinish} disabled={saving}

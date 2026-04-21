@@ -26,6 +26,11 @@ export default function TournamentPage() {
 
   async function handleSave() {
     if (!tournament) return
+    if (tournament.start_date && tournament.end_date &&
+        new Date(tournament.end_date) < new Date(tournament.start_date)) {
+      alert('La fecha de fin no puede ser anterior a la de inicio.')
+      return
+    }
     setSaving(true)
     await supabase.from('tournaments').update({
       name: tournament.name,

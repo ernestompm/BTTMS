@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabase, createServiceSupabase } from '@/lib/supabase-server'
 import { applyPoint, INITIAL_SCORE, isBreakPoint, isSetPoint, isMatchPoint, isTBSideChange, isSuperTBSideChange } from '@/lib/score-engine'
 import { applyPointToStats, applyBreakPointStats, emptyStats } from '@/lib/stats-engine'
+import { pushBroadcastEvent } from '@/lib/broadcast-push'
 import type { Score, PointType, ShotDirection, ScoringSystem } from '@/types'
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -150,33 +151,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     finished_at: matchFinished ? new Date().toISOString() : null,
   }).eq('id', matchId).select('*').single()
 
-  if (match.broadcast_active) {
-    triggerBroadcast(matchId, 'point_scored', updatedMatch, _context).catch(() => {})
+  if (match.broadcast_active && updatedMatch) {
+    const eventName = matchFinished ? 'match_finished' : 'point_scored'
+    pushBroadcastEvent(updatedMatch.tournament_id, matchId, eventName, _context)
   }
 
   return NextResponse.json({ ...updatedMatch, _context })
-}
-
-async function triggerBroadcast(matchId: string, event: string, matchData: any, context?: Record<string, unknown>) {
-  const service = createServiceSupabase()
-  const { data: tournament } = await service.from('tournaments')
-    .select('broadcast_endpoint, broadcast_api_key, name, sponsors')
-    .eq('id', matchData.tournament_id).single()
-
-  if (!tournament?.broadcast_endpoint) return
-
-  const payload = {
-    meta: { version: '2.0', event, tournament_id: matchData.tournament_id, match_id: matchId, timestamp: new Date().toISOString() },
-    match: { id: matchId, status: matchData.status, score: matchData.score, serving_team: matchData.serving_team },
-    _context: context ?? {},
-    stats: matchData.stats,
-    tournament: { name: tournament.name, sponsor_logos: tournament.sponsors },
-  }
-
-  await fetch(tournament.broadcast_endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-API-Key': tournament.broadcast_api_key ?? '' },
-    body: JSON.stringify(payload),
-    signal: AbortSignal.timeout(5000),
-  }).catch(() => {})
 }

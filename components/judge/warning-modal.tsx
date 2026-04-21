@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import type { WarningType, PenaltyLevel, MatchWarnings } from '@/types'
+import type { WarningType, PenaltyLevel, MatchWarnings, WarningEntry } from '@/types'
 
 interface Props {
   warnings: MatchWarnings
@@ -18,13 +18,15 @@ interface ViolationOption {
   color: string
 }
 
+// RFET 2026 art. 27f-g — Code of Conduct.
+// Code violations and time violations escalate on SEPARATE ladders.
 const VIOLATIONS: ViolationOption[] = [
-  { type: 'conduct',        label: 'CONDUCTA',      sublabel: 'Antideportiva',     color: 'bg-red-800 hover:bg-red-700' },
-  { type: 'time',           label: 'TIEMPO',        sublabel: 'Violación de tiempo (20s)', color: 'bg-orange-700 hover:bg-orange-600' },
-  { type: 'coaching',       label: 'COACHING',      sublabel: 'Descalificación directa',   color: 'bg-purple-800 hover:bg-purple-700' },
-  { type: 'equipment_abuse',label: 'MATERIAL',      sublabel: 'Abuso de raqueta/equipo',  color: 'bg-yellow-700 hover:bg-yellow-600' },
-  { type: 'obscenity',      label: 'LENGUAJE',      sublabel: 'Ofensivo / Obscenidad',    color: 'bg-pink-800 hover:bg-pink-700' },
-  { type: 'other',          label: 'OTRA',          sublabel: 'Otra infracción',           color: 'bg-gray-700 hover:bg-gray-600' },
+  { type: 'conduct',         label: 'CONDUCTA',  sublabel: 'Antideportiva',              color: 'bg-red-800 hover:bg-red-700' },
+  { type: 'time',            label: 'TIEMPO',    sublabel: 'Violación 20s (escala propia)', color: 'bg-orange-700 hover:bg-orange-600' },
+  { type: 'coaching',        label: 'COACHING',  sublabel: 'Consejo ilegal desde fuera',  color: 'bg-purple-800 hover:bg-purple-700' },
+  { type: 'equipment_abuse', label: 'MATERIAL',  sublabel: 'Abuso de raqueta/equipo',     color: 'bg-yellow-700 hover:bg-yellow-600' },
+  { type: 'obscenity',       label: 'LENGUAJE',  sublabel: 'Ofensivo / Obscenidad',       color: 'bg-pink-800 hover:bg-pink-700' },
+  { type: 'other',           label: 'OTRA',      sublabel: 'Otra infracción de código',   color: 'bg-gray-700 hover:bg-gray-600' },
 ]
 
 const PENALTY_LABELS: Record<PenaltyLevel, string> = {
@@ -41,22 +43,79 @@ const PENALTY_COLORS: Record<PenaltyLevel, string> = {
   default:       'text-red-300 bg-red-950 border-red-600',
 }
 
-function nextPenalty(existingCount: number, type: WarningType): PenaltyLevel {
-  if (type === 'coaching') return 'default'
-  const levels: PenaltyLevel[] = ['warning', 'point_penalty', 'game_penalty', 'default']
-  return levels[Math.min(existingCount, 3)]
+const CODE_LADDER: PenaltyLevel[] = ['warning', 'point_penalty', 'game_penalty', 'default']
+const TIME_TYPES: WarningType[] = ['time']
+
+function isTimeViolation(type: WarningType): boolean {
+  return TIME_TYPES.includes(type)
+}
+
+function computeNextPenalty(type: WarningType, teamWarnings: WarningEntry[]): PenaltyLevel {
+  if (isTimeViolation(type)) {
+    const timeCount = teamWarnings.filter((w) => isTimeViolation(w.type)).length
+    return timeCount === 0 ? 'warning' : 'point_penalty'
+  }
+  const codeCount = teamWarnings.filter((w) => !isTimeViolation(w.type)).length
+  return CODE_LADDER[Math.min(codeCount, CODE_LADDER.length - 1)]
+}
+
+function ordinal(n: number): string {
+  return `${n}ª`
 }
 
 export function WarningModal({ warnings, team1Name, team2Name, onConfirm, onClose }: Props) {
   const [selectedTeam, setSelectedTeam] = useState<1 | 2 | null>(null)
   const [selectedType, setSelectedType] = useState<WarningType | null>(null)
+  const [confirmStep, setConfirmStep] = useState(false)
 
-  const count = selectedTeam === 1 ? warnings.t1.length : selectedTeam === 2 ? warnings.t2.length : 0
-  const penalty = selectedType ? nextPenalty(count, selectedType) : null
+  const teamWarnings = selectedTeam === 1 ? warnings.t1 : selectedTeam === 2 ? warnings.t2 : []
+  const penalty: PenaltyLevel | null = selectedType && selectedTeam ? computeNextPenalty(selectedType, teamWarnings) : null
+
+  const offenceNumber = selectedType
+    ? (isTimeViolation(selectedType)
+        ? teamWarnings.filter((w) => isTimeViolation(w.type)).length + 1
+        : teamWarnings.filter((w) => !isTimeViolation(w.type)).length + 1)
+    : 0
 
   function handleConfirm() {
     if (!selectedTeam || !selectedType) return
+    if (penalty === 'default' && !confirmStep) { setConfirmStep(true); return }
     onConfirm(selectedTeam, selectedType)
+  }
+
+  const teamLabel = selectedTeam === 1 ? team1Name : selectedTeam === 2 ? team2Name : ''
+  const violation = VIOLATIONS.find((v) => v.type === selectedType)
+
+  // Secondary confirmation for disqualification (terminal action)
+  if (confirmStep && penalty === 'default') {
+    return (
+      <div className="fixed inset-0 z-50 bg-red-950/96 flex flex-col justify-center p-4">
+        <div className="bg-red-950 rounded-3xl border-2 border-red-500 max-w-lg w-full mx-auto overflow-hidden shadow-2xl">
+          <div className="px-6 py-5 border-b border-red-700 bg-red-900/50">
+            <p className="text-red-100 font-black font-score text-2xl">⚠ DESCALIFICACIÓN</p>
+            <p className="text-red-300 text-sm mt-1">Esta acción da el partido por PERDIDO al equipo infractor (W/O).</p>
+          </div>
+          <div className="p-6 space-y-4">
+            <div className="rounded-xl bg-red-900/40 border border-red-700 p-4">
+              <p className="text-red-200 text-xs uppercase tracking-widest mb-1">Equipo sancionado</p>
+              <p className="text-white font-black font-score text-xl">{teamLabel}</p>
+              <p className="text-red-200 text-xs uppercase tracking-widest mt-3 mb-1">Infracción</p>
+              <p className="text-white font-bold">{violation?.label} — {ordinal(offenceNumber)} del código</p>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setConfirmStep(false)}
+                className="flex-1 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-200 font-bold">
+                Cancelar
+              </button>
+              <button onClick={handleConfirm}
+                className="flex-1 py-3 rounded-xl bg-red-700 hover:bg-red-600 text-white font-black font-score">
+                DESCALIFICAR
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -91,8 +150,13 @@ export function WarningModal({ warnings, team1Name, team2Name, onConfirm, onClos
           {/* Penalty preview */}
           {selectedTeam && (
             <div className={`rounded-xl px-4 py-3 border text-sm font-bold ${penalty ? PENALTY_COLORS[penalty] : 'text-gray-500 bg-gray-800 border-gray-700'}`}>
-              {penalty
-                ? <>Penalización: {PENALTY_LABELS[penalty]} <span className="font-normal opacity-70">({count + 1}ª infracción)</span></>
+              {penalty && selectedType
+                ? <>
+                    Próxima penalización: {PENALTY_LABELS[penalty]}{' '}
+                    <span className="font-normal opacity-70">
+                      ({ordinal(offenceNumber)} {isTimeViolation(selectedType) ? 'violación de tiempo' : 'violación de código'})
+                    </span>
+                  </>
                 : 'Selecciona el tipo de infracción'
               }
             </div>
@@ -121,7 +185,7 @@ export function WarningModal({ warnings, team1Name, team2Name, onConfirm, onClos
             <button onClick={handleConfirm} disabled={!selectedTeam || !selectedType}
               className="flex-1 py-3 rounded-xl font-black font-score transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-white"
               style={{ background: selectedTeam && selectedType ? 'linear-gradient(90deg,#f31948,#fc6f43)' : undefined }}>
-              CONFIRMAR
+              {penalty === 'default' ? 'REVISAR DESCALIFIC.' : 'CONFIRMAR'}
             </button>
           </div>
         </div>

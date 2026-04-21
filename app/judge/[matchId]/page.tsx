@@ -41,6 +41,7 @@ export default async function JudgeMatchPage({ params }: { params: Promise<{ mat
     <JudgeClient
       initialMatch={match as any}
       userId={user.id}
+      judgeName={appUser.full_name ?? appUser.email ?? 'Juez'}
       timerConfig={timerConfig}
       advancedStats={tournament?.advanced_stats_enabled ?? true}
     />

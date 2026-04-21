@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabase, createServiceSupabase } from '@/lib/supabase-server'
+import { pushBroadcastEvent } from '@/lib/broadcast-push'
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: matchId } = await params
@@ -24,6 +25,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     finished_at: new Date().toISOString(),
     broadcast_active: false,
   }).eq('id', matchId).select('*').single()
+
+  if (updatedMatch) {
+    pushBroadcastEvent(updatedMatch.tournament_id, matchId, 'match_finished')
+  }
 
   return NextResponse.json(updatedMatch)
 }

@@ -204,6 +204,37 @@ function finishSet(s: Score, winner: 1 | 2, loser: 1 | 2): Score {
   return s
 }
 
+/**
+ * Award the current game to `winnerTeam` as a penalty (game_penalty / forfeited game).
+ * Handles deuce, tiebreak, super tiebreak and regular games. Returns the resulting score
+ * after the game (or set, or match) is closed in favor of winnerTeam.
+ */
+export function awardCurrentGame(prev: Score, winnerTeam: 1 | 2): Score {
+  let s = structuredClone(prev)
+  if (s.match_status === 'finished') return s
+
+  if (s.super_tiebreak_active) {
+    // Super TB: forfeited = opponent wins the match at min 10 pts margin 2
+    const wKey = `t${winnerTeam}` as 't1' | 't2'
+    s.tiebreak_score[wKey] = Math.max(10, s.tiebreak_score[wKey] + 1)
+    s.sets_won[wKey]++
+    s.match_status = 'finished'
+    s.winner_team = winnerTeam
+    return s
+  }
+
+  // Simulate until the current game closes (set/match may also close)
+  const prevSetsLen = s.sets?.length ?? 0
+  const prevSet = { t1: s.current_set?.t1 ?? 0, t2: s.current_set?.t2 ?? 0 }
+  for (let i = 0; i < 20; i++) {
+    s = applyPoint(s, winnerTeam)
+    const setChanged = (s.sets?.length ?? 0) > prevSetsLen
+    const gameChanged = setChanged || s.current_set.t1 !== prevSet.t1 || s.current_set.t2 !== prevSet.t2
+    if (gameChanged || s.match_status === 'finished') break
+  }
+  return s
+}
+
 /** Check if current point situation is break point (server = sacador, winner restador would break) */
 export function isBreakPoint(score: Score, servingTeam: 1 | 2): boolean {
   if (score.tiebreak_active || score.super_tiebreak_active) return false
