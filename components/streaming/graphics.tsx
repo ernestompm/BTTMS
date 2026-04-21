@@ -726,9 +726,10 @@ export function BigScoreboard({ visible, match, tournament, sponsor, opts }: { v
   const serving = match.serving_team as 1|2|null
 
   return (
-    // Wrapper centrado por flex
+    // Wrapper centrado por flex. El card usa width:fit-content para hug al
+    // contenido y evitar el hueco vac\u00edo a la derecha cuando no hay sponsor.
     <div style={{ position:'absolute', left:0, right:0, bottom:50, display:'flex', justifyContent:'center', pointerEvents:'none' }}>
-      <div style={{ maxWidth:cardMaxW, ...CARD, padding:0, overflow:'hidden', pointerEvents:'auto',
+      <div style={{ width:'fit-content', maxWidth:cardMaxW, ...CARD, padding:0, overflow:'hidden', pointerEvents:'auto',
         borderTop:`8px solid ${pal.accentA}`,
         ...animStyle(visible, 'sgInU', 'sgOutU', 700) }}>
 
@@ -782,12 +783,14 @@ export function BigScoreboard({ visible, match, tournament, sponsor, opts }: { v
             const won = match.status==='finished' && score?.winner_team===team
             const players = [entry?.player1, isDoubles?entry?.player2:null].filter(Boolean)
             const row = 1 + team
+            const isServingTeam = serving === team
+            const rowBg = won ? hexAlpha(accent,.12) : isServingTeam ? hexAlpha(accent,.08) : 'transparent'
             return (
               <div key={team} style={{ display:'contents' }}>
                 <div style={{ gridColumn:1, gridRow:row, background:accent }}/>
-                <div style={{ gridColumn:2, gridRow:row, display:'flex', flexDirection:'column', justifyContent:'center', gap: isDoubles ? 6 : 4, padding:'12px 22px', background: won ? hexAlpha(accent,.1) : 'transparent', borderTop: team===2 ? '1px solid rgba(255,255,255,.05)' : 'none' }}>
+                <div style={{ gridColumn:2, gridRow:row, display:'flex', flexDirection:'column', justifyContent:'center', gap: isDoubles ? 6 : 4, padding:'14px 24px', background: rowBg, borderTop: team===2 ? '1px solid rgba(255,255,255,.05)' : 'none' }}>
                   {players.map((p:any,i:number) => {
-                    const isServer = serving === team && (!isDoubles || p.id === match.current_server_id)
+                    const isServer = isServingTeam && (!isDoubles || p.id === match.current_server_id)
                     return (
                       <BigScoreboardPlayer key={i}
                         player={p}
@@ -801,7 +804,7 @@ export function BigScoreboard({ visible, match, tournament, sponsor, opts }: { v
                 </div>
                 {sets.map((v,i) => (
                   <div key={i} style={{ gridColumn: 3+i, gridRow:row, display:'grid', placeItems:'center', fontSize:64, fontWeight:900, borderLeft:'1px solid rgba(255,255,255,.05)', borderTop: team===2 ? '1px solid rgba(255,255,255,.05)' : 'none',
-                    background: (score?.sets?.length ?? 0) === i ? hexAlpha(accent, .14) : 'rgba(0,0,0,.2)',
+                    background: (score?.sets?.length ?? 0) === i ? hexAlpha(accent, .14) : isServingTeam ? hexAlpha(accent,.05) : 'rgba(0,0,0,.2)',
                     color: v===null ? 'rgba(255,255,255,.35)' : (won ? accent : '#fff'), fontVariantNumeric:'tabular-nums' }}>
                     {v===null ? '–' : v}
                   </div>
@@ -837,31 +840,33 @@ function BigScoreboardPlayer({ player, accent, isDoubles, isServer, servingColor
   player: any, accent: string, isDoubles: boolean, isServer: boolean, servingColor: string,
 }) {
   if (!player) return null
-  const lastFs  = isDoubles ? 28 : 38
-  const firstFs = isDoubles ? 18 : 24
-  const flagSz  = isDoubles ? { w: 38, h: 26 } : { w: 48, h: 32 }
+  const lastFs  = isDoubles ? 38 : 50
+  const firstFs = isDoubles ? 22 : 28
+  const flagSz  = isDoubles ? { w: 42, h: 28 } : { w: 54, h: 36 }
   return (
-    <div style={{ display:'flex', alignItems:'center', gap:14, minWidth:0, whiteSpace:'nowrap' }}>
-      {/* Serve indicator a la IZQUIERDA del nombre (antes de la bandera) */}
-      {isServer ? (
-        <span title="Saca" style={{
-          flex:'none', width:16, height:16, borderRadius:'50%', background:servingColor,
-          boxShadow:`0 0 14px ${servingColor}, 0 0 0 4px ${hexAlpha(servingColor,.28)}`,
-          animation:'sgSrvPulse 1.4s infinite',
-        }}/>
-      ) : (
-        <span style={{ flex:'none', width:16, height:16 }}/>
-      )}
+    <div style={{ display:'flex', alignItems:'center', gap:16, minWidth:0, whiteSpace:'nowrap' }}>
       <img src={flagPath(player.nationality)} alt="" style={{ flex:'none', width:flagSz.w, height:flagSz.h, borderRadius:4, objectFit:'cover' }}/>
-      {/* Nombre + apellido en UNA SOLA LINEA */}
-      {player.first_name && (
-        <span style={{ fontSize:firstFs, fontWeight:700, letterSpacing:'.02em', textTransform:'uppercase', color:'#ffffff', opacity:.95, lineHeight:1 }}>
-          {player.first_name.toUpperCase()}
+      {/* Nombre apilado (first sobre last) */}
+      <div style={{ display:'flex', flexDirection:'column', lineHeight:1 }}>
+        {player.first_name && (
+          <span style={{ fontSize:firstFs, fontWeight:700, letterSpacing:'.02em', textTransform:'uppercase', color:'#ffffff', opacity:.92 }}>
+            {player.first_name.toUpperCase()}
+          </span>
+        )}
+        <span style={{ fontSize:lastFs, fontWeight:900, textTransform:'uppercase', letterSpacing:'-.005em', color:accent, marginTop: player.first_name ? 2 : 0 }}>
+          {(player.last_name ?? '').toUpperCase()}
         </span>
+      </div>
+      {/* Serve indicator AL FINAL: dot grande + pulse + glow fuerte. Muy visible. */}
+      {isServer && (
+        <span title="Saca" aria-label="saca" style={{
+          flex:'none',
+          width:28, height:28, borderRadius:'50%', background:servingColor,
+          boxShadow:`0 0 24px ${servingColor}, 0 0 0 5px ${hexAlpha(servingColor,.32)}`,
+          animation:'sgSrvPulse 1.3s infinite',
+          marginLeft:8,
+        }}/>
       )}
-      <span style={{ fontSize:lastFs, fontWeight:900, textTransform:'uppercase', letterSpacing:'-.005em', color:accent, lineHeight:1 }}>
-        {(player.last_name ?? '').toUpperCase()}
-      </span>
     </div>
   )
 }
