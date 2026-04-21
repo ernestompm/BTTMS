@@ -1,6 +1,6 @@
 import { createServiceSupabase } from '@/lib/supabase-server'
 import { notFound } from 'next/navigation'
-import { OverlayPreviewStage } from '@/components/streaming/OverlayPreviewStage'
+import { OverlayPreviewStage } from '@/components/streaming/OverlayStage'
 import { getWeather } from '@/lib/weather'
 
 export const dynamic = 'force-dynamic'
