@@ -1009,17 +1009,19 @@ export function WeatherCard({ visible, weather, tournament }: { visible:boolean,
           {header || 'SEDE'}
         </span>
       </div>
-      {/* BODY compacto */}
-      <div style={{ padding:'14px 22px 12px', display:'grid', gridTemplateColumns:'auto 1fr', gap:18, alignItems:'center' }}>
-        <div style={{ fontSize:92, lineHeight:1 }}>{WX_ICON[weather.condition] ?? '🌡️'}</div>
+      {/* BODY — icono a la izquierda, stack temp/condicion/sensacion a la derecha */}
+      <div style={{ padding:'18px 24px 14px', display:'grid', gridTemplateColumns:'auto 1fr', gap:22, alignItems:'center' }}>
+        <div style={{ fontSize:106, lineHeight:1, filter:'drop-shadow(0 6px 16px rgba(0,0,0,.35))' }}>
+          {WX_ICON[weather.condition] ?? '🌡️'}
+        </div>
         <div style={{ minWidth:0 }}>
-          <div style={{ display:'flex', alignItems:'baseline', gap:12 }}>
-            <span style={{ fontSize:84, fontWeight:900, lineHeight:1, color:pal.text, fontVariantNumeric:'tabular-nums' }}>{Math.round(weather.temperature_c)}°</span>
-            <span style={{ fontSize:28, fontWeight:900, letterSpacing:'.1em', textTransform:'uppercase', color:pal.accentA, lineHeight:1 }}>
-              {weather.condition}
-            </span>
+          <div style={{ fontSize:92, fontWeight:900, lineHeight:.92, color:pal.text, fontVariantNumeric:'tabular-nums', letterSpacing:'-.02em' }}>
+            {Math.round(weather.temperature_c)}°
           </div>
-          <div style={{ marginTop:3, fontSize:22, opacity:.78, fontWeight:800, letterSpacing:'.12em', textTransform:'uppercase' }}>
+          <div style={{ marginTop:2, fontSize:22, fontWeight:900, letterSpacing:'.18em', textTransform:'uppercase', color:pal.accentA, lineHeight:1.15 }}>
+            {weather.condition}
+          </div>
+          <div style={{ marginTop:3, fontSize:16, fontWeight:800, letterSpacing:'.22em', textTransform:'uppercase', opacity:.6, lineHeight:1.2 }}>
             SENSACIÓN {Math.round(weather.feels_like_c)}°
           </div>
         </div>
