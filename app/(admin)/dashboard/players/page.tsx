@@ -20,10 +20,16 @@ export default async function PlayersPage({ searchParams }: { searchParams: Prom
           <h1 className="text-2xl font-bold text-white font-score">Jugadores</h1>
           <p className="text-gray-400 text-sm">{players?.length ?? 0} jugadores registrados</p>
         </div>
-        <Link href="/dashboard/players/new"
-          className="bg-brand-red hover:bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">
-          + Nuevo jugador
-        </Link>
+        <div className="flex gap-2">
+          <Link href="/dashboard/players/import"
+            className="bg-gray-800 hover:bg-gray-700 text-gray-200 px-4 py-2 rounded-xl text-sm font-medium transition-colors">
+            ⬆ Importar CSV
+          </Link>
+          <Link href="/dashboard/players/new"
+            className="bg-brand-red hover:bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">
+            + Nuevo jugador
+          </Link>
+        </div>
       </div>
 
       {/* Search */}

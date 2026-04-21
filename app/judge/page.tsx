@@ -3,8 +3,15 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { CATEGORY_LABELS } from '@/types'
+import { JudgeNameSetup } from '@/components/judge/judge-name-setup'
 
 export const dynamic = 'force-dynamic'
+
+function isValidFullName(name?: string | null): boolean {
+  if (!name) return false
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  return parts.length >= 2 && parts.every(p => p.length >= 2)
+}
 
 export default async function JudgeIndexPage() {
   const supabase = await createServerSupabase()
@@ -14,6 +21,11 @@ export default async function JudgeIndexPage() {
   const service = createServiceSupabase()
   const { data: appUser } = await service.from('app_users').select('*').eq('id', user.id).single()
   if (!appUser) redirect('/login')
+
+  // Los jueces NO pueden entrar sin nombre completo (nombre + apellidos)
+  if (appUser.role === 'judge' && !isValidFullName(appUser.full_name)) {
+    return <JudgeNameSetup userId={user.id} currentName={appUser.full_name}/>
+  }
 
   let query = service.from('matches')
     .select(`*, court:courts(name), entry1:draw_entries!entry1_id(player1:players!player1_id(first_name,last_name,nationality), player2:players!player2_id(first_name,last_name,nationality)), entry2:draw_entries!entry2_id(player1:players!player1_id(first_name,last_name,nationality), player2:players!player2_id(first_name,last_name,nationality))`)

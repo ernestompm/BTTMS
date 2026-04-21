@@ -65,6 +65,10 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
               className="bg-brand-red hover:bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">
               ⚖️ Arbitrar
             </Link>
+            <Link href={`/dashboard/matches/${m.id}/edit-result`}
+              className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">
+              ✎ Editar resultado
+            </Link>
             <Link href={`/scoreboard/${m.id}`} target="_blank"
               className="bg-gray-800 hover:bg-gray-700 text-gray-300 px-4 py-2 rounded-xl text-sm transition-colors">
               Marcador ↗

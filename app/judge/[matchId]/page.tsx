@@ -1,8 +1,15 @@
 import { createServerSupabase, createServiceSupabase } from '@/lib/supabase-server'
 import { redirect, notFound } from 'next/navigation'
 import { JudgeClient } from '@/components/judge/judge-client'
+import { JudgeNameSetup } from '@/components/judge/judge-name-setup'
 
 export const dynamic = 'force-dynamic'
+
+function isValidFullName(name?: string | null): boolean {
+  if (!name) return false
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  return parts.length >= 2 && parts.every(p => p.length >= 2)
+}
 
 export default async function JudgeMatchPage({ params }: { params: Promise<{ matchId: string }> }) {
   const { matchId } = await params
@@ -14,6 +21,11 @@ export default async function JudgeMatchPage({ params }: { params: Promise<{ mat
   const service = createServiceSupabase()
   const { data: appUser } = await service.from('app_users').select('*').eq('id', user.id).single()
   if (!appUser) redirect('/login')
+
+  // Block judges without full name from arbitrating
+  if (appUser.role === 'judge' && !isValidFullName(appUser.full_name)) {
+    return <JudgeNameSetup userId={user.id} currentName={appUser.full_name}/>
+  }
 
   const { data: match } = await service.from('matches')
     .select(`*, court:courts(*), entry1:draw_entries!entry1_id(*, player1:players!player1_id(*), player2:players!player2_id(*)), entry2:draw_entries!entry2_id(*, player1:players!player1_id(*), player2:players!player2_id(*))`)
