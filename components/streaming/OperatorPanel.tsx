@@ -200,22 +200,25 @@ export function OperatorPanel({ session, initialMatch, tournament, rules, allMat
   }, {})
 
   return (
-    <div style={{ minHeight:'100vh', background:'#05080f', color:'#fff', fontFamily:'Barlow, system-ui, sans-serif' }}>
+    <div style={{
+      height:'100vh', background:'#05080f', color:'#fff', fontFamily:'Barlow, system-ui, sans-serif',
+      display:'grid', gridTemplateColumns:'1fr 340px', gridTemplateRows:'auto 1fr', overflow:'hidden',
+    }}>
       {/* Keyframes globales (para que MiniStage anime igual que el overlay) */}
       <style jsx global>{STREAM_KEYFRAMES}</style>
 
-      {/* TOP BAR */}
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 24px', borderBottom:'1px solid #141a2a', background:'#070b16', gap:20 }}>
+      {/* TOP BAR — span full width */}
+      <div style={{ gridColumn:'1 / 3', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 20px', borderBottom:'1px solid #141a2a', background:'#070b16', gap:20 }}>
         <div>
-          <div style={{ fontSize:18, fontWeight:900, letterSpacing:'.06em' }}>STREAMING · OPERADOR</div>
-          <div style={{ fontSize:12, opacity:.6 }}>{tournament?.name} · {match.round} · {match.category}</div>
+          <div style={{ fontSize:16, fontWeight:900, letterSpacing:'.06em' }}>STREAMING · OPERADOR</div>
+          <div style={{ fontSize:11, opacity:.6 }}>{tournament?.name} · {match.round} · {match.category}</div>
         </div>
-        <div style={{ display:'flex', alignItems:'center', gap:14 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
           {/* Mode selector */}
           <div style={{ display:'flex', alignItems:'center', gap:0, background:'#0a101e', border:'1px solid #243250', borderRadius:10, padding:3 }}>
             {(['preview-take','take'] as const).map(m => (
               <button key={m} onClick={() => setMode(m)} style={{
-                padding:'7px 14px', borderRadius:7, fontSize:11, fontWeight:900, letterSpacing:'.1em', textTransform:'uppercase', border:'none', cursor:'pointer',
+                padding:'6px 12px', borderRadius:7, fontSize:11, fontWeight:900, letterSpacing:'.1em', textTransform:'uppercase', border:'none', cursor:'pointer',
                 background: mode===m ? '#ef6a4c' : 'transparent',
                 color: mode===m ? '#fff' : '#8ea2c6',
               }}>
@@ -225,12 +228,15 @@ export function OperatorPanel({ session, initialMatch, tournament, rules, allMat
           </div>
           <button onClick={copyUrl} style={btn('outline')}>{copyState==='copied' ? '✓ Copiada' : 'URL vMix'}</button>
           <a href={overlayUrl} target="_blank" rel="noreferrer" style={{ ...btn('outline'), textDecoration:'none' }}>Programa ↗</a>
-          <button onClick={stopAll} style={btn('danger')}>STOP · OCULTAR TODO <span style={{opacity:.6, marginLeft:8, fontSize:11}}>ESC</span></button>
+          <button onClick={stopAll} style={btn('danger')}>STOP <span style={{opacity:.6, marginLeft:6, fontSize:11}}>ESC</span></button>
         </div>
       </div>
 
+      {/* MAIN AREA — left column */}
+      <div style={{ gridColumn:1, display:'flex', flexDirection:'column', height:'100%', overflow:'hidden' }}>
+
       {/* MONITORES */}
-      <div style={{ padding:'14px 20px', display:'grid', gridTemplateColumns: mode==='preview-take' ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)', gap:14 }}>
+      <div style={{ flex:'0 0 auto', padding:'10px 16px', display:'grid', gridTemplateColumns: mode==='preview-take' ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)', gap:12, height:'calc(27vh + 44px)' }}>
         <Monitor label="VENUE" color="#8ea2c6">
           <iframe src={venueUrl} style={{ width:'100%', height:'100%', border:0, background:'#050810', pointerEvents:'none' }}/>
         </Monitor>
@@ -254,7 +260,7 @@ export function OperatorPanel({ session, initialMatch, tournament, rules, allMat
 
       {/* TAKE / OUT BAR (solo preview-take) */}
       {mode === 'preview-take' && (
-        <div style={{ padding:'8px 20px 18px', display:'flex', gap:10, alignItems:'center', justifyContent:'center', flexWrap:'wrap' }}>
+        <div style={{ flex:'0 0 auto', padding:'6px 16px 10px', display:'flex', gap:8, alignItems:'center', justifyContent:'center', flexWrap:'wrap' }}>
           <button onClick={take}        disabled={!previewKey} style={bigBtn('#15803d', !previewKey)}>
             TAKE <span style={{ opacity:.7, marginLeft:8, fontSize:12 }}>[N]</span>
           </button>
@@ -276,19 +282,19 @@ export function OperatorPanel({ session, initialMatch, tournament, rules, allMat
       )}
 
       {/* TABS */}
-      <div style={{ padding:'0 20px', borderBottom:'1px solid #141a2a', display:'flex', gap:6 }}>
+      <div style={{ flex:'0 0 auto', padding:'0 16px', borderBottom:'1px solid #141a2a', display:'flex', gap:6 }}>
         {(['manual','auto'] as const).map(t => (
           <button key={t} onClick={() => setActiveTab(t)} style={{
-            padding:'12px 22px', border:'none', borderBottom: activeTab===t ? '3px solid #ef6a4c' : '3px solid transparent',
-            background:'transparent', color: activeTab===t ? '#fff' : '#64748b', fontWeight:900, letterSpacing:'.14em', textTransform:'uppercase', fontSize:13, cursor:'pointer',
+            padding:'10px 20px', border:'none', borderBottom: activeTab===t ? '3px solid #ef6a4c' : '3px solid transparent',
+            background:'transparent', color: activeTab===t ? '#fff' : '#64748b', fontWeight:900, letterSpacing:'.14em', textTransform:'uppercase', fontSize:12, cursor:'pointer',
           }}>
             {t === 'manual' ? 'Manual' : 'Automático'}
           </button>
         ))}
       </div>
 
-      {/* TAB CONTENT */}
-      <div style={{ padding:'18px 20px 32px' }}>
+      {/* TAB CONTENT — scrollable */}
+      <div style={{ flex:'1 1 0', minHeight:0, overflow:'auto', padding:'12px 16px 18px' }}>
         {activeTab === 'manual' ? (
           <ManualTab
             grouped={grouped}
@@ -313,6 +319,13 @@ export function OperatorPanel({ session, initialMatch, tournament, rules, allMat
           />
         )}
       </div>
+
+      </div> {/* /MAIN AREA */}
+
+      {/* SIDEBAR — match data */}
+      <aside style={{ gridColumn:2, overflow:'auto', borderLeft:'1px solid #141a2a', background:'#070b16' }}>
+        <MatchDataSidebar match={match} tournament={tournament} referee={referee} weather={weather}/>
+      </aside>
     </div>
   )
 }
@@ -488,11 +501,11 @@ function btn(v:'outline'|'success'|'danger'|'primary'='outline'): React.CSSPrope
 }
 function bigBtn(bg: string, disabled: boolean): React.CSSProperties {
   return {
-    padding:'16px 40px', borderRadius:12, fontSize:20, fontWeight:900, letterSpacing:'.18em', textTransform:'uppercase',
+    padding:'10px 24px', borderRadius:10, fontSize:15, fontWeight:900, letterSpacing:'.18em', textTransform:'uppercase',
     cursor: disabled ? 'not-allowed' : 'pointer', border:'none',
     background: disabled ? '#1a2236' : bg,
     color: disabled ? '#475569' : '#fff',
-    boxShadow: disabled ? 'none' : `0 6px 18px ${bg}55`,
+    boxShadow: disabled ? 'none' : `0 4px 12px ${bg}55`,
     transition:'transform .1s ease',
   }
 }
@@ -508,3 +521,188 @@ function graphicBtn(inProg:boolean, inPreview:boolean, accent:string): React.CSS
   }
 }
 function labelSm(): React.CSSProperties { return { fontSize:11, letterSpacing:'.2em', textTransform:'uppercase', fontWeight:800, opacity:.65 } }
+
+// ─── Match data sidebar ────────────────────────────────────────────────────
+const PTS_LABEL = ['0','15','30','40']
+function pointLabel(score: any, team: 1|2): string {
+  if (!score) return '—'
+  const k = team===1 ? 't1' : 't2'
+  if (score.super_tiebreak_active || score.tiebreak_active) return String(score.tiebreak_score?.[k] ?? 0)
+  if (score.deuce) return '40'
+  return PTS_LABEL[score.current_game?.[k] ?? 0] ?? '0'
+}
+const STATUS_LABEL: Record<string,string> = {
+  scheduled:        'PROGRAMADO',
+  judge_on_court:   'ÁRBITRO EN PISTA',
+  players_on_court: 'JUGADORES EN PISTA',
+  warmup:           'CALENTAMIENTO',
+  in_progress:      'EN JUEGO',
+  suspended:        'SUSPENDIDO',
+  finished:         'FINALIZADO',
+  walkover:         'WALKOVER',
+  retired:          'ABANDONO',
+  bye:              'BYE',
+}
+const STATUS_COLOR: Record<string,string> = {
+  scheduled:'#64748b', judge_on_court:'#a78bfa', players_on_court:'#a78bfa',
+  warmup:'#fbbf24', in_progress:'#ef4444', suspended:'#f59e0b',
+  finished:'#22c55e', walkover:'#22c55e', retired:'#f97316', bye:'#64748b',
+}
+
+function MatchDataSidebar({ match, tournament, referee, weather }: { match:any, tournament:any, referee:any, weather:any }) {
+  const score = match.score
+  const isDoubles = match.match_type === 'doubles'
+  const serving = match.serving_team as 1|2|null
+  const status = match.status as string
+  const statusColor = STATUS_COLOR[status] ?? '#64748b'
+
+  const sets = score?.sets ?? []
+  const setsWon = { t1: score?.sets_won?.t1 ?? 0, t2: score?.sets_won?.t2 ?? 0 }
+  const curSet  = { t1: score?.current_set?.t1 ?? 0, t2: score?.current_set?.t2 ?? 0 }
+
+  const team1Players = [match.entry1?.player1, isDoubles?match.entry1?.player2:null].filter(Boolean)
+  const team2Players = [match.entry2?.player1, isDoubles?match.entry2?.player2:null].filter(Boolean)
+
+  return (
+    <div style={{ padding:'14px 14px 24px', display:'flex', flexDirection:'column', gap:10 }}>
+      {/* Estado */}
+      <div style={{ ...sidePanel(), display:'flex', flexDirection:'column', gap:8 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+          <span style={{ width:10, height:10, borderRadius:'50%', background:statusColor, boxShadow:`0 0 10px ${statusColor}`, animation: status==='in_progress' ? 'sgBlink 1.4s infinite' : undefined }}/>
+          <span style={{ fontSize:12, letterSpacing:'.26em', textTransform:'uppercase', fontWeight:900, color:statusColor }}>
+            {STATUS_LABEL[status] ?? status?.toUpperCase()}
+          </span>
+        </div>
+        <div style={{ fontSize:11, opacity:.55, letterSpacing:'.2em', textTransform:'uppercase', fontWeight:800 }}>
+          {match.round ?? '—'} · {isDoubles ? 'Dobles' : 'Individual'}
+        </div>
+      </div>
+
+      {/* Marcador */}
+      <div style={sidePanel()}>
+        <SideTitle>Marcador</SideTitle>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr auto', gap:'4px 10px', fontVariantNumeric:'tabular-nums' }}>
+          <span style={{ opacity:.6, fontSize:12, letterSpacing:'.16em', textTransform:'uppercase' }}>Sets</span>
+          <span style={{ fontSize:20, fontWeight:900, color:'#ef6a4c', textAlign:'right' }}>{setsWon.t1} — {setsWon.t2}</span>
+          <span style={{ opacity:.6, fontSize:12, letterSpacing:'.16em', textTransform:'uppercase' }}>Juegos (set actual)</span>
+          <span style={{ fontSize:20, fontWeight:900, textAlign:'right' }}>{curSet.t1} — {curSet.t2}</span>
+          <span style={{ opacity:.6, fontSize:12, letterSpacing:'.16em', textTransform:'uppercase' }}>Puntos</span>
+          <span style={{ fontSize:20, fontWeight:900, textAlign:'right' }}>{pointLabel(score,1)} — {pointLabel(score,2)}</span>
+          {sets.length > 0 && (
+            <>
+              <span style={{ opacity:.6, fontSize:12, letterSpacing:'.16em', textTransform:'uppercase' }}>Desglose sets</span>
+              <span style={{ fontSize:13, fontWeight:800, textAlign:'right' }}>
+                {sets.map((s:any, i:number) => `${s.t1}-${s.t2}`).join(' · ')}
+              </span>
+            </>
+          )}
+          {score?.deuce && <>
+            <span style={{ opacity:.6, fontSize:12, letterSpacing:'.16em', textTransform:'uppercase' }}>Estado</span>
+            <span style={{ fontSize:12, fontWeight:900, color:'#fbbf24', textAlign:'right' }}>PUNTO DE ORO</span>
+          </>}
+          {score?.tiebreak_active && <>
+            <span style={{ opacity:.6, fontSize:12, letterSpacing:'.16em', textTransform:'uppercase' }}>Estado</span>
+            <span style={{ fontSize:12, fontWeight:900, color:'#22d3ee', textAlign:'right' }}>TIE-BREAK</span>
+          </>}
+          {score?.super_tiebreak_active && <>
+            <span style={{ opacity:.6, fontSize:12, letterSpacing:'.16em', textTransform:'uppercase' }}>Estado</span>
+            <span style={{ fontSize:12, fontWeight:900, color:'#a78bfa', textAlign:'right' }}>SUPER TB</span>
+          </>}
+        </div>
+      </div>
+
+      {/* Equipos */}
+      <div style={sidePanel()}>
+        <SideTitle>Equipos</SideTitle>
+        <SideTeam label="EQUIPO 1" accent="#ef6a4c" players={team1Players} servingPlayerId={serving===1?match.current_server_id:null} isServingTeam={serving===1} seed={match.entry1?.seed}/>
+        <div style={{ height:1, background:'rgba(255,255,255,.08)', margin:'8px 0' }}/>
+        <SideTeam label="EQUIPO 2" accent="#af005f" players={team2Players} servingPlayerId={serving===2?match.current_server_id:null} isServingTeam={serving===2} seed={match.entry2?.seed}/>
+      </div>
+
+      {/* Sorteo */}
+      {match.toss_winner && (
+        <div style={sidePanel()}>
+          <SideTitle>Sorteo</SideTitle>
+          <div style={{ fontSize:13 }}>
+            Ganador: <b style={{ color: match.toss_winner===1?'#ef6a4c':'#af005f' }}>Equipo {match.toss_winner}</b>
+          </div>
+          <div style={{ fontSize:12, opacity:.7, marginTop:2 }}>
+            Elige: <b>{match.toss_choice?.toUpperCase().replace('_', ' ')}</b>
+          </div>
+        </div>
+      )}
+
+      {/* Árbitro */}
+      {referee?.full_name && (
+        <div style={sidePanel()}>
+          <SideTitle>Árbitro</SideTitle>
+          <div style={{ fontSize:14, fontWeight:900, textTransform:'uppercase' }}>{referee.full_name}</div>
+          {referee.federacion && <div style={{ fontSize:11, opacity:.6, letterSpacing:'.16em', textTransform:'uppercase', marginTop:2 }}>{referee.federacion}</div>}
+        </div>
+      )}
+
+      {/* Weather */}
+      {weather && (
+        <div style={sidePanel()}>
+          <SideTitle>Condiciones</SideTitle>
+          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+            <span style={{ fontSize:32, lineHeight:1 }}>{wxIcon(weather.condition)}</span>
+            <div>
+              <div style={{ fontSize:22, fontWeight:900, lineHeight:1 }}>{Math.round(weather.temperature_c)}°</div>
+              <div style={{ fontSize:11, opacity:.7, marginTop:2 }}>{weather.condition}</div>
+            </div>
+          </div>
+          <div style={{ marginTop:8, fontSize:11, opacity:.7, display:'grid', gridTemplateColumns:'1fr 1fr', gap:'4px 8px' }}>
+            <span>💨 {Math.round(weather.wind_speed_kmh)} km/h</span>
+            <span>💧 {weather.humidity_pct}%</span>
+            <span>☂ {weather.rain_probability_pct}%</span>
+          </div>
+        </div>
+      )}
+
+      {/* Hotkeys help */}
+      <div style={{ ...sidePanel(), fontSize:11, lineHeight:1.7 }}>
+        <SideTitle>Atajos</SideTitle>
+        <div style={{ opacity:.8 }}>
+          <kbd style={kbd()}>1-6 Q W E R B Y</kbd> → preview<br/>
+          <kbd style={kbd()}>Shift</kbd>+tecla → directo<br/>
+          <kbd style={kbd()}>N</kbd> take · <kbd style={kbd()}>M</kbd> out programa<br/>
+          <kbd style={kbd()}>T</kbd> out preview · <kbd style={kbd()}>Esc</kbd> STOP
+        </div>
+      </div>
+    </div>
+  )
+}
+function SideTitle({ children }:{children:React.ReactNode}) {
+  return <div style={{ fontSize:10, letterSpacing:'.32em', textTransform:'uppercase', fontWeight:900, color:'#8ea2c6', marginBottom:8 }}>{children}</div>
+}
+function SideTeam({ label, accent, players, servingPlayerId, isServingTeam, seed }:{ label:string, accent:string, players:any[], servingPlayerId:string|null, isServingTeam:boolean, seed?:number }) {
+  return (
+    <div>
+      <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:10, letterSpacing:'.26em', fontWeight:900, textTransform:'uppercase', color:accent, marginBottom:4 }}>
+        {label}
+        {isServingTeam && <span style={{ fontSize:9, background:'rgba(239,106,76,.25)', color:'#fff', padding:'2px 6px', borderRadius:4, letterSpacing:'.18em' }}>● SAQUE</span>}
+        {seed && <span style={{ marginLeft:'auto', fontSize:10, opacity:.6 }}>CS {seed}</span>}
+      </div>
+      {players.map((p:any,i:number) => (
+        <div key={i} style={{ display:'flex', alignItems:'center', gap:8, fontSize:13, padding:'3px 0' }}>
+          <span style={{ width:18, height:12, borderRadius:2, overflow:'hidden', flex:'none', background:'#333' }}>
+            <img src={`/Flags/${(p.nationality ?? 'ESP').toUpperCase()}.jpg`} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+          </span>
+          <span style={{ flex:1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+            {p.first_name ? `${p.first_name} ` : ''}<b>{p.last_name}</b>
+          </span>
+          {p.id === servingPlayerId && <span style={{ fontSize:9, color:'#fbbf24', fontWeight:900 }}>● SAQUE</span>}
+        </div>
+      ))}
+    </div>
+  )
+}
+function wxIcon(cond:string): string {
+  const map: Record<string,string> = { 'Despejado':'☀️', 'Parcialmente nublado':'⛅', 'Niebla':'🌫️', 'Llovizna':'🌦️', 'Lluvia':'🌧️', 'Nieve':'❄️', 'Chubascos':'🌦️', 'Tormenta':'⛈️', 'Desconocido':'🌡️' }
+  return map[cond] ?? '🌡️'
+}
+function sidePanel(): React.CSSProperties { return { background:'#0a101e', border:'1px solid #141a2a', borderRadius:10, padding:'10px 12px' } }
+function kbd(): React.CSSProperties {
+  return { display:'inline-block', padding:'1px 6px', borderRadius:4, background:'#1a2236', color:'#cfd9ea', fontSize:10, fontFamily:"'JetBrains Mono', monospace", marginRight:3 }
+}
