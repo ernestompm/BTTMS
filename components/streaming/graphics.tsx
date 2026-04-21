@@ -559,7 +559,7 @@ function StatRow({ label, a, b, accentA, accentB }: { label:string, a:number|str
 // ╔══════════════════════════════════════════════════════════════════════════╗
 // ║ 7) SCOREBUG — solo sets jugados, dobles en una linea, sin labels         ║
 // ╚══════════════════════════════════════════════════════════════════════════╝
-export function Scorebug({ visible, match, tournament, flag }: { visible:boolean, match:any, tournament: Tournament | null, flag:{ kind:string|null, label:string } }) {
+export function Scorebug({ visible, match, tournament, flag, tickerStat }: { visible:boolean, match:any, tournament: Tournament | null, flag:{ kind:string|null, label:string }, tickerStat?: string | null }) {
   if (!match) return null
   const pal = palette(tournament?.scoreboard_config)
   const score = match.score as Score | null
@@ -585,20 +585,39 @@ export function Scorebug({ visible, match, tournament, flag }: { visible:boolean
   }
   const flagColor = flag.kind ? (flagColors[flag.kind] ?? pal.accentA) : null
 
+  // Ticker sidecar integrado en el grid del scorebug
+  const showTicker = !!tickerStat && !!match.stats
+  const tickerLabel = tickerStat ? (STAT_LABELS[tickerStat] ?? tickerStat.toUpperCase()) : ''
+  const tickerValues = showTicker ? statValuePair(match.stats, tickerStat!) : { a:'', b:'' }
+  const tickerNumA = parseFloat(String(tickerValues.a).split('/')[0].replace('%','')) || 0
+  const tickerNumB = parseFloat(String(tickerValues.b).split('/')[0].replace('%','')) || 0
+  const tickerAWins = tickerNumA > tickerNumB
+  const tickerBWins = tickerNumB > tickerNumA
+
   const colW = 54
-  // Grid unico con 2 filas — columnas compartidas: la columna de nombres
-  // usa minmax(min, max-content) para crecer segun el nombre mas largo
-  // (sin truncar). Limitamos el max para evitar explosiones con nombres
-  // extremos.
-  const gridCols = `12px minmax(220px, max-content) ${Array(setCount + 1).fill(`${colW}px`).join(' ')}`
+  const tickerColW = 140
+  // Grid: [accent 12][name auto][sets][pts][TICKER if on]
+  const gridCols = `12px minmax(220px, max-content) ${Array(setCount + 1).fill(`${colW}px`).join(' ')}${showTicker ? ` ${tickerColW}px` : ''}`
 
   return (
-    <div style={{ position:'absolute', top:40, left:40, minWidth: 420, maxWidth: 820, ...CARD, padding:0, overflow:'hidden',
+    <div style={{ position:'absolute', top:40, left:40, minWidth: 420, maxWidth: 960, ...CARD, padding:0, overflow:'hidden',
       ...animStyle(visible, 'sgInR', 'sgOutR', 500) }}>
+
+      {/* Ticker header (solo cuando esta activo) */}
+      {showTicker && (
+        <div style={{ display:'grid', gridTemplateColumns:gridCols, borderBottom:'1px solid rgba(255,255,255,.06)' }}>
+          <div/><div/>{Array(setCount + 1).fill(0).map((_,i) => <div key={i}/>)}
+          <div key={`tlab-${tickerStat}`} style={{ padding:'6px 8px', textAlign:'center', fontSize:18, letterSpacing:'.22em', textTransform:'uppercase', fontWeight:900, color:pal.accentA, background:'rgba(255,255,255,.04)', borderLeft:'1px solid rgba(255,255,255,.06)', overflow:'hidden', animation:'sgDigitIn 380ms both' }}>
+            {tickerLabel}
+          </div>
+        </div>
+      )}
 
       <div style={{ display:'grid', gridTemplateColumns:gridCols, gridTemplateRows:'54px 54px' }}>
         {rows.map((r, ri) => {
           const row = ri + 1
+          const tickerVal = ri === 0 ? tickerValues.a : tickerValues.b
+          const tickerWins = ri === 0 ? tickerAWins : tickerBWins
           return (
             <div key={r.team} style={{ display:'contents' }}>
               {/* Accent bar */}
@@ -644,6 +663,16 @@ export function Scorebug({ visible, match, tournament, flag }: { visible:boolean
                   {r.pt}
                 </span>
               </div>
+              {/* Ticker stat value (si activo) */}
+              {showTicker && (
+                <div style={{ gridRow:row, gridColumn: 3+setCount+1, display:'grid', placeItems:'center', fontSize:30, fontWeight:900, borderLeft:'1px solid rgba(255,255,255,.08)', borderBottom: ri===0 ? '1px solid rgba(255,255,255,.06)' : 'none',
+                  background: tickerWins ? hexAlpha(r.accent,.2) : 'rgba(0,0,0,.22)',
+                  color: tickerWins ? r.accent : '#fff', fontVariantNumeric:'tabular-nums', overflow:'hidden' }}>
+                  <span key={`tk-${r.team}-${tickerStat}-${tickerVal}`} style={{ display:'inline-block', animation:'sgDigitIn 380ms cubic-bezier(.22,.9,.25,1) both' }}>
+                    {tickerVal}
+                  </span>
+                </div>
+              )}
             </div>
           )
         })}
@@ -1290,41 +1319,9 @@ function statValuePair(stats:any, key:string): { a:string, b:string } {
   }
 }
 
-export function StatsTicker({ visible, match, tournament, stat = 'aces' }: { visible:boolean, match:any, tournament: Tournament | null, stat?:string }) {
-  if (!match?.stats) return null
-  const pal = palette(tournament?.scoreboard_config)
-  const { a, b } = statValuePair(match.stats, stat)
-  const label = STAT_LABELS[stat] ?? stat.toUpperCase()
-  const numA = parseFloat(String(a).split('/')[0].replace('%','')) || 0
-  const numB = parseFloat(String(b).split('/')[0].replace('%','')) || 0
-  const aWins = numA > numB, bWins = numB > numA
-
-  // Se posiciona a la derecha del scorebug (que está en top:40 left:40).
-  // Usamos un left fijo = scorebug maxWidth + margen para evitar solape.
-  return (
-    <div style={{
-      position:'absolute', top:40, left:860, width:260, ...CARD, padding:0, overflow:'hidden',
-      borderLeft:`4px solid ${pal.accentA}`,
-      ...animStyle(visible, 'sgInR', 'sgOutR', 550),
-    }}>
-      {/* Label header */}
-      <div style={{ padding:'8px 14px', background:'rgba(255,255,255,.04)', borderBottom:'1px solid rgba(255,255,255,.06)', textAlign:'center' }}>
-        <span key={`lab-${stat}`} style={{ fontSize:18, letterSpacing:'.28em', textTransform:'uppercase', fontWeight:900, color:pal.accentA, display:'inline-block', animation:'sgDigitIn 380ms both' }}>
-          {label}
-        </span>
-      </div>
-      {/* Team 1 row */}
-      <div style={{ display:'grid', gridTemplateColumns:'10px 1fr auto', alignItems:'stretch', height:54, background: aWins ? hexAlpha(pal.accentA,.1) : 'transparent' }}>
-        <div style={{ background:pal.accentA }}/>
-        <div style={{ padding:'0 12px', display:'flex', alignItems:'center', fontSize:24, fontWeight:900, textTransform:'uppercase', opacity:.85 }}>EQUIPO 1</div>
-        <div key={`a-${stat}-${a}`} style={{ padding:'0 16px', display:'flex', alignItems:'center', fontSize:34, fontWeight:900, fontVariantNumeric:'tabular-nums', color: aWins ? pal.accentA : '#fff', animation:'sgDigitIn 380ms both' }}>{a}</div>
-      </div>
-      {/* Team 2 row */}
-      <div style={{ display:'grid', gridTemplateColumns:'10px 1fr auto', alignItems:'stretch', height:54, borderTop:'1px solid rgba(255,255,255,.06)', background: bWins ? hexAlpha(pal.accentB,.1) : 'transparent' }}>
-        <div style={{ background:pal.accentB }}/>
-        <div style={{ padding:'0 12px', display:'flex', alignItems:'center', fontSize:24, fontWeight:900, textTransform:'uppercase', opacity:.85 }}>EQUIPO 2</div>
-        <div key={`b-${stat}-${b}`} style={{ padding:'0 16px', display:'flex', alignItems:'center', fontSize:34, fontWeight:900, fontVariantNumeric:'tabular-nums', color: bWins ? pal.accentB : '#fff', animation:'sgDigitIn 380ms both' }}>{b}</div>
-      </div>
-    </div>
-  )
-}
+/**
+ * StatsTicker ya no es un gráfico independiente — se renderiza como una
+ * columna extra DENTRO del Scorebug (ver la prop `tickerStat` en Scorebug).
+ * Se exporta aquí como no-op para mantener la compatibilidad del catálogo.
+ */
+export function StatsTicker(_: any) { return null }
