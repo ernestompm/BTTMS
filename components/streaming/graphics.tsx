@@ -467,7 +467,7 @@ function StatRow({ label, a, b, accentA, accentB }: { label:string, a:number|str
 }
 
 // ╔══════════════════════════════════════════════════════════════════════════╗
-// ║ 7) SCOREBUG — compact, 3 sets columns, full tournament name              ║
+// ║ 7) SCOREBUG — solo sets jugados, dobles en una linea, sin labels         ║
 // ╚══════════════════════════════════════════════════════════════════════════╝
 export function Scorebug({ visible, match, tournament, flag }: { visible:boolean, match:any, tournament: Tournament | null, flag:{ kind:string|null, label:string } }) {
   if (!match) return null
@@ -475,58 +475,72 @@ export function Scorebug({ visible, match, tournament, flag }: { visible:boolean
   const score = match.score as Score | null
   const isDoubles = match.match_type === 'doubles'
   const serving = match.serving_team as 1|2|null
+
+  const setsPlayed = score?.sets?.length ?? 0
+  const inProgress = score?.match_status === 'in_progress'
+  const setCount = Math.max(1, Math.min(3, setsPlayed + (inProgress ? 1 : 0)))
+  const currentSetIdx = inProgress ? setsPlayed : -1
+
   const rows = [1,2].map(t => {
     const team = t as 1|2
     const entry = team===1 ? match.entry1 : match.entry2
     const accent = team===1 ? pal.accentA : pal.accentB
     const players = [entry?.player1, isDoubles ? entry?.player2 : null].filter(Boolean)
-    return { team, accent, players, sets: threeSetsFor(score, team), pt: gamePoint(score, team), serving: serving===team }
+    const allSets = threeSetsFor(score, team).slice(0, setCount)
+    return { team, accent, players, sets: allSets, pt: gamePoint(score, team), serving: serving===team }
   })
 
   const flagColors: Record<string,string> = {
     match_point:'#ef4444', championship_point:'#f59e0b', set_point:'#a855f7', break_point:'#22d3ee',
   }
   const flagColor = flag.kind ? (flagColors[flag.kind] ?? pal.accentA) : null
-  const currentSetIdx = Math.min(2, score?.sets?.length ?? 0)
+
+  const setColW = 42
+  const gridCols = `10px 1fr ${Array(setCount).fill(`${setColW}px`).join(' ')} 64px`
 
   return (
-    <div style={{ position:'absolute', top:40, left:40, width:560, ...CARD, padding:0, overflow:'hidden',
+    <div style={{ position:'absolute', top:40, left:40, width: 280 + setCount*setColW, ...CARD, padding:0, overflow:'hidden',
       ...animStyle(visible, 'sgInR', 'sgOutR', 500) }}>
       {/* Header — tournament name + round (full label) */}
       <div style={{ display:'grid', gridTemplateColumns:'1fr auto', alignItems:'center', padding:'8px 14px', background:'rgba(255,255,255,.04)', borderBottom:'1px solid rgba(255,255,255,.06)', gap:14 }}>
-        <span style={{ fontSize:13, letterSpacing:'.2em', textTransform:'uppercase', opacity:.78, fontWeight:800, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+        <span style={{ fontSize:13, letterSpacing:'.2em', textTransform:'uppercase', opacity:.8, fontWeight:800, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
           {tournament?.name ?? ''}
         </span>
         <span style={{ fontSize:12, letterSpacing:'.22em', textTransform:'uppercase', opacity:.55, fontWeight:800, whiteSpace:'nowrap' }}>
           {roundLabel(match.round)}
         </span>
       </div>
-      {/* Set column labels */}
-      <div style={{ display:'grid', gridTemplateColumns:'10px 1fr 44px 44px 44px 64px', alignItems:'center', background:'rgba(0,0,0,.2)', borderBottom:'1px solid rgba(255,255,255,.04)', padding:'2px 0' }}>
-        <div/><div/>
-        {[0,1,2].map(i => (
-          <div key={i} style={{ fontSize:11, letterSpacing:'.2em', fontWeight:800, opacity: i===currentSetIdx ? 1 : .5, color: i===currentSetIdx ? pal.accentA : 'rgba(255,255,255,.6)', textAlign:'center' }}>
-            S{i+1}
-          </div>
-        ))}
-        <div style={{ fontSize:11, letterSpacing:'.2em', fontWeight:800, textAlign:'center', opacity:.55 }}>PTS</div>
-      </div>
+
       {/* Rows */}
       {rows.map((r,ri) => (
-        <div key={r.team} style={{ display:'grid', gridTemplateColumns:'10px 1fr 44px 44px 44px 64px', alignItems:'stretch', borderBottom: ri===0 ? '1px solid rgba(255,255,255,.06)' : 'none', height:isDoubles?64:52 }}>
+        <div key={r.team} style={{ display:'grid', gridTemplateColumns:gridCols, alignItems:'stretch', borderBottom: ri===0 ? '1px solid rgba(255,255,255,.06)' : 'none', height:48 }}>
           <div style={{ background:r.accent }}/>
-          <div style={{ padding:'4px 10px', display:'flex', flexDirection:'column', justifyContent:'center', gap:2, minWidth:0 }}>
-            {r.players.map((p:any,i:number) => (
-              <div key={i} style={{ display:'flex', alignItems:'center', gap:10, minWidth:0 }}>
-                <img src={flagPath(p.nationality)} alt="" style={{ width:26, height:18, borderRadius:3, objectFit:'cover', flex:'none' }}/>
-                <span style={{ fontSize:isDoubles?20:28, fontWeight:900, textTransform:'uppercase', letterSpacing:'.005em', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:1 }}>
-                  {(p.last_name ?? '').toUpperCase()}
+          <div style={{ padding:'0 10px', display:'flex', alignItems:'center', gap:8, minWidth:0 }}>
+            {isDoubles ? (
+              <>
+                <div style={{ display:'flex', gap:3, flex:'none' }}>
+                  {r.players.map((p:any,i:number) => (
+                    <img key={i} src={flagPath(p.nationality)} alt="" style={{ width:22, height:15, borderRadius:2, objectFit:'cover' }}/>
+                  ))}
+                </div>
+                <span style={{ fontSize:22, fontWeight:900, textTransform:'uppercase', letterSpacing:'.005em', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:1, flex:1 }}>
+                  {r.players.map((p:any) => (p.last_name ?? '').toUpperCase()).join(' / ')}
                 </span>
-                {r.serving && (!isDoubles || p.id === match.current_server_id) &&
+                {r.serving && (
                   <span style={{ width:10, height:10, borderRadius:'50%', background:pal.serve, flex:'none', animation:'sgSrvPulse 1.4s infinite' }}/>
-                }
-              </div>
-            ))}
+                )}
+              </>
+            ) : (
+              <>
+                <img src={flagPath(r.players[0]?.nationality)} alt="" style={{ width:28, height:19, borderRadius:3, objectFit:'cover', flex:'none' }}/>
+                <span style={{ fontSize:28, fontWeight:900, textTransform:'uppercase', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:1, flex:1 }}>
+                  {(r.players[0]?.last_name ?? '').toUpperCase()}
+                </span>
+                {r.serving && (
+                  <span style={{ width:10, height:10, borderRadius:'50%', background:pal.serve, flex:'none', animation:'sgSrvPulse 1.4s infinite' }}/>
+                )}
+              </>
+            )}
           </div>
           {r.sets.map((v,i) => (
             <div key={i} style={{ display:'grid', placeItems:'center', fontSize:26, fontWeight:900, borderLeft:'1px solid rgba(255,255,255,.06)',
@@ -535,12 +549,12 @@ export function Scorebug({ visible, match, tournament, flag }: { visible:boolean
               {v===null ? '–' : v}
             </div>
           ))}
-          <div style={{ display:'grid', placeItems:'center', background:r.accent, color:'#fff', fontSize:32, fontWeight:900, letterSpacing:'-.01em' }}>{r.pt}</div>
+          <div style={{ display:'grid', placeItems:'center', background:r.accent, color:'#fff', fontSize:30, fontWeight:900, letterSpacing:'-.01em' }}>{r.pt}</div>
         </div>
       ))}
-      {/* Flag banner — NO blink, simple colored strip */}
+      {/* Flag banner — NO blink */}
       {flag.kind && flag.label && (
-        <div style={{ padding:'6px 14px', background:flagColor!, color:'#000', fontSize:18, fontWeight:900, letterSpacing:'.3em', textAlign:'center', textTransform:'uppercase' }}>
+        <div style={{ padding:'6px 14px', background:flagColor!, color:'#000', fontSize:17, fontWeight:900, letterSpacing:'.3em', textAlign:'center', textTransform:'uppercase' }}>
           {flag.label}
         </div>
       )}
@@ -649,52 +663,69 @@ export function BigScoreboard({ visible, match, tournament, sponsor, opts }: { v
 }
 
 // ╔══════════════════════════════════════════════════════════════════════════╗
-// ║ 9) RESULTS GRID — centered, category label, flags, all rounds            ║
+// ║ 9) RESULTS GRID — centrado, tipografia grande, agrupado por ronda        ║
 // ╚══════════════════════════════════════════════════════════════════════════╝
 export function ResultsGrid({ visible, matches, highlightMatchId, tournament, category }:
   { visible:boolean, matches:any[], highlightMatchId?:string|null, tournament: Tournament | null, category?: string }) {
   const pal = palette(tournament?.scoreboard_config)
 
-  // Group by round, maintain a sensible order
-  const ROUND_ORDER = ['R32','R16','QF','SF','F','RR','GRP','CON','Q1','Q2']
+  const ROUND_ORDER = ['F','SF','QF','R16','R32','RR','GRP','CON','Q1','Q2']
   const groups: Record<string, any[]> = {}
   matches.forEach(m => { const r = m.round ?? 'OTHER'; (groups[r] ??= []).push(m) })
   const rounds = Object.keys(groups).sort((a,b) => (ROUND_ORDER.indexOf(a)+1 || 99) - (ROUND_ORDER.indexOf(b)+1 || 99))
 
   return (
-    <div style={{ position:'absolute', left:'50%', top:'50%', transform:'translate(-50%,-50%)', width:1520, maxHeight:880, ...CARD, padding:0, overflow:'hidden',
-      borderTop:`8px solid ${pal.accentA}`,
+    <div style={{ position:'absolute', left:'50%', top:'50%', transform:'translate(-50%,-50%)', width:1600, maxHeight:940, ...CARD, padding:0, overflow:'hidden',
+      borderTop:`10px solid ${pal.accentA}`,
       ...animStyle(visible, 'sgInZ', 'sgOutZ', 700) }}>
-      <div style={{ padding:'18px 32px', borderBottom:'1px solid rgba(255,255,255,.07)', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+
+      {/* HEADER */}
+      <div style={{ padding:'22px 40px', borderBottom:'1px solid rgba(255,255,255,.08)', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
         <div>
-          <div style={{ ...KICKER, fontSize:14, marginBottom:4 }}>Resultados</div>
-          <div style={{ fontSize:36, fontWeight:900, letterSpacing:'.01em', textTransform:'uppercase' }}>
+          <div style={{ fontSize:20, letterSpacing:'.34em', textTransform:'uppercase', fontWeight:900, opacity:.55, marginBottom:4 }}>Resultados</div>
+          <div style={{ fontSize:52, fontWeight:900, lineHeight:.95, letterSpacing:'-.005em', textTransform:'uppercase' }}>
             {CATEGORY_LABELS[(category ?? matches[0]?.category) as Category] ?? tournament?.name}
           </div>
         </div>
-        {tournament?.logo_url && <img src={tournament.logo_url} alt="" style={{ height:56 }}/>}
+        {tournament?.logo_url && <img src={tournament.logo_url} alt="" style={{ height:74 }}/>}
       </div>
 
-      <div style={{ padding:'14px 24px', display:'grid', gridTemplateColumns: `repeat(${Math.min(rounds.length, 3)}, 1fr)`, gap:22, overflow:'hidden', maxHeight:760 }}>
-        {rounds.slice(0,3).map(r => (
-          <div key={r} style={{ display:'flex', flexDirection:'column', gap:8 }}>
-            <div style={{ ...KICKER, fontSize:14, color:pal.accentA, opacity:1, marginBottom:2 }}>{roundLabel(r)}</div>
-            {groups[r].slice(0,8).map(m => {
-              const hot = m.id === highlightMatchId
-              const isDoubles = m.match_type === 'doubles'
-              const score = m.score as Score | null
-              return (
-                <div key={m.id} style={{ padding:'10px 12px', borderRadius:10, background: hot ? hexAlpha(pal.accentA,.18) : 'rgba(255,255,255,.03)', border: hot ? `2px solid ${pal.accentA}` : '1px solid rgba(255,255,255,.06)' }}>
-                  <ResultMatchRow entry={m.entry1} score={score} team={1} accent={pal.accentA} isDoubles={isDoubles}/>
-                  <ResultMatchRow entry={m.entry2} score={score} team={2} accent={pal.accentB} isDoubles={isDoubles}/>
-                  {m.status === 'in_progress' && (
-                    <div style={{ marginTop:4, fontSize:10, letterSpacing:'.2em', fontWeight:800, color:pal.accentA, textAlign:'right' }}>● EN VIVO</div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        ))}
+      {/* BODY — rondas apiladas con encabezado de progresion */}
+      <div style={{ padding:'18px 32px 24px', display:'flex', flexDirection:'column', gap:20, maxHeight:820, overflow:'hidden' }}>
+        {rounds.slice(0,4).map(r => {
+          const matchList = groups[r].slice(0, 6)
+          return (
+            <div key={r}>
+              <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:10 }}>
+                <span style={{ padding:'6px 18px', borderRadius:8, background:hexAlpha(pal.accentA,.22), border:`1px solid ${hexAlpha(pal.accentA,.5)}`,
+                  fontSize:22, letterSpacing:'.22em', textTransform:'uppercase', fontWeight:900, color:pal.accentA }}>
+                  {roundLabel(r)}
+                </span>
+                <span style={{ flex:1, height:1, background:'rgba(255,255,255,.08)' }}/>
+                <span style={{ fontSize:14, letterSpacing:'.26em', fontWeight:800, opacity:.5 }}>{groups[r].length} PARTIDOS</span>
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns: matchList.length > 3 ? '1fr 1fr' : '1fr', gap:'10px 22px' }}>
+                {matchList.map(m => {
+                  const hot = m.id === highlightMatchId
+                  const isDoubles = m.match_type === 'doubles'
+                  const score = m.score as Score | null
+                  return (
+                    <div key={m.id} style={{ padding:'12px 16px', borderRadius:10,
+                      background: hot ? hexAlpha(pal.accentA,.2) : 'rgba(255,255,255,.04)',
+                      border: hot ? `2px solid ${pal.accentA}` : '1px solid rgba(255,255,255,.07)' }}>
+                      <ResultMatchRow entry={m.entry1} score={score} team={1} accent={pal.accentA} isDoubles={isDoubles}/>
+                      <div style={{ height:1, background:'rgba(255,255,255,.07)', margin:'4px 0' }}/>
+                      <ResultMatchRow entry={m.entry2} score={score} team={2} accent={pal.accentB} isDoubles={isDoubles}/>
+                      {m.status === 'in_progress' && (
+                        <div style={{ marginTop:6, fontSize:13, letterSpacing:'.28em', fontWeight:900, color:pal.accentA, textAlign:'right' }}>● EN VIVO</div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })}
       </div>
     </div>
   )
@@ -703,15 +734,18 @@ function ResultMatchRow({ entry, score, team, accent, isDoubles }:{ entry:any, s
   const players = [entry?.player1, isDoubles?entry?.player2:null].filter(Boolean)
   const sets = threeSetsFor(score, team)
   const winner = (score?.winner_team ?? null) === team
-  const nat = players[0]?.nationality ?? null
   return (
     <div style={{ display:'grid', gridTemplateColumns:'auto 1fr auto auto auto', alignItems:'center', gap:10, padding:'3px 0' }}>
-      <img src={flagPath(nat)} alt="" style={{ width:28, height:18, borderRadius:3, objectFit:'cover' }}/>
-      <span style={{ fontSize:18, fontWeight: winner?900:700, color: winner?'#fff':'rgba(255,255,255,.75)', textTransform:'uppercase', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+      <div style={{ display:'flex', gap:3, flex:'none' }}>
+        {players.map((p:any,i:number) => (
+          <img key={i} src={flagPath(p?.nationality)} alt="" style={{ width:32, height:22, borderRadius:3, objectFit:'cover' }}/>
+        ))}
+      </div>
+      <span style={{ fontSize:24, fontWeight: winner?900:700, color: winner?'#fff':'rgba(255,255,255,.8)', textTransform:'uppercase', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
         {players.map((p:any) => p?.last_name).filter(Boolean).join(' / ')}
       </span>
       {sets.map((v,i) => (
-        <span key={i} style={{ fontSize:20, fontWeight:900, minWidth:20, textAlign:'center', color: v===null?'rgba(255,255,255,.25)':winner?accent:'rgba(255,255,255,.7)', fontVariantNumeric:'tabular-nums' }}>
+        <span key={i} style={{ fontSize:26, fontWeight:900, minWidth:28, textAlign:'center', color: v===null?'rgba(255,255,255,.22)':winner?accent:'rgba(255,255,255,.75)', fontVariantNumeric:'tabular-nums' }}>
           {v===null ? '' : v}
         </span>
       ))}
@@ -768,8 +802,11 @@ export function CoinToss({ visible, match, tournament }: { visible:boolean, matc
 }
 
 // ╔══════════════════════════════════════════════════════════════════════════╗
-// ║ 11) WEATHER CARD — small bottom-left with condition, temp, wind          ║
+// ║ 11) WEATHER CARD — header VENUE · CITY, icono grande, metricas legibles  ║
 // ╚══════════════════════════════════════════════════════════════════════════╝
+// Datos reales de open-meteo.com vía lib/weather.ts (getWeather). El campo
+// weather.condition sale del weather_code mapeado en 9 condiciones, todas
+// con icono (ver WX_ICON abajo).
 const WX_ICON: Record<string,string> = {
   'Despejado':'☀️', 'Parcialmente nublado':'⛅', 'Niebla':'🌫️', 'Llovizna':'🌦️',
   'Lluvia':'🌧️', 'Nieve':'❄️', 'Chubascos':'🌦️', 'Tormenta':'⛈️', 'Desconocido':'🌡️',
@@ -777,22 +814,34 @@ const WX_ICON: Record<string,string> = {
 export function WeatherCard({ visible, weather, tournament }: { visible:boolean, weather: WeatherData | null, tournament: Tournament | null }) {
   if (!weather) return null
   const pal = palette(tournament?.scoreboard_config)
+  const header = [tournament?.venue_name, tournament?.venue_city].filter(Boolean).join(' · ')
   return (
-    <div style={{ position:'absolute', left:40, bottom:40, width:500, ...CARD, padding:'16px 22px',
-      borderLeft:`6px solid ${pal.accentA}`,
-      display:'grid', gridTemplateColumns:'auto 1fr', gap:18, alignItems:'center',
+    <div style={{ position:'absolute', left:90, bottom:90, width:620, ...CARD, padding:0,
+      borderLeft:`6px solid ${pal.accentA}`, overflow:'hidden',
       ...animStyle(visible, 'sgInR', 'sgOutR', 650) }}>
-      <div style={{ fontSize:64, lineHeight:1 }}>{WX_ICON[weather.condition] ?? '🌡️'}</div>
-      <div style={{ minWidth:0 }}>
-        <div style={{ ...KICKER, fontSize:12, marginBottom:2 }}>{weather.condition}</div>
-        <div style={{ display:'flex', alignItems:'baseline', gap:12 }}>
-          <span style={{ fontSize:44, fontWeight:900, lineHeight:1, color:pal.text }}>{Math.round(weather.temperature_c)}°</span>
-          <span style={{ fontSize:16, opacity:.7 }}>ST {Math.round(weather.feels_like_c)}°</span>
-        </div>
-        <div style={{ marginTop:4, display:'grid', gridTemplateColumns:'auto auto auto', gap:'0 18px', fontSize:14, opacity:.8 }}>
-          <span>💨 {Math.round(weather.wind_speed_kmh)} km/h {weather.wind_direction}</span>
-          <span>💧 {weather.humidity_pct}%</span>
-          <span>☂ {weather.rain_probability_pct}%</span>
+      {/* HEADER — VENUE · CITY */}
+      <div style={{ padding:'12px 22px', background:'rgba(255,255,255,.04)', borderBottom:'1px solid rgba(255,255,255,.06)' }}>
+        <span style={{ fontSize:18, letterSpacing:'.26em', textTransform:'uppercase', fontWeight:900, color:pal.text, opacity:.95,
+          whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', display:'block' }}>
+          {header || 'SEDE'}
+        </span>
+      </div>
+      {/* BODY */}
+      <div style={{ padding:'22px 26px', display:'grid', gridTemplateColumns:'auto 1fr', gap:24, alignItems:'center' }}>
+        <div style={{ fontSize:110, lineHeight:1 }}>{WX_ICON[weather.condition] ?? '🌡️'}</div>
+        <div style={{ minWidth:0 }}>
+          <div style={{ fontSize:18, letterSpacing:'.24em', textTransform:'uppercase', fontWeight:900, color:pal.accentA, marginBottom:4 }}>
+            {weather.condition}
+          </div>
+          <div style={{ display:'flex', alignItems:'baseline', gap:14 }}>
+            <span style={{ fontSize:80, fontWeight:900, lineHeight:1, color:pal.text, fontVariantNumeric:'tabular-nums' }}>{Math.round(weather.temperature_c)}°</span>
+            <span style={{ fontSize:22, opacity:.7, fontWeight:700 }}>SENSACIÓN {Math.round(weather.feels_like_c)}°</span>
+          </div>
+          <div style={{ marginTop:10, display:'grid', gridTemplateColumns:'auto auto auto', gap:'0 24px', fontSize:20, fontWeight:700, opacity:.92 }}>
+            <span>💨 {Math.round(weather.wind_speed_kmh)} km/h {weather.wind_direction}</span>
+            <span>💧 {weather.humidity_pct}%</span>
+            <span>☂ {weather.rain_probability_pct}%</span>
+          </div>
         </div>
       </div>
     </div>
