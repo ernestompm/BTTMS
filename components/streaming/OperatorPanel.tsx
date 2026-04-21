@@ -134,9 +134,12 @@ export function OperatorPanel({ session, initialMatch, tournament, rules, allMat
     if (!previewKey) return
     await showGraphic(session.id, previewKey, { data: previewData })
     logEvent(session.id, 'manual_show', previewKey, { data: previewData })
-    // Limpia preview remoto para mantener consistencia
+    // Vacia SOLO el preview externo (URL /overlay/:id/preview) para que el
+    // monitor de preview externo no duplique lo que ya esta en programa.
+    // El previewKey LOCAL se mantiene para que M (OUT PROGRAMA) pueda
+    // sacar del aire lo que acabamos de tomar. Pulsa T para limpiar tambien
+    // el local si no te interesa.
     try { await previewClear(session.id) } catch {}
-    setPreviewKey(null); setPreviewData(null)
   }
   async function outProgram() {
     if (!previewKey) return
