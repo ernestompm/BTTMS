@@ -105,7 +105,7 @@ export function TournamentIntro({ visible, tournament }: { visible: boolean, tou
       width:1400, height:720, ...CARD, padding:'60px 80px',
       borderTop:`8px solid ${pal.accentA}`,
       display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:36, textAlign:'center',
-      ...animStyle(visible, 'sgInZ', 'sgOutZ', 750) }}>
+      ...animStyle(visible, 'sgInZC', 'sgOutZC', 750) }}>
 
       {tournament.logo_url && (
         <img src={tournament.logo_url} alt="" style={{ maxWidth:320, maxHeight:280, objectFit:'contain' }}/>
@@ -457,7 +457,7 @@ export function StatsPanel({ visible, match, tournament, scope }: { visible:bool
       position:'absolute', left:'50%', top:'50%', transform:'translate(-50%,-50%)',
       width:1180, ...CARD, padding:'34px 48px',
       borderTop:`6px solid ${pal.accentA}`,
-      ...animStyle(visible, 'sgInZ', 'sgOutZ', 700),
+      ...animStyle(visible, 'sgInZC', 'sgOutZC', 700),
     }}>
       {/* TITULO GRANDE */}
       <div style={{ textAlign:'center', marginBottom:20 }}>
@@ -752,7 +752,7 @@ export function ResultsGrid({ visible, matches, highlightMatchId, tournament, ca
   return (
     <div style={{ position:'absolute', left:'50%', top:'50%', transform:'translate(-50%,-50%)', width:1600, maxHeight:940, ...CARD, padding:0, overflow:'hidden',
       borderTop:`10px solid ${pal.accentA}`,
-      ...animStyle(visible, 'sgInZ', 'sgOutZ', 700) }}>
+      ...animStyle(visible, 'sgInZC', 'sgOutZC', 700) }}>
 
       {/* HEADER */}
       <div style={{ padding:'22px 40px', borderBottom:'1px solid rgba(255,255,255,.08)', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
@@ -845,7 +845,7 @@ export function CoinToss({ visible, match, tournament }: { visible:boolean, matc
   return (
     <div style={{ position:'absolute', left:'50%', top:'50%', transform:'translate(-50%,-50%)', width:720, ...CARD, padding:'28px 44px',
       borderTop:`8px solid ${accent}`,
-      ...animStyle(visible, 'sgInZ', 'sgOutZ', 700) }}>
+      ...animStyle(visible, 'sgInZC', 'sgOutZC', 700) }}>
       <div style={{ textAlign:'center', fontSize:28, fontWeight:900, letterSpacing:'.28em', textTransform:'uppercase', color:pal.text }}>
         Ganador del sorteo
       </div>
@@ -937,7 +937,7 @@ export function BracketView({ visible, matches, highlightMatchId, tournament, ca
   return (
     <div style={{ position:'absolute', left:'50%', top:'50%', transform:'translate(-50%,-50%)', width:1600, maxHeight:840, ...CARD, padding:0, overflow:'hidden',
       borderTop:`8px solid ${pal.accentA}`,
-      ...animStyle(visible, 'sgInZ', 'sgOutZ', 700) }}>
+      ...animStyle(visible, 'sgInZC', 'sgOutZC', 700) }}>
       <div style={{ padding:'18px 32px', borderBottom:'1px solid rgba(255,255,255,.07)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
         <div>
           <div style={{ ...KICKER, fontSize:14, marginBottom:2 }}>Cuadro</div>

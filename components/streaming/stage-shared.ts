@@ -37,6 +37,9 @@ export const STREAM_KEYFRAMES = `
 @keyframes sgOutL   { from{opacity:1;transform:none}                                  to{opacity:0;transform:translateX(60px)} }
 @keyframes sgInZ    { from{opacity:0;transform:scale(.86)}                            to{opacity:1;transform:scale(1)} }
 @keyframes sgOutZ   { from{opacity:1;transform:scale(1)}                              to{opacity:0;transform:scale(.94)} }
+/* Centered variants — include translate(-50%,-50%) so the card stays centered during the scale animation */
+@keyframes sgInZC   { from{opacity:0;transform:translate(-50%,-50%) scale(.86)}       to{opacity:1;transform:translate(-50%,-50%) scale(1)} }
+@keyframes sgOutZC  { from{opacity:1;transform:translate(-50%,-50%) scale(1)}         to{opacity:0;transform:translate(-50%,-50%) scale(.94)} }
 @keyframes sgInClip { from{clip-path:inset(0 100% 0 0);opacity:0}                     to{clip-path:inset(0 0 0 0);opacity:1} }
 @keyframes sgOutClip{ from{clip-path:inset(0 0 0 0);opacity:1}                        to{clip-path:inset(0 0 0 100%);opacity:0} }
 @keyframes sgSrvPulse { 0%,100%{box-shadow:0 0 0 0 rgba(239,106,76,.7)} 50%{box-shadow:0 0 0 12px rgba(239,106,76,0)} }
