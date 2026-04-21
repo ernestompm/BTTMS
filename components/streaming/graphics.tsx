@@ -61,6 +61,11 @@ function fmtClock(secs: number) {
   const hh = Math.floor(s/3600), mm = Math.floor((s%3600)/60), ss = s%60
   return hh ? `${hh}:${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}` : `${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`
 }
+function fmtHHmm(secs: number) {
+  const s = Math.max(0, secs|0)
+  const hh = Math.floor(s/3600), mm = Math.floor((s%3600)/60)
+  return `${hh}:${String(mm).padStart(2,'0')}`
+}
 function useTicker(start: string | null, stop: string | null) {
   const [ , tick ] = useState(0)
   useEffect(() => { const id = setInterval(() => tick(x => x+1), 1000); return () => clearInterval(id) }, [])
@@ -673,46 +678,46 @@ export function BigScoreboard({ visible, match, tournament, sponsor, opts }: { v
   const totalSecs = useTicker(match.started_at, match.finished_at)
   const showSponsor = opts?.show_sponsor !== false && !!sponsor
   const setCount = Math.max(1, Math.min(3, (score?.sets?.length ?? 0) + (score?.match_status==='in_progress' ? 1 : 0)))
-  const setColW = 110
-  const cardW = showSponsor ? 1420 : 1140
+  const setColW = 100
+  const cardMaxW = showSponsor ? 1420 : 1060   // cap superior; el card se encoge al contenido
   const serving = match.serving_team as 1|2|null
 
   return (
-    // Wrapper centrado por flex (translate no choca con animation transforms)
+    // Wrapper centrado por flex
     <div style={{ position:'absolute', left:0, right:0, bottom:50, display:'flex', justifyContent:'center', pointerEvents:'none' }}>
-      <div style={{ width:cardW, ...CARD, padding:0, overflow:'hidden', pointerEvents:'auto',
+      <div style={{ maxWidth:cardMaxW, ...CARD, padding:0, overflow:'hidden', pointerEvents:'auto',
         borderTop:`8px solid ${pal.accentA}`,
         ...animStyle(visible, 'sgInU', 'sgOutU', 700) }}>
 
         {/* HEADER */}
-        <div style={{ display:'grid', gridTemplateColumns:'auto 1fr auto', alignItems:'center', padding:'16px 30px', borderBottom:'1px solid rgba(255,255,255,.07)', gap:24 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:16 }}>
-            {tournament?.logo_url && <img src={tournament.logo_url} alt="" style={{ height:60, objectFit:'contain' }}/>}
+        <div style={{ display:'grid', gridTemplateColumns:'auto 1fr auto', alignItems:'center', padding:'14px 26px', borderBottom:'1px solid rgba(255,255,255,.07)', gap:20 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:14 }}>
+            {tournament?.logo_url && <img src={tournament.logo_url} alt="" style={{ height:52, objectFit:'contain' }}/>}
             <div style={{ display:'flex', flexDirection:'column', lineHeight:1 }}>
-              <span style={{ fontSize:32, fontWeight:900, letterSpacing:'.02em', textTransform:'uppercase' }}>{tournament?.name}</span>
-              <span style={{ fontSize:18, letterSpacing:'.24em', textTransform:'uppercase', opacity:.65, fontWeight:800, marginTop:5 }}>
+              <span style={{ fontSize:26, fontWeight:900, letterSpacing:'.02em', textTransform:'uppercase', whiteSpace:'nowrap' }}>{tournament?.name}</span>
+              <span style={{ fontSize:14, letterSpacing:'.26em', textTransform:'uppercase', opacity:.6, fontWeight:800, marginTop:4 }}>
                 {CATEGORY_LABELS[match.category as Category] ?? match.category}
               </span>
             </div>
           </div>
           <div style={{ textAlign:'center' }}>
-            <span style={{ padding:'10px 36px', borderRadius:999, background:hexAlpha(pal.accentA,.18), border:`2px solid ${hexAlpha(pal.accentA,.55)}`,
-              fontSize:28, fontWeight:900, letterSpacing:'.2em', textTransform:'uppercase', color:pal.accentA }}>
+            <span style={{ padding:'6px 20px', borderRadius:999, background:hexAlpha(pal.accentA,.18), border:`1.5px solid ${hexAlpha(pal.accentA,.55)}`,
+              fontSize:18, fontWeight:900, letterSpacing:'.2em', textTransform:'uppercase', color:pal.accentA, whiteSpace:'nowrap' }}>
               {roundLabel(match.round) || '—'}
             </span>
           </div>
-          <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:2 }}>
-            <span style={{ ...KICKER, fontSize:13 }}>TIEMPO TOTAL</span>
-            <span style={{ fontFamily:"'JetBrains Mono', monospace", fontSize:32, fontWeight:800 }}>{fmtClock(totalSecs)}</span>
+          <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:0 }}>
+            <span style={{ ...KICKER, fontSize:11 }}>TIEMPO TOTAL</span>
+            <span style={{ fontFamily:"'JetBrains Mono', monospace", fontSize:26, fontWeight:800, letterSpacing:'.02em' }}>{fmtHHmm(totalSecs)}</span>
           </div>
         </div>
 
-        {/* BODY — grid unificado: score area + sponsor spans 3 rows */}
+        {/* BODY — grid unificado: name col auto se encoge al contenido */}
         <div style={{ display:'grid',
           gridTemplateColumns: showSponsor
-            ? `12px minmax(420px, 1fr) repeat(${setCount}, ${setColW}px) 260px`
-            : `12px minmax(420px, 1fr) repeat(${setCount}, ${setColW}px)`,
-          gridTemplateRows: '36px 1fr 1fr' }}>
+            ? `12px minmax(360px, max-content) repeat(${setCount}, ${setColW}px) 260px`
+            : `12px minmax(360px, max-content) repeat(${setCount}, ${setColW}px)`,
+          gridTemplateRows: '34px 1fr 1fr' }}>
 
           {/* Set-time row */}
           <div style={{ gridColumn:`1 / span 2`, gridRow:1, borderBottom:'1px solid rgba(255,255,255,.05)' }}/>
@@ -789,32 +794,31 @@ function BigScoreboardPlayer({ player, accent, isDoubles, isServer, servingColor
   player: any, accent: string, isDoubles: boolean, isServer: boolean, servingColor: string,
 }) {
   if (!player) return null
-  const nameFs  = isDoubles ? 34 : 48
+  const lastFs  = isDoubles ? 28 : 38
   const firstFs = isDoubles ? 18 : 24
   const flagSz  = isDoubles ? { w: 38, h: 26 } : { w: 48, h: 32 }
   return (
-    <div style={{ display:'flex', alignItems:'center', gap:14, minWidth:0 }}>
-      <img src={flagPath(player.nationality)} alt="" style={{ flex:'none', width:flagSz.w, height:flagSz.h, borderRadius:4, objectFit:'cover' }}/>
-      <div style={{ display:'flex', flexDirection:'column', lineHeight:1, minWidth:0 }}>
-        {player.first_name && (
-          <span style={{ fontSize:firstFs, fontWeight:700, letterSpacing:'.02em', textTransform:'uppercase', color:'#ffffff', opacity:.95, whiteSpace:'nowrap' }}>
-            {player.first_name}
-          </span>
-        )}
-        <span style={{ fontSize:nameFs, fontWeight:900, lineHeight:.95, textTransform:'uppercase', letterSpacing:'-.005em', color:accent, whiteSpace:'nowrap' }}>
-          {(player.last_name ?? '').toUpperCase()}
-        </span>
-      </div>
-      {isServer && (
-        <span
-          title="Saca"
-          style={{
-            flex:'none', width:18, height:18, borderRadius:'50%', background:servingColor,
-            boxShadow:`0 0 0 3px ${hexAlpha(servingColor,.28)}`,
-            animation:'sgSrvPulse 1.4s infinite',
-          }}
-        />
+    <div style={{ display:'flex', alignItems:'center', gap:14, minWidth:0, whiteSpace:'nowrap' }}>
+      {/* Serve indicator a la IZQUIERDA del nombre (antes de la bandera) */}
+      {isServer ? (
+        <span title="Saca" style={{
+          flex:'none', width:16, height:16, borderRadius:'50%', background:servingColor,
+          boxShadow:`0 0 14px ${servingColor}, 0 0 0 4px ${hexAlpha(servingColor,.28)}`,
+          animation:'sgSrvPulse 1.4s infinite',
+        }}/>
+      ) : (
+        <span style={{ flex:'none', width:16, height:16 }}/>
       )}
+      <img src={flagPath(player.nationality)} alt="" style={{ flex:'none', width:flagSz.w, height:flagSz.h, borderRadius:4, objectFit:'cover' }}/>
+      {/* Nombre + apellido en UNA SOLA LINEA */}
+      {player.first_name && (
+        <span style={{ fontSize:firstFs, fontWeight:700, letterSpacing:'.02em', textTransform:'uppercase', color:'#ffffff', opacity:.95, lineHeight:1 }}>
+          {player.first_name.toUpperCase()}
+        </span>
+      )}
+      <span style={{ fontSize:lastFs, fontWeight:900, textTransform:'uppercase', letterSpacing:'-.005em', color:accent, lineHeight:1 }}>
+        {(player.last_name ?? '').toUpperCase()}
+      </span>
     </div>
   )
 }
