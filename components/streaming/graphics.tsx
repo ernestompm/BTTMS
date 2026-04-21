@@ -672,36 +672,51 @@ export function Scorebug({ visible, match, tournament, flag, tickerStat }: { vis
       {/* Pills derechos (stat label + flag banner) — ancho auto, alineados
           al borde derecho del card. Cada uno tiene su propio slot flex así
           que aparecen uno encima del otro, siempre anclados a la derecha. */}
-      {/* Pill del stat label — right-aligned via text-align + inline-block */}
-      <Presence show={showTicker} exitMs={850}>
-        {(vis) => (
-          <div style={{ overflow:'hidden', textAlign:'right' }}>
-            <span key={`tlab-${tickerStat}`} style={{
-              display:'inline-block',
-              padding:'5px 14px', background:'rgba(255,255,255,.08)', color:pal.accentA,
-              fontSize:20, fontWeight:900, letterSpacing:'.24em', textTransform:'uppercase', whiteSpace:'nowrap',
-              borderTop:`1px solid ${hexAlpha(pal.accentA,.3)}`,
-              ...animStyle(vis, 'sgInPillR', 'sgOutPillR', 700, 'cubic-bezier(.19,1,.22,1)'),
-            }}>
-              {tickerLabel}
-            </span>
-          </div>
-        )}
-      </Presence>
-      <Presence show={!!(flag.kind && flag.label)} exitMs={850}>
-        {(vis) => (
-          <div style={{ overflow:'hidden', textAlign:'right' }}>
-            <span style={{
-              display:'inline-block',
-              padding:'6px 16px', background:flagColor ?? '#ef6a4c', color:'#000',
-              fontSize:22, fontWeight:900, letterSpacing:'.24em', textTransform:'uppercase', whiteSpace:'nowrap',
-              ...animStyle(vis, 'sgInPillR', 'sgOutPillR', 700, 'cubic-bezier(.19,1,.22,1)'),
-            }}>
-              {flag.label}
-            </span>
-          </div>
-        )}
-      </Presence>
+      {/* Pills — el wrapper se queda siempre montado y anima max-height
+          junto con opacity/translateX del pill interno. As\u00ed el card no
+          se encoge de golpe cuando el pill desaparece. */}
+      <TickerPill
+        show={showTicker}
+        text={tickerLabel}
+        fg={pal.accentA}
+        bg={'rgba(255,255,255,.08)'}
+        borderTop={`1px solid ${hexAlpha(pal.accentA,.3)}`}
+      />
+      <TickerPill
+        show={!!(flag.kind && flag.label)}
+        text={flag.label}
+        fg={'#000'}
+        bg={flagColor ?? '#ef6a4c'}
+      />
+    </div>
+  )
+}
+
+// ─── TickerPill — pill right-aligned con CSS transitions ──────────────────
+// Se queda SIEMPRE montado. Anima max-height + opacity + translateX con
+// transitions. Evita el snap al desmontar (el card no se encoge de golpe).
+function TickerPill({ show, text, fg, bg, borderTop }: { show: boolean, text: string, fg: string, bg: string, borderTop?: string }) {
+  const ease = 'cubic-bezier(.19,1,.22,1)'
+  return (
+    <div style={{
+      overflow:'hidden',
+      textAlign:'right',
+      maxHeight: show ? 46 : 0,
+      transition: `max-height 600ms ${ease}`,
+    }}>
+      <span style={{
+        display:'inline-block',
+        padding:'5px 12px',
+        background: bg,
+        color: fg,
+        fontSize:20, fontWeight:900, letterSpacing:'.18em', textTransform:'uppercase', whiteSpace:'nowrap',
+        borderTop: borderTop,
+        opacity: show ? 1 : 0,
+        transform: show ? 'translateX(0)' : 'translateX(44px)',
+        transition: `opacity 550ms ${ease}, transform 550ms ${ease}`,
+      }}>
+        {text || '\u00A0'}
+      </span>
     </div>
   )
 }
