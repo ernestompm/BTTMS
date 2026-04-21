@@ -70,7 +70,7 @@ export class AutomationRunner {
   }
 
   private cancelAll() {
-    for (const timers of this.pending.values()) timers.forEach(clearTimeout)
+    this.pending.forEach(timers => timers.forEach(clearTimeout))
     this.pending.clear()
   }
 
