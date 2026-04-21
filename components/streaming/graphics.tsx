@@ -393,43 +393,9 @@ export function RefereeLowerThird({ visible, referee, tournament }: { visible:bo
 }
 
 // ╔══════════════════════════════════════════════════════════════════════════╗
-// ║ 6) STATS PANEL — right-side, proper enter from right / exit to right     ║
+// ║ 6) STATS PANEL — centrado, nombres tipo presentacion, marcador hasta     ║
+// ║    el set del scope, breaks ganados/totales, advanced solo si activo     ║
 // ╚══════════════════════════════════════════════════════════════════════════╝
-export function StatsPanel({ visible, match, tournament, scope }: { visible:boolean, match:any, tournament: Tournament | null, scope:'set_1'|'set_2'|'set_3'|'match'|'auto' }) {
-  if (!match?.stats) return null
-  const pal = palette(tournament?.scoreboard_config)
-  const resolvedScope = scope === 'auto' ? autoScope(match) : scope
-  const s = match.stats
-  const rows: Array<{label:string, a:number|string, b:number|string}> = [
-    { label:'Aces',                a: s.t1.aces,                                 b: s.t2.aces },
-    { label:'Dobles faltas',       a: s.t1.double_faults,                        b: s.t2.double_faults },
-    { label:'Winners',             a: s.t1.winners,                              b: s.t2.winners },
-    { label:'Errores no forzados', a: s.t1.unforced_errors,                      b: s.t2.unforced_errors },
-    { label:'% Puntos saque',      a: `${Math.round(s.t1.serve_points_won_pct||0)}%`,  b: `${Math.round(s.t2.serve_points_won_pct||0)}%` },
-    { label:'% Puntos resto',      a: `${Math.round(s.t1.return_points_won_pct||0)}%`, b: `${Math.round(s.t2.return_points_won_pct||0)}%` },
-    { label:'Breaks ganados',      a: s.t1.break_points_won,                     b: s.t2.break_points_won },
-    { label:'Breaks salvados',     a: s.t1.break_points_saved,                   b: s.t2.break_points_saved },
-    { label:'Racha máxima',        a: s.t1.max_points_streak,                    b: s.t2.max_points_streak },
-    { label:'Puntos totales',      a: s.t1.total_points_won,                     b: s.t2.total_points_won },
-  ]
-  const title = resolvedScope === 'match' ? 'ESTADÍSTICAS PARTIDO' : `ESTADÍSTICAS · ${resolvedScope.replace('set_','SET ')}`
-
-  return (
-    <div style={{ position:'absolute', right:60, top:100, width:780, ...CARD, padding:'24px 30px',
-      borderTop:`8px solid ${pal.accentA}`,
-      ...animStyle(visible, 'sgInL', 'sgOutL', 700) }}>
-      <div style={{ ...KICKER, fontSize:14 }}>{title}</div>
-      <div style={{ display:'grid', gridTemplateColumns:'1fr auto 1fr', gap:14, margin:'10px 0 18px 0', alignItems:'center' }}>
-        <NameCell entry={match.entry1} align="left"  accent={pal.accentA} doubles={match.match_type==='doubles'}/>
-        <span style={{ fontSize:22, opacity:.4, fontWeight:900 }}>·</span>
-        <NameCell entry={match.entry2} align="right" accent={pal.accentB} doubles={match.match_type==='doubles'}/>
-      </div>
-      <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-        {rows.map((r,i) => <StatRow key={i} {...r} accentA={pal.accentA} accentB={pal.accentB}/>)}
-      </div>
-    </div>
-  )
-}
 function autoScope(match:any): 'set_1'|'set_2'|'set_3'|'match' {
   const sets = match?.score?.sets?.length ?? 0
   if (match?.status === 'finished') return 'match'
@@ -437,32 +403,141 @@ function autoScope(match:any): 'set_1'|'set_2'|'set_3'|'match' {
   if (sets === 2) return 'set_2'
   return 'set_3'
 }
-function NameCell({ entry, align, accent, doubles }:{ entry:any, align:'left'|'right', accent:string, doubles:boolean }) {
-  const p1 = entry?.player1, p2 = doubles ? entry?.player2 : null
+
+const SCOPE_TITLE: Record<string,string> = {
+  set_1: 'PRIMER SET', set_2: 'SEGUNDO SET', set_3: 'TERCER SET', match: 'PARTIDO',
+}
+
+export function StatsPanel({ visible, match, tournament, scope }: { visible:boolean, match:any, tournament: Tournament | null, scope:'set_1'|'set_2'|'set_3'|'match'|'auto' }) {
+  if (!match?.stats) return null
+  const pal = palette(tournament?.scoreboard_config)
+  const advanced = !!tournament?.advanced_stats_enabled
+  const resolvedScope = scope === 'auto' ? autoScope(match) : scope
+  const s = match.stats
+  const isDoubles = match.match_type === 'doubles'
+
+  // Breaks: ganados/totales y salvados/totales
+  const breaksWonA  = s.t1.break_points_won
+  const breaksWonTotA = s.t1.break_points_played_on_return ?? 0
+  const breaksWonB  = s.t2.break_points_won
+  const breaksWonTotB = s.t2.break_points_played_on_return ?? 0
+  const breaksSavedA = s.t1.break_points_saved
+  const breaksFacedA = s.t1.break_points_faced ?? 0
+  const breaksSavedB = s.t2.break_points_saved
+  const breaksFacedB = s.t2.break_points_faced ?? 0
+
+  const rows: Array<{label:string, a:number|string, b:number|string}> = [
+    { label: 'Aces',           a: s.t1.aces,          b: s.t2.aces },
+    { label: 'Dobles faltas',  a: s.t1.double_faults, b: s.t2.double_faults },
+    ...(advanced ? [
+      { label: 'Winners',             a: s.t1.winners,          b: s.t2.winners },
+      { label: 'Errores no forzados', a: s.t1.unforced_errors,  b: s.t2.unforced_errors },
+    ] : []),
+    { label: '% Puntos saque',          a: `${Math.round(s.t1.serve_points_won_pct||0)}%`, b: `${Math.round(s.t2.serve_points_won_pct||0)}%` },
+    { label: '% Puntos resto',          a: `${Math.round(s.t1.return_points_won_pct||0)}%`, b: `${Math.round(s.t2.return_points_won_pct||0)}%` },
+    { label: 'Breaks ganados / total',  a: `${breaksWonA}/${breaksWonTotA}`,   b: `${breaksWonB}/${breaksWonTotB}` },
+    { label: 'Breaks salvados / total', a: `${breaksSavedA}/${breaksFacedA}`,  b: `${breaksSavedB}/${breaksFacedB}` },
+    { label: 'Puntos totales',          a: s.t1.total_points_won,              b: s.t2.total_points_won },
+  ]
+
+  // Score hasta el scope
+  const sets = match.score?.sets ?? []
+  const currentSet = match.score?.current_set
+  let showCount = resolvedScope === 'set_1' ? 1 : resolvedScope === 'set_2' ? 2 : resolvedScope === 'set_3' ? 3 : Math.max(1, sets.length)
+  const visibleSets: Array<{num:number, t1:number, t2:number, isCurrent:boolean}> = []
+  for (let i = 0; i < showCount; i++) {
+    if (sets[i]) visibleSets.push({ num:i+1, t1:sets[i].t1, t2:sets[i].t2, isCurrent:false })
+    else if (i === sets.length && currentSet && match.status === 'in_progress') {
+      visibleSets.push({ num:i+1, t1:currentSet.t1 ?? 0, t2:currentSet.t2 ?? 0, isCurrent:true })
+    }
+  }
+
   return (
-    <div style={{ textAlign: align, borderLeft: align==='left'?`5px solid ${accent}`:'none', borderRight: align==='right'?`5px solid ${accent}`:'none', paddingLeft: align==='left'?12:0, paddingRight: align==='right'?12:0 }}>
-      <div style={{ fontSize:22, fontWeight:800, textTransform:'uppercase', lineHeight:1 }}>{p1?.last_name ?? '—'}</div>
-      {p2 && <div style={{ fontSize:18, fontWeight:700, opacity:.65, textTransform:'uppercase' }}>{p2.last_name}</div>}
+    <div style={{
+      position:'absolute', left:'50%', top:'50%', transform:'translate(-50%,-50%)',
+      width:1180, ...CARD, padding:'34px 48px',
+      borderTop:`6px solid ${pal.accentA}`,
+      ...animStyle(visible, 'sgInZ', 'sgOutZ', 700),
+    }}>
+      {/* TITULO GRANDE */}
+      <div style={{ textAlign:'center', marginBottom:20 }}>
+        <div style={{ fontSize:52, fontWeight:900, lineHeight:.95, letterSpacing:'-.005em', textTransform:'uppercase' }}>ESTADÍSTICAS</div>
+        <div style={{ marginTop:6, fontSize:26, fontWeight:900, letterSpacing:'.3em', textTransform:'uppercase', color:pal.accentA }}>
+          {SCOPE_TITLE[resolvedScope] ?? ''}
+        </div>
+      </div>
+
+      {/* JUGADORES + MARCADOR centrado */}
+      <div style={{ display:'grid', gridTemplateColumns:'1fr auto 1fr', gap:28, alignItems:'center', marginBottom:22 }}>
+        <PlayerBlockSmall entry={match.entry1} align="right" accent={pal.accentA} doubles={isDoubles}/>
+        <ScoreMini visibleSets={visibleSets}/>
+        <PlayerBlockSmall entry={match.entry2} align="left"  accent={pal.accentB} doubles={isDoubles}/>
+      </div>
+
+      {/* FILAS ESTADISTICAS — divisor fino, sin barra de color */}
+      <div>
+        <div style={{ height:1, background:'rgba(255,255,255,.06)' }}/>
+        {rows.map((r,i) => (
+          <StatRow key={i} label={r.label} a={r.a} b={r.b} accentA={pal.accentA} accentB={pal.accentB}/>
+        ))}
+      </div>
     </div>
   )
 }
-function StatRow({ label, a, b, accentA, accentB }: { label:string, a:number|string, b:number|string, accentA:string, accentB:string }) {
-  const numA = typeof a === 'number' ? a : parseFloat(String(a)) || 0
-  const numB = typeof b === 'number' ? b : parseFloat(String(b)) || 0
-  const total = numA + numB || 1
-  const pctA = Math.round((numA / total) * 100)
+
+function PlayerBlockSmall({ entry, align, accent, doubles }: { entry:any, align:'left'|'right', accent:string, doubles:boolean }) {
+  const players = [entry?.player1, doubles ? entry?.player2 : null].filter(Boolean)
   return (
-    <div>
-      <div style={{ display:'grid', gridTemplateColumns:'84px 1fr 84px', alignItems:'center', gap:14 }}>
-        <span style={{ fontSize:30, fontWeight:900, textAlign:'right', color: numA>=numB?accentA:'rgba(255,255,255,.78)' }}>{a}</span>
-        <span style={{ fontSize:17, letterSpacing:'.22em', textAlign:'center', opacity:.6, textTransform:'uppercase', fontWeight:700 }}>{label}</span>
-        <span style={{ fontSize:30, fontWeight:900, color: numB>numA?accentB:'rgba(255,255,255,.78)' }}>{b}</span>
-      </div>
-      <div style={{ display:'flex', height:5, background:'rgba(255,255,255,.08)', borderRadius:3, overflow:'hidden', marginTop:4 }}>
-        <div style={{ width:`${pctA}%`, background:accentA }}/>
-        <div style={{ width:`${100-pctA}%`, background:accentB }}/>
-      </div>
+    <div style={{ display:'flex', flexDirection:'column', gap:10, alignItems: align==='right'?'flex-end':'flex-start' }}>
+      {players.map((p:any, i:number) => (
+        <div key={i} style={{ display:'flex', alignItems:'center', gap:14, flexDirection: align==='right' ? 'row-reverse' : 'row' }}>
+          <img src={flagPath(p?.nationality)} alt="" style={{ flex:'none', width:56, height:38, borderRadius:4, objectFit:'cover' }}/>
+          <div style={{ display:'flex', flexDirection:'column', lineHeight:1, alignItems: align==='right' ? 'flex-end' : 'flex-start' }}>
+            {p?.first_name && (
+              <span style={{ fontSize: players.length===1?22:18, fontWeight:700, letterSpacing:'.02em', opacity:.82, textTransform:'uppercase' }}>
+                {p.first_name}
+              </span>
+            )}
+            <span style={{ fontSize: players.length===1?50:34, fontWeight:900, lineHeight:.95, textTransform:'uppercase', whiteSpace:'nowrap', color:accent }}>
+              {(p?.last_name ?? '').toUpperCase()}
+            </span>
+          </div>
+        </div>
+      ))}
     </div>
+  )
+}
+
+function ScoreMini({ visibleSets }: { visibleSets: Array<{num:number, t1:number, t2:number, isCurrent:boolean}> }) {
+  if (visibleSets.length === 0) return <div style={{ opacity:.3, fontSize:28, fontWeight:900 }}>—</div>
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:4, alignItems:'center', minWidth:200 }}>
+      {visibleSets.map(s => (
+        <div key={s.num} style={{ display:'flex', alignItems:'baseline', gap:14 }}>
+          <span style={{ fontSize:15, letterSpacing:'.26em', fontWeight:900, opacity:.55 }}>SET {s.num}</span>
+          <span style={{ fontSize:36, fontWeight:900, fontVariantNumeric:'tabular-nums', lineHeight:1 }}>
+            {s.t1}<span style={{ opacity:.35, margin:'0 10px' }}>—</span>{s.t2}
+          </span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function StatRow({ label, a, b, accentA, accentB }: { label:string, a:number|string, b:number|string, accentA:string, accentB:string }) {
+  const numA = parseFloat(String(a).replace('%','').split('/')[0]) || 0
+  const numB = parseFloat(String(b).replace('%','').split('/')[0]) || 0
+  const aWins = numA > numB
+  const bWins = numB > numA
+  return (
+    <>
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 2fr 1fr', alignItems:'center', gap:24, padding:'14px 4px' }}>
+        <span style={{ fontSize:40, fontWeight:900, textAlign:'right', color: aWins ? accentA : 'rgba(255,255,255,.88)', fontVariantNumeric:'tabular-nums', lineHeight:1 }}>{a}</span>
+        <span style={{ fontSize:22, letterSpacing:'.22em', textAlign:'center', opacity:.75, textTransform:'uppercase', fontWeight:800 }}>{label}</span>
+        <span style={{ fontSize:40, fontWeight:900, textAlign:'left',  color: bWins ? accentB : 'rgba(255,255,255,.88)', fontVariantNumeric:'tabular-nums', lineHeight:1 }}>{b}</span>
+      </div>
+      <div style={{ height:1, background:'rgba(255,255,255,.06)' }}/>
+    </>
   )
 }
 
