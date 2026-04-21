@@ -1030,23 +1030,29 @@ export function WeatherCard({ visible, weather, tournament }: { visible:boolean,
           </div>
         </div>
       </div>
-      {/* Metricas compactas */}
+      {/* Metricas — icono + valor grande, sin label */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', borderTop:'1px solid rgba(255,255,255,.07)' }}>
-        <WxMetric icon="💨" value={`${Math.round(weather.wind_speed_kmh)}`} unit={`km/h ${weather.wind_direction}`} label="Viento"/>
-        <WxMetric icon="💧" value={`${weather.humidity_pct}`}              unit="%"                                label="Humedad"/>
-        <WxMetric icon="☂"  value={`${weather.rain_probability_pct}`}       unit="%"                                label="Lluvia"/>
+        <WxMetric icon="💨" value={`${Math.round(weather.wind_speed_kmh)}`} unit="km/h" extra={weather.wind_direction}/>
+        <WxMetric icon="💧" value={`${weather.humidity_pct}`}              unit="%"/>
+        <WxMetric icon="☂"  value={`${weather.rain_probability_pct}`}       unit="%"/>
       </div>
     </div>
   )
 }
-function WxMetric({ icon, value, unit, label }: { icon:string, value:string, unit:string, label:string }) {
+function WxMetric({ icon, value, unit, extra }: { icon:string, value:string, unit:string, extra?:string }) {
   return (
-    <div style={{ padding:'10px 8px', textAlign:'center', borderLeft:'1px solid rgba(255,255,255,.06)' }}>
-      <div style={{ fontSize:12, letterSpacing:'.28em', textTransform:'uppercase', fontWeight:800, opacity:.55, marginBottom:2 }}>
-        <span style={{ marginRight:6 }}>{icon}</span>{label}
-      </div>
-      <div style={{ fontSize:30, fontWeight:900, lineHeight:1, fontVariantNumeric:'tabular-nums' }}>
-        {value}<span style={{ fontSize:14, marginLeft:2, opacity:.65, fontWeight:700, letterSpacing:'.04em' }}>{unit}</span>
+    <div style={{ padding:'14px 10px', display:'flex', alignItems:'center', justifyContent:'center', gap:12, borderLeft:'1px solid rgba(255,255,255,.06)' }}>
+      <span style={{ fontSize:36, lineHeight:1 }}>{icon}</span>
+      <div style={{ display:'flex', flexDirection:'column', lineHeight:1 }}>
+        <div style={{ display:'flex', alignItems:'baseline', gap:4 }}>
+          <span style={{ fontSize:40, fontWeight:900, fontVariantNumeric:'tabular-nums' }}>{value}</span>
+          <span style={{ fontSize:18, fontWeight:800, opacity:.75, letterSpacing:'.05em' }}>{unit}</span>
+        </div>
+        {extra && (
+          <span style={{ fontSize:14, fontWeight:800, opacity:.65, letterSpacing:'.18em', textTransform:'uppercase', marginTop:3 }}>
+            {extra}
+          </span>
+        )}
       </div>
     </div>
   )
