@@ -32,6 +32,7 @@ export function OperatorPanel({ session, initialMatch, tournament, rules, recent
   const [events, setEvents] = useState<any[]>([])
   const [bioTarget, setBioTarget] = useState<{ player_id:string, team:1|2 } | null>(null)
   const [statsScope, setStatsScope] = useState<'auto'|'set_1'|'set_2'|'set_3'|'match'>('auto')
+  const [showSponsor, setShowSponsor] = useState(true)
   const [copyState, setCopyState] = useState<'idle'|'copied'>('idle')
   const runner = useRef<AutomationRunner | null>(null)
 
@@ -103,9 +104,11 @@ export function OperatorPanel({ session, initialMatch, tournament, rules, recent
   async function hide(k: GraphicKey)  { await hideGraphic(session.id, k); logEvent(session.id, 'manual_hide', k) }
 
   function resolveData(k: GraphicKey) {
-    if (k === 'player_bio')  return bioTarget
-    if (k === 'stats_panel') return { scope: statsScope }
-    if (k === 'results_grid') return { category: match.category }
+    if (k === 'player_bio')     return bioTarget
+    if (k === 'stats_panel')    return { scope: statsScope }
+    if (k === 'results_grid')   return { category: match.category }
+    if (k === 'bracket')        return { category: match.category }
+    if (k === 'big_scoreboard') return { show_sponsor: showSponsor }
     return undefined
   }
 
@@ -173,6 +176,12 @@ export function OperatorPanel({ session, initialMatch, tournament, rules, recent
                   ))}
                 </div>
               </div>
+            </div>
+            <div style={{ marginTop:14, display:'flex', alignItems:'center', gap:10 }}>
+              <div style={labelSm()}>Marcador grande</div>
+              <button onClick={() => setShowSponsor(v => !v)} style={chip(showSponsor, '#a855f7')}>
+                {showSponsor ? '✓ Mostrar patrocinador' : '○ Sin patrocinador'}
+              </button>
             </div>
           </section>
 

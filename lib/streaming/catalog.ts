@@ -106,11 +106,30 @@ export const GRAPHICS: Record<GraphicKey, GraphicMeta> = {
     zIndex: 500,
     defaultHoldMs: 12000,
   },
+  bracket: {
+    key: 'bracket',
+    label: 'Bracket',
+    group: 'utility',
+    hotkey: 'T',
+    description: 'Cuadro knockout con el camino del partido resaltado',
+    zIndex: 500,
+    defaultHoldMs: 12000,
+  },
+  weather: {
+    key: 'weather',
+    label: 'Tiempo',
+    group: 'utility',
+    hotkey: 'Y',
+    description: 'Condiciones meteorológicas',
+    zIndex: 650,
+    defaultHoldMs: 10000,
+  },
 }
 
 export const GRAPHIC_ORDER: GraphicKey[] = [
   'tournament_intro','venue_card','match_presentation','coin_toss','player_bio',
   'referee_lower_third','scorebug','big_scoreboard','stats_panel','results_grid',
+  'bracket','weather',
 ]
 
 export const GROUP_LABELS: Record<GraphicMeta['group'], string> = {

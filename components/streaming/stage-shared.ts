@@ -1,11 +1,6 @@
 // ============================================================================
 // Shared style helpers for streaming graphics
 // ============================================================================
-// All graphics are absolutely positioned on a 1920x1080 stage that is
-// letterbox-scaled to fit the viewport while preserving aspect ratio so that
-// fonts and proportions remain identical on TV and mobile. Backgrounds are
-// transparent so the whole page can be fed to vMix as an alpha source.
-// ============================================================================
 
 export const STAGE_W = 1920
 export const STAGE_H = 1080
@@ -13,37 +8,6 @@ export const STAGE_H = 1080
 export function hexAlpha(hex: string, alpha: number) {
   const clean = hex.replace('#','')
   return `#${clean}${Math.round(alpha * 255).toString(16).padStart(2, '0')}`
-}
-
-/** Injects common keyframes used by all graphics, once per page. */
-export const STREAM_KEYFRAMES = `
-@keyframes sgFadeIn    { from{opacity:0} to{opacity:1} }
-@keyframes sgFadeOut   { from{opacity:1} to{opacity:0} }
-@keyframes sgSlideUp   { from{opacity:0;transform:translateY(40px);filter:blur(10px)} to{opacity:1;transform:none;filter:blur(0)} }
-@keyframes sgSlideDown { from{opacity:1;transform:none;filter:blur(0)}               to{opacity:0;transform:translateY(40px);filter:blur(10px)} }
-@keyframes sgSlideLeft { from{opacity:0;transform:translateX(80px);filter:blur(10px)} to{opacity:1;transform:none;filter:blur(0)} }
-@keyframes sgSlideRight{ from{opacity:1;transform:none;filter:blur(0)}                to{opacity:0;transform:translateX(80px);filter:blur(10px)} }
-@keyframes sgZoomIn    { from{opacity:0;transform:scale(.6) rotate(-2deg);filter:blur(12px)} to{opacity:1;transform:none;filter:blur(0)} }
-@keyframes sgZoomOut   { from{opacity:1;transform:none;filter:blur(0)} to{opacity:0;transform:scale(.92);filter:blur(10px)} }
-@keyframes sgBlink     { 0%,100%{opacity:1} 50%{opacity:.25} }
-@keyframes sgPulse     { 0%,100%{box-shadow:0 0 0 0 rgba(239,106,76,.8)} 50%{box-shadow:0 0 0 22px rgba(239,106,76,0)} }
-@keyframes sgSheen     { 0%{transform:translateX(-110%)} 60%,100%{transform:translateX(210%)} }
-@keyframes sgTicker    { 0%{transform:translateY(0)} 100%{transform:translateY(-100%)} }
-@keyframes sgCardIn    { from{opacity:0;transform:translateY(26px) scale(.985);filter:blur(10px)} to{opacity:1;transform:none;filter:blur(0)} }
-`
-
-/** Palette extraction with sensible defaults matching the existing venue-scoreboard look. */
-export function palette(cfg: any) {
-  return {
-    accentA: cfg?.colors?.team1_accent ?? '#ef6a4c',
-    accentB: cfg?.colors?.team2_accent ?? '#af005f',
-    serve:   cfg?.colors?.serving_indicator ?? '#ef6a4c',
-    text:    cfg?.colors?.text_primary ?? '#ffffff',
-    text2:   cfg?.colors?.text_secondary ?? 'rgba(255,255,255,.65)',
-    bgGrad:  'linear-gradient(135deg, rgba(20,30,55,.92) 0%, rgba(8,12,28,.96) 100%)',
-    panelBg: 'linear-gradient(180deg, rgba(18,24,44,.92) 0%, rgba(8,10,22,.96) 100%)',
-    glass:   'linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02))',
-  }
 }
 
 export function flagPath(nat: string | null | undefined) {
@@ -56,15 +20,64 @@ export function fullName(p: any) {
   return `${p.first_name ?? ''} ${p.last_name ?? ''}`.trim()
 }
 
-export function teamLabel(entry: any, isDoubles: boolean) {
-  if (!entry) return '—'
-  if (isDoubles) return `${entry.player1?.last_name ?? ''} / ${entry.player2?.last_name ?? ''}`
-  return entry.player1?.last_name ?? ''
-}
+// ─── Keyframes — explicit direction naming ──────────────────────────────────
+// Enter  keyframes: sgIn<Dir>   (from hidden → visible)
+// Exit   keyframes: sgOut<Dir>  (from visible → hidden)
+// Dirs: L/R/U/D (slide from that side), Z (zoom), F (fade), Scale (subtle)
+export const STREAM_KEYFRAMES = `
+@keyframes sgInF    { from{opacity:0}                                                 to{opacity:1} }
+@keyframes sgOutF   { from{opacity:1}                                                 to{opacity:0} }
+@keyframes sgInU    { from{opacity:0;transform:translateY(40px)}                      to{opacity:1;transform:none} }
+@keyframes sgOutU   { from{opacity:1;transform:none}                                  to{opacity:0;transform:translateY(40px)} }
+@keyframes sgInD    { from{opacity:0;transform:translateY(-40px)}                     to{opacity:1;transform:none} }
+@keyframes sgOutD   { from{opacity:1;transform:none}                                  to{opacity:0;transform:translateY(-40px)} }
+@keyframes sgInR    { from{opacity:0;transform:translateX(-60px)}                     to{opacity:1;transform:none} } /* enter from left */
+@keyframes sgOutR   { from{opacity:1;transform:none}                                  to{opacity:0;transform:translateX(-60px)} }
+@keyframes sgInL    { from{opacity:0;transform:translateX(60px)}                      to{opacity:1;transform:none} } /* enter from right */
+@keyframes sgOutL   { from{opacity:1;transform:none}                                  to{opacity:0;transform:translateX(60px)} }
+@keyframes sgInZ    { from{opacity:0;transform:scale(.86)}                            to{opacity:1;transform:scale(1)} }
+@keyframes sgOutZ   { from{opacity:1;transform:scale(1)}                              to{opacity:0;transform:scale(.94)} }
+@keyframes sgInClip { from{clip-path:inset(0 100% 0 0);opacity:0}                     to{clip-path:inset(0 0 0 0);opacity:1} }
+@keyframes sgOutClip{ from{clip-path:inset(0 0 0 0);opacity:1}                        to{clip-path:inset(0 0 0 100%);opacity:0} }
+@keyframes sgSrvPulse { 0%,100%{box-shadow:0 0 0 0 rgba(239,106,76,.7)} 50%{box-shadow:0 0 0 12px rgba(239,106,76,0)} }
+@keyframes sgSheen    { 0%{transform:translateX(-110%)} 60%,100%{transform:translateX(210%)} }
+`
 
-/** Uniform animated wrapper used by every graphic. */
-export function animStyle(visible: boolean, enter: string, exit: string, ms = 650) {
+/** Build an animation style using explicit enter/exit keyframes. */
+export function animStyle(visible: boolean, enter: string, exit: string, ms = 650): React.CSSProperties {
   return {
     animation: `${visible ? enter : exit} ${ms}ms cubic-bezier(.22,.9,.25,1) both`,
-  } as React.CSSProperties
+    willChange: 'transform, opacity',
+  }
+}
+
+/** Palette extracted from scoreboard_config with fallbacks. */
+export function palette(cfg: any) {
+  return {
+    accentA: cfg?.colors?.team1_accent ?? '#ef6a4c',
+    accentB: cfg?.colors?.team2_accent ?? '#af005f',
+    serve:   cfg?.colors?.serving_indicator ?? '#ef6a4c',
+    text:    cfg?.colors?.text_primary ?? '#ffffff',
+    text2:   cfg?.colors?.text_secondary ?? 'rgba(255,255,255,.65)',
+    panelBg: 'linear-gradient(180deg, rgba(12,18,36,.97) 0%, rgba(5,8,20,.99) 100%)',
+    glass:   'linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.015))',
+  }
+}
+
+/** Unified card style — same across every graphic for visual consistency. */
+export const CARD: React.CSSProperties = {
+  background: 'linear-gradient(180deg, rgba(12,18,36,.97) 0%, rgba(5,8,20,.99) 100%)',
+  border: '1px solid rgba(255,255,255,.08)',
+  borderRadius: 18,
+  boxShadow: '0 24px 60px rgba(0,0,0,.55)',
+  overflow: 'hidden',
+}
+
+/** Small header label used across cards (top-left kicker). */
+export const KICKER: React.CSSProperties = {
+  fontSize: 18,
+  letterSpacing: '.3em',
+  textTransform: 'uppercase',
+  fontWeight: 800,
+  opacity: .55,
 }

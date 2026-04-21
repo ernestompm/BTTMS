@@ -13,6 +13,8 @@ export type GraphicKey =
   | 'big_scoreboard'
   | 'results_grid'
   | 'coin_toss'
+  | 'weather'
+  | 'bracket'
 
 export interface GraphicState<T = any> {
   visible: boolean
