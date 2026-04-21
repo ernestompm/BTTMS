@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import type { Match, Tournament } from '@/types'
+import { categoryLabel, roundLabel } from '@/types'
 
 export default async function DashboardPage() {
   const auth = await createServerSupabase()
@@ -82,7 +83,7 @@ export default async function DashboardPage() {
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                    <span className="text-white font-medium text-sm">{m.category} · {m.round}</span>
+                    <span className="text-white font-medium text-sm">{categoryLabel(m.category)} · {roundLabel(m.round)}</span>
                   </div>
                   <p className="text-gray-400 text-xs">{m.court?.name}</p>
                 </div>

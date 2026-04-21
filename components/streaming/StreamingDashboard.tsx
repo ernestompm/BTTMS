@@ -9,6 +9,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import type { StreamSession } from '@/types/streaming'
+import { categoryLabel, roundLabel } from '@/types'
 
 interface Props {
   tournamentId: string
@@ -117,8 +118,8 @@ export function StreamingDashboard({ tournamentId, matches, initialSessions }: P
                     <div className="text-gray-400">vs {teamLabel(m.entry2)}</div>
                   </td>
                   <td className="px-4 py-3 text-gray-300">
-                    <div>{m.category}</div>
-                    <div className="text-gray-500 text-xs">{m.round}</div>
+                    <div>{categoryLabel(m.category)}</div>
+                    <div className="text-gray-500 text-xs">{roundLabel(m.round)}</div>
                   </td>
                   <td className="px-4 py-3 text-gray-400 text-xs">{m.court?.name ?? '—'}</td>
                   <td className="px-4 py-3">

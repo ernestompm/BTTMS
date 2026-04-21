@@ -11,6 +11,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import type { Tournament, WeatherData } from '@/types'
+import { categoryLabel, roundLabel } from '@/types'
 import type { GraphicsMap, GraphicKey } from '@/types/streaming'
 import { GRAPHICS, GRAPHIC_ORDER, GROUP_LABELS } from '@/lib/streaming/catalog'
 import { AutomationRunner } from '@/lib/streaming/automation'
@@ -223,7 +224,7 @@ export function OperatorPanel({ session, initialMatch, tournament, rules, allMat
       <div style={{ gridColumn:'1 / 3', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 20px', borderBottom:'1px solid #141a2a', background:'#070b16', gap:20 }}>
         <div>
           <div style={{ fontSize:16, fontWeight:900, letterSpacing:'.06em' }}>STREAMING · OPERADOR</div>
-          <div style={{ fontSize:11, opacity:.6 }}>{tournament?.name} · {match.round} · {match.category}</div>
+          <div style={{ fontSize:11, opacity:.6 }}>{tournament?.name} · {roundLabel(match.round)} · {categoryLabel(match.category)}</div>
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
           {/* Mode selector */}
@@ -589,7 +590,7 @@ function MatchDataSidebar({ match, tournament, referee, weather }: { match:any, 
           </span>
         </div>
         <div style={{ fontSize:11, opacity:.55, letterSpacing:'.2em', textTransform:'uppercase', fontWeight:800 }}>
-          {match.round ?? '—'} · {isDoubles ? 'Dobles' : 'Individual'}
+          {roundLabel(match.round) || '—'} · {isDoubles ? 'Dobles' : 'Individual'}
         </div>
       </div>
 

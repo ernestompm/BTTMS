@@ -400,3 +400,26 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   vet30_f: 'Veteranas +30F', vet40_f: 'Veteranas +40F', vet50_f: 'Veteranas +50F', vet60_f: 'Veteranas +60F',
   mixed_vet30: 'Mixto Veteranos +30',
 }
+
+export const ROUND_LABELS: Record<Round | string, string> = {
+  F:   'Final',
+  SF:  'Semifinal',
+  QF:  'Cuartos de Final',
+  R16: 'Octavos de Final',
+  R32: 'Dieciseisavos',
+  RR:  'Fase de Grupos',
+  GRP: 'Fase de Grupos',
+  CON: 'Consolación',
+  Q1:  'Clasificatoria 1',
+  Q2:  'Clasificatoria 2',
+}
+
+/** Helpers cortos para mostrar categoría/ronda con fallback al código crudo. */
+export function categoryLabel(c: string | null | undefined): string {
+  if (!c) return ''
+  return (CATEGORY_LABELS as Record<string, string>)[c] ?? c
+}
+export function roundLabel(r: string | null | undefined): string {
+  if (!r) return ''
+  return ROUND_LABELS[r] ?? r
+}
