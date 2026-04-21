@@ -129,16 +129,16 @@ export function VenueCard({ visible, tournament }: { visible: boolean, tournamen
   if (!tournament) return null
   const pal = palette(tournament.scoreboard_config)
   return (
-    <div style={{ position:'absolute', right:40, bottom:40, width:540, ...CARD, padding:'18px 26px',
+    <div style={{ position:'absolute', right:90, bottom:90, width:560, ...CARD, padding:'22px 30px',
       borderLeft:`6px solid ${pal.accentA}`,
       display:'grid', gridTemplateColumns:'1fr auto', gap:20, alignItems:'center',
       ...animStyle(visible, 'sgInL', 'sgOutL', 650) }}>
       <div style={{ minWidth:0 }}>
         <div style={{ ...KICKER, fontSize:14, marginBottom:6 }}>SEDE</div>
-        <div style={{ fontSize:42, fontWeight:900, lineHeight:.95, textTransform:'uppercase', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', color:pal.text }}>
+        <div style={{ fontSize:44, fontWeight:900, lineHeight:.95, textTransform:'uppercase', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', color:pal.text }}>
           {tournament.venue_name || tournament.venue_city}
         </div>
-        <div style={{ marginTop:4, fontSize:22, fontWeight:700, letterSpacing:'.16em', textTransform:'uppercase', color:pal.accentA }}>
+        <div style={{ marginTop:8, fontSize:32, fontWeight:800, letterSpacing:'.16em', textTransform:'uppercase', color:pal.accentA, lineHeight:1 }}>
           {tournament.venue_city}
         </div>
       </div>
