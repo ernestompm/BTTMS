@@ -254,6 +254,10 @@ export interface Match {
   warmup_started_at: string | null
   retired_team: 1 | 2 | null
   retire_reason: string | null
+  judge_signature_url?: string | null
+  judge_notes?: string | null
+  signed_at?: string | null
+  signed_by?: string | null
   entry1?: DrawEntry
   entry2?: DrawEntry
   court?: Court

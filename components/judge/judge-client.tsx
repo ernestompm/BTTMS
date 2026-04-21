@@ -6,7 +6,9 @@ import { createClient } from '@/lib/supabase'
 import { TossScreen } from './toss-screen'
 import { PointModal } from './point-modal'
 import { WarningModal } from './warning-modal'
+import { SignatureCanvas } from './signature-canvas'
 import { applyPoint, isBreakPoint, isSetPoint, isMatchPoint, INITIAL_SCORE } from '@/lib/score-engine'
+import { useOfflineQueue, type QueuedPoint } from '@/lib/use-offline-queue'
 import type { Match, PointType, ShotDirection, MatchWarnings, WarningType, Score, ScoringSystem } from '@/types'
 
 interface TimerConfig { warmup: number; sideChange: number; setBreak: number }
@@ -178,6 +180,13 @@ export function JudgeClient({ initialMatch, userId, judgeName, timerConfig, adva
   const toastId = useRef(0)
   const lastPointRef = useRef(0)
 
+  const offlineQueue = useOfflineQueue(initialMatch.id)
+
+  // Match-close artefacts (signature, notes, conformity check)
+  const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null)
+  const [judgeNotes, setJudgeNotes] = useState('')
+  const [conformityChecked, setConformityChecked] = useState(false)
+
   const warmupTimer    = useCountdown(timerConfig.warmup)
   const medTimer       = useCountdown(180, () => setShowMedical(false))
   const sideChangeTimer = useCountdown(timerConfig.sideChange, () => setBreakMode(null))
@@ -218,13 +227,42 @@ export function JudgeClient({ initialMatch, userId, judgeName, timerConfig, adva
 
   // ── online / offline detection ────────────────────────────────
   useEffect(() => {
-    const up = () => setIsOnline(true)
+    const up = () => { setIsOnline(true); tryDrainQueue() }
     const down = () => setIsOnline(false)
     setIsOnline(navigator.onLine)
     window.addEventListener('online', up)
     window.addEventListener('offline', down)
     return () => { window.removeEventListener('online', up); window.removeEventListener('offline', down) }
   }, [])
+
+  // Also try draining on mount (tab may reopen with pending items)
+  useEffect(() => { tryDrainQueue() }, [])
+
+  async function submitQueuedPoint(p: QueuedPoint): Promise<{ ok: true; result: any } | { ok: false }> {
+    try {
+      const res = await fetch(`/api/matches/${p.matchId}/point`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ winner_team: p.winnerTeam, point_type: p.pointType, shot_direction: p.shotDirection }),
+        signal: AbortSignal.timeout(12000),
+      })
+      if (!res.ok) return { ok: false }
+      return { ok: true, result: await res.json() }
+    } catch {
+      return { ok: false }
+    }
+  }
+
+  async function tryDrainQueue() {
+    if (!navigator.onLine) return
+    await offlineQueue.drain(submitQueuedPoint, async () => {
+      // Resync authoritative match state from server after draining
+      try {
+        const { data } = await supabase.from('matches').select('*').eq('id', match.id).single()
+        if (data) setMatch((m) => ({ ...m, ...data }))
+      } catch {}
+      addToast('COLA SINCRONIZADA', 'green')
+    })
+  }
 
   // ── auto-start warmup countdown when entering warmup state ────
   useEffect(() => {
@@ -336,7 +374,9 @@ export function JudgeClient({ initialMatch, userId, judgeName, timerConfig, adva
     // Haptic confirmation for the judge (if supported)
     try { (navigator as any).vibrate?.(35) } catch {}
 
-    // Fire-and-reconcile: render is already updated, network happens in background
+    // Fire-and-reconcile: render is already updated, network happens in background.
+    // If the fetch fails (offline/5xx/timeout) we KEEP the optimistic score and
+    // enqueue the point for later replay — no data loss for the judge.
     let res: Response
     try {
       res = await fetch(`/api/matches/${match.id}/point`, {
@@ -345,15 +385,15 @@ export function JudgeClient({ initialMatch, userId, judgeName, timerConfig, adva
         signal: AbortSignal.timeout(12000),
       })
     } catch {
-      addToast('SIN CONEXIÓN — reintenta', 'red')
-      // Roll back optimistic update
-      setMatch((m) => ({ ...m, score: prevScore, serving_team: servingTeamAtPress, status: m.status === 'finished' && !optimisticFinished ? m.status : (optimisticFinished ? 'in_progress' : m.status) }))
+      offlineQueue.enqueue({ winnerTeam: wt, pointType: 'winner', shotDirection: null })
+      addToast('SIN CONEXIÓN — punto en cola', 'orange')
       return
     }
 
     if (!res.ok) {
-      addToast('ERROR DEL SERVIDOR', 'red')
-      setMatch((m) => ({ ...m, score: prevScore, serving_team: servingTeamAtPress }))
+      // Preserve score, enqueue and let the drainer retry when possible
+      offlineQueue.enqueue({ winnerTeam: wt, pointType: 'winner', shotDirection: null })
+      addToast(`ERROR ${res.status} — punto en cola`, 'orange')
       return
     }
 
@@ -411,10 +451,26 @@ export function JudgeClient({ initialMatch, userId, judgeName, timerConfig, adva
   }
 
   async function handleConfirmAndExit() {
+    if (!conformityChecked) {
+      addToast('Marca la casilla de conformidad', 'orange')
+      return
+    }
+    if (!signatureDataUrl) {
+      addToast('Firma requerida para cerrar el acta', 'orange')
+      return
+    }
     setSaving(true)
-    // Make sure the match is properly closed on the server even if status
-    // was already 'finished' (idempotent) — then bounce to the list.
-    try { await post('finish') } catch {}
+    try {
+      await fetch(`/api/matches/${match.id}/finish`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          signature_data_url: signatureDataUrl,
+          notes: judgeNotes || null,
+        }),
+      })
+    } catch {}
+    setSaving(false)
     router.push('/judge')
   }
 
@@ -530,7 +586,7 @@ export function JudgeClient({ initialMatch, userId, judgeName, timerConfig, adva
       : null
     return (
       <div className="fixed inset-0 flex flex-col bg-gray-950 select-none overflow-hidden">
-        <TopBar match={match} elapsed={elapsed} saving={saving} onFinish={handleFinish} isFinished judgeName={judgeName} isOnline={isOnline} />
+        <TopBar match={match} elapsed={elapsed} saving={saving} onFinish={handleFinish} isFinished judgeName={judgeName} isOnline={isOnline} queuedCount={offlineQueue.count} />
 
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {isRetired ? (
@@ -556,6 +612,42 @@ export function JudgeClient({ initialMatch, userId, judgeName, timerConfig, adva
           {stats && stats.t1 && stats.t2 && <StatsTable t1={t1} t2={t2} stats={stats} />}
 
           {(warnings.t1.length + warnings.t2.length > 0) && <WarningLog warnings={warnings} />}
+
+          {/* Acta: notas + firma + conformidad */}
+          {match.status !== 'walkover' && !match.signed_at && (
+            <div className="bg-gray-900 rounded-2xl border border-gray-800 p-4 space-y-4">
+              <p className="text-gray-400 text-xs uppercase tracking-widest">Cierre del acta</p>
+
+              <div>
+                <label className="block text-gray-500 text-xs mb-1.5">Notas del árbitro (lesiones, incidencias)</label>
+                <textarea value={judgeNotes} onChange={(e) => setJudgeNotes(e.target.value)} rows={3}
+                  placeholder="Opcional — anota cualquier incidencia relevante"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-gray-500" />
+              </div>
+
+              <div>
+                <label className="block text-gray-500 text-xs mb-1.5">Firma del árbitro principal</label>
+                <SignatureCanvas onChange={setSignatureDataUrl} />
+                {judgeName && <p className="text-gray-600 text-xs mt-1.5">Firmado por: <span className="text-gray-400">{judgeName}</span></p>}
+              </div>
+
+              <label className="flex items-start gap-3 cursor-pointer select-none">
+                <input type="checkbox" checked={conformityChecked} onChange={(e) => setConformityChecked(e.target.checked)}
+                  className="mt-0.5 w-5 h-5 accent-brand-red flex-shrink-0" />
+                <span className="text-gray-300 text-sm leading-snug">
+                  Confirmo que el resultado, las sanciones y el tiempo reflejados son correctos y se ajustan al reglamento RFET 2026.
+                </span>
+              </label>
+            </div>
+          )}
+
+          {match.signed_at && (
+            <div className="bg-green-900/20 rounded-2xl border border-green-800/40 p-4">
+              <p className="text-green-400 text-xs font-bold uppercase tracking-widest mb-1">Acta cerrada</p>
+              <p className="text-white text-sm">Firmada {new Date(match.signed_at).toLocaleString('es-ES')}</p>
+              {match.judge_notes && <p className="text-gray-400 text-sm mt-2 italic">"{match.judge_notes}"</p>}
+            </div>
+          )}
         </div>
 
         <div className="flex-shrink-0 flex gap-px bg-gray-800">
@@ -563,10 +655,11 @@ export function JudgeClient({ initialMatch, userId, judgeName, timerConfig, adva
             className="flex-1 bg-yellow-950 hover:bg-yellow-900 disabled:opacity-40 py-5 flex items-center justify-center gap-2 font-bold text-yellow-400 transition-colors">
             ↩ Deshacer último punto
           </button>
-          <button onClick={handleConfirmAndExit} disabled={saving}
-            className="flex-1 py-5 flex items-center justify-center gap-2 font-black font-score text-white text-lg disabled:opacity-50"
+          <button onClick={handleConfirmAndExit}
+            disabled={saving || (match.status !== 'walkover' && !match.signed_at && (!signatureDataUrl || !conformityChecked))}
+            className="flex-1 py-5 flex items-center justify-center gap-2 font-black font-score text-white text-lg disabled:opacity-40"
             style={{ background: 'linear-gradient(90deg,#f31948,#fc6f43)' }}>
-            {saving ? '...' : '✓ CONFIRMAR Y CERRAR ACTA'}
+            {saving ? '...' : match.signed_at ? '✓ SALIR' : '✓ FIRMAR Y CERRAR ACTA'}
           </button>
         </div>
       </div>
@@ -577,7 +670,7 @@ export function JudgeClient({ initialMatch, userId, judgeName, timerConfig, adva
   return (
     <div className="fixed inset-0 flex flex-col bg-gray-950 select-none overflow-hidden">
 
-      <TopBar match={match} elapsed={elapsed} saving={saving} onFinish={handleFinish} isFinished={false} judgeName={judgeName} isOnline={isOnline} />
+      <TopBar match={match} elapsed={elapsed} saving={saving} onFinish={handleFinish} isFinished={false} judgeName={judgeName} isOnline={isOnline} queuedCount={offlineQueue.count} />
 
       {/* Classic scoreboard */}
       <div className="flex-shrink-0 bg-gray-900 border-b border-gray-700">
@@ -805,7 +898,7 @@ export function JudgeClient({ initialMatch, userId, judgeName, timerConfig, adva
 }
 
 // ── Sub-components ─────────────────────────────────────────────────
-function TopBar({ match, elapsed, saving, onFinish, isFinished, judgeName, isOnline }: any) {
+function TopBar({ match, elapsed, saving, onFinish, isFinished, judgeName, isOnline, queuedCount }: any) {
   return (
     <div className="flex items-center justify-between px-4 py-3 bg-gray-900 border-b border-gray-800 flex-shrink-0 gap-3">
       <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -822,6 +915,11 @@ function TopBar({ match, elapsed, saving, onFinish, isFinished, judgeName, isOnl
         {isOnline === false && (
           <span className="text-red-400 text-xs font-bold uppercase tracking-wide bg-red-950/60 border border-red-800 px-2 py-0.5 rounded">
             OFFLINE
+          </span>
+        )}
+        {queuedCount > 0 && (
+          <span className="text-orange-300 text-xs font-bold uppercase tracking-wide bg-orange-950/60 border border-orange-800 px-2 py-0.5 rounded" title="Puntos pendientes de sincronizar">
+            ⏳ {queuedCount}
           </span>
         )}
         <span className="text-gray-300 font-mono tabular-nums text-sm">{fmtTime(elapsed)}</span>

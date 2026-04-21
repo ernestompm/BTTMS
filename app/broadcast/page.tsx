@@ -8,10 +8,24 @@ const TOURNAMENT_ID = '00000000-0000-0000-0000-000000000001'
 
 type HttpMethod = 'POST' | 'PUT'
 
+type LogRow = {
+  time: string
+  event: string
+  status: number | string
+  ok?: boolean
+  retries?: number
+  error?: string | null
+  match_id?: string | null
+  endpoint?: string
+  method?: string
+  duration_ms?: number | null
+  _source: 'db' | 'local'
+}
+
 export default function BroadcastPage() {
   const supabase = createClient()
   const [matches, setMatches] = useState<any[]>([])
-  const [logs, setLogs] = useState<{ time: string; event: string; status: number | string }[]>([])
+  const [logs, setLogs] = useState<LogRow[]>([])
   const [activeMatchId, setActiveMatchId] = useState<string | null>(null)
   const [endpoint, setEndpoint] = useState('')
   const [apiKey, setApiKey] = useState('')
@@ -28,12 +42,44 @@ export default function BroadcastPage() {
   useEffect(() => {
     loadMatches()
     loadTournament()
-    const channel = supabase.channel('broadcast-matches')
+    loadLogs()
+    const matchCh = supabase.channel('broadcast-matches')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'matches', filter: `tournament_id=eq.${TOURNAMENT_ID}` },
         () => loadMatches()
       ).subscribe()
-    return () => { supabase.removeChannel(channel) }
+    const logsCh = supabase.channel('broadcast-logs-stream')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'broadcast_logs', filter: `tournament_id=eq.${TOURNAMENT_ID}` },
+        (p) => prependLog(p.new as any),
+      ).subscribe()
+    return () => { supabase.removeChannel(matchCh); supabase.removeChannel(logsCh) }
   }, [])
+
+  async function loadLogs() {
+    const { data } = await supabase.from('broadcast_logs')
+      .select('*').eq('tournament_id', TOURNAMENT_ID)
+      .order('created_at', { ascending: false }).limit(50)
+    if (data) setLogs(data.map(toLogRow))
+  }
+
+  function toLogRow(row: any): LogRow {
+    return {
+      time: new Date(row.created_at).toLocaleTimeString('es-ES'),
+      event: row.event,
+      status: row.status ?? (row.error ? 'ERR' : '—'),
+      ok: row.ok,
+      retries: row.retries,
+      error: row.error,
+      match_id: row.match_id,
+      endpoint: row.endpoint,
+      method: row.method,
+      duration_ms: row.duration_ms,
+      _source: 'db',
+    }
+  }
+
+  function prependLog(row: any) {
+    setLogs((l) => [toLogRow(row), ...l].slice(0, 50))
+  }
 
   useEffect(() => {
     if (activeMatchId) loadPreview(activeMatchId)
@@ -148,7 +194,7 @@ export default function BroadcastPage() {
 
   function addLog(event: string, status: number | string) {
     const time = new Date().toLocaleTimeString('es-ES')
-    setLogs((l) => [{ time, event, status }, ...l].slice(0, 50))
+    setLogs((l) => [{ time, event, status, _source: 'local' }, ...l].slice(0, 50))
   }
 
   function teamName(entry: any): string {
@@ -257,15 +303,30 @@ export default function BroadcastPage() {
             </div>
 
             <div className="bg-gray-900 rounded-2xl p-5 border border-gray-800">
-              <h2 className="text-white font-semibold mb-3">Log de envíos</h2>
-              <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                {logs.map((l, i) => (
-                  <div key={i} className="flex items-center gap-3 text-xs text-gray-500">
-                    <span className="text-gray-700 font-mono w-16 flex-shrink-0">{l.time}</span>
-                    <span className="flex-1">{l.event}</span>
-                    <span className={`font-mono ${String(l.status).startsWith('2') ? 'text-green-500' : 'text-red-500'}`}>{l.status}</span>
-                  </div>
-                ))}
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-white font-semibold">Log de envíos</h2>
+                <button onClick={loadLogs} className="text-gray-500 hover:text-white text-xs">↻ Refrescar</button>
+              </div>
+              <div className="space-y-1.5 max-h-64 overflow-y-auto">
+                {logs.map((l, i) => {
+                  const success = l.ok ?? (typeof l.status === 'number' && l.status >= 200 && l.status < 300)
+                  return (
+                    <div key={i} className={`flex items-center gap-3 text-xs ${success ? 'text-gray-500' : 'text-red-400'}`} title={l.error ?? ''}>
+                      <span className="text-gray-700 font-mono w-16 flex-shrink-0">{l.time}</span>
+                      <span className="flex-1 flex items-center gap-2 min-w-0">
+                        <span className="truncate">{l.event}</span>
+                        {l.method && <span className="text-gray-700 text-[10px] font-mono flex-shrink-0">{l.method}</span>}
+                        {typeof l.retries === 'number' && l.retries > 0 && (
+                          <span className="text-orange-500 text-[10px] flex-shrink-0">×{l.retries + 1}</span>
+                        )}
+                      </span>
+                      {l.duration_ms != null && (
+                        <span className="text-gray-700 font-mono text-[10px] flex-shrink-0">{l.duration_ms}ms</span>
+                      )}
+                      <span className={`font-mono font-bold flex-shrink-0 ${success ? 'text-green-500' : 'text-red-500'}`}>{l.status}</span>
+                    </div>
+                  )
+                })}
                 {logs.length === 0 && <p className="text-gray-700 text-xs">Sin actividad</p>}
               </div>
             </div>
