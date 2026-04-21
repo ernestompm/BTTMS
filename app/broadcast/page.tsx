@@ -194,7 +194,7 @@ export default function BroadcastPage() {
 
   function addLog(event: string, status: number | string) {
     const time = new Date().toLocaleTimeString('es-ES')
-    setLogs((l) => [{ time, event, status, _source: 'local' }, ...l].slice(0, 50))
+    setLogs((l) => [{ time, event, status, _source: 'local' as const }, ...l].slice(0, 50))
   }
 
   function teamName(entry: any): string {
