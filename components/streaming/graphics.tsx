@@ -585,31 +585,24 @@ export function Scorebug({ visible, match, tournament, flag, tickerStat }: { vis
   }
   const flagColor = flag.kind ? (flagColors[flag.kind] ?? pal.accentA) : null
 
-  // Ticker sidecar integrado en el grid del scorebug
+  // Ticker: si está activo, REEMPLAZA el valor de la columna de puntos con
+  // el valor de la estadística. Muestra además un mini header con el label.
   const showTicker = !!tickerStat && !!match.stats
   const tickerLabel = tickerStat ? (STAT_LABELS[tickerStat] ?? tickerStat.toUpperCase()) : ''
   const tickerValues = showTicker ? statValuePair(match.stats, tickerStat!) : { a:'', b:'' }
-  const tickerNumA = parseFloat(String(tickerValues.a).split('/')[0].replace('%','')) || 0
-  const tickerNumB = parseFloat(String(tickerValues.b).split('/')[0].replace('%','')) || 0
-  const tickerAWins = tickerNumA > tickerNumB
-  const tickerBWins = tickerNumB > tickerNumA
 
   const colW = 54
-  const tickerColW = 140
-  // Grid: [accent 12][name auto][sets][pts][TICKER if on]
-  const gridCols = `12px minmax(220px, max-content) ${Array(setCount + 1).fill(`${colW}px`).join(' ')}${showTicker ? ` ${tickerColW}px` : ''}`
+  // Grid sin columna extra: la de puntos sirve para ambos (pts o stat)
+  const gridCols = `12px minmax(220px, max-content) ${Array(setCount + 1).fill(`${colW}px`).join(' ')}`
 
   return (
-    <div style={{ position:'absolute', top:40, left:40, minWidth: 420, maxWidth: 960, ...CARD, padding:0, overflow:'hidden',
+    <div style={{ position:'absolute', top:40, left:40, minWidth: 420, maxWidth: 820, ...CARD, padding:0, overflow:'hidden',
       ...animStyle(visible, 'sgInR', 'sgOutR', 500) }}>
 
-      {/* Ticker header (solo cuando esta activo) */}
+      {/* Mini header de stat (solo cuando el ticker esta activo) */}
       {showTicker && (
-        <div style={{ display:'grid', gridTemplateColumns:gridCols, borderBottom:'1px solid rgba(255,255,255,.06)' }}>
-          <div/><div/>{Array(setCount + 1).fill(0).map((_,i) => <div key={i}/>)}
-          <div key={`tlab-${tickerStat}`} style={{ padding:'6px 8px', textAlign:'center', fontSize:18, letterSpacing:'.22em', textTransform:'uppercase', fontWeight:900, color:pal.accentA, background:'rgba(255,255,255,.04)', borderLeft:'1px solid rgba(255,255,255,.06)', overflow:'hidden', animation:'sgDigitIn 380ms both' }}>
-            {tickerLabel}
-          </div>
+        <div key={`tlab-${tickerStat}`} style={{ padding:'4px 14px 4px 0', textAlign:'right', fontSize:18, letterSpacing:'.28em', textTransform:'uppercase', fontWeight:900, color:pal.accentA, borderBottom:'1px solid rgba(255,255,255,.06)', background:'rgba(255,255,255,.02)', animation:'sgDigitIn 320ms both' }}>
+          {tickerLabel}
         </div>
       )}
 
@@ -617,7 +610,6 @@ export function Scorebug({ visible, match, tournament, flag, tickerStat }: { vis
         {rows.map((r, ri) => {
           const row = ri + 1
           const tickerVal = ri === 0 ? tickerValues.a : tickerValues.b
-          const tickerWins = ri === 0 ? tickerAWins : tickerBWins
           return (
             <div key={r.team} style={{ display:'contents' }}>
               {/* Accent bar */}
@@ -657,37 +649,39 @@ export function Scorebug({ visible, match, tournament, flag, tickerStat }: { vis
                   </span>
                 </div>
               ))}
-              {/* Puntos */}
-              <div style={{ gridRow:row, gridColumn:3+setCount, display:'grid', placeItems:'center', background:hexAlpha(r.accent,.92), color:'#fff', fontSize:32, fontWeight:900, letterSpacing:'-.01em', borderBottom: ri===0 ? '1px solid rgba(255,255,255,.12)' : 'none', overflow:'hidden' }}>
-                <span key={`pt${r.team}-${r.pt}`} style={{ display:'inline-block', animation:'sgDigitIn 380ms cubic-bezier(.22,.9,.25,1) both' }}>
-                  {r.pt}
-                </span>
+              {/* Puntos / Stat (misma celda, contenido cambia) */}
+              <div style={{ gridRow:row, gridColumn:3+setCount, display:'grid', placeItems:'center',
+                background: showTicker ? 'rgba(0,0,0,.35)' : hexAlpha(r.accent,.92),
+                color:'#fff', fontSize: showTicker ? 28 : 32, fontWeight:900, letterSpacing:'-.01em',
+                borderBottom: ri===0 ? '1px solid rgba(255,255,255,.12)' : 'none',
+                borderLeft: showTicker ? '1px solid rgba(255,255,255,.06)' : 'none',
+                overflow:'hidden', fontVariantNumeric:'tabular-nums' }}>
+                {showTicker
+                  ? <span key={`st-${r.team}-${tickerStat}-${tickerVal}`} style={{ display:'inline-block', animation:'sgDigitIn 380ms cubic-bezier(.22,.9,.25,1) both', color: r.accent }}>
+                      {tickerVal}
+                    </span>
+                  : <span key={`pt${r.team}-${r.pt}`} style={{ display:'inline-block', animation:'sgDigitIn 380ms cubic-bezier(.22,.9,.25,1) both' }}>
+                      {r.pt}
+                    </span>
+                }
               </div>
-              {/* Ticker stat value (si activo) */}
-              {showTicker && (
-                <div style={{ gridRow:row, gridColumn: 3+setCount+1, display:'grid', placeItems:'center', fontSize:30, fontWeight:900, borderLeft:'1px solid rgba(255,255,255,.08)', borderBottom: ri===0 ? '1px solid rgba(255,255,255,.06)' : 'none',
-                  background: tickerWins ? hexAlpha(r.accent,.2) : 'rgba(0,0,0,.22)',
-                  color: tickerWins ? r.accent : '#fff', fontVariantNumeric:'tabular-nums', overflow:'hidden' }}>
-                  <span key={`tk-${r.team}-${tickerStat}-${tickerVal}`} style={{ display:'inline-block', animation:'sgDigitIn 380ms cubic-bezier(.22,.9,.25,1) both' }}>
-                    {tickerVal}
-                  </span>
-                </div>
-              )}
             </div>
           )
         })}
       </div>
 
-      {/* Flag banner — se despliega desde arriba */}
-      <Presence show={!!(flag.kind && flag.label)} exitMs={360}>
-        {(vis) => (
-          <div style={{ padding:'9px 12px', background:flagColor ?? '#ef6a4c', color:'#000', fontSize:26, fontWeight:900, letterSpacing:'.28em', textAlign:'center', textTransform:'uppercase',
-            transformOrigin:'top center',
-            ...animStyle(vis, 'sgInD', 'sgOutD', 360) }}>
-            {flag.label}
-          </div>
-        )}
-      </Presence>
+      {/* Flag banner — pill de una línea alineada a la derecha, sale desde
+          el borde derecho y crece hacia la izquierda (ancho automático). */}
+      <div style={{ display:'flex', justifyContent:'flex-end' }}>
+        <Presence show={!!(flag.kind && flag.label)} exitMs={380}>
+          {(vis) => (
+            <div style={{ padding:'6px 18px', background:flagColor ?? '#ef6a4c', color:'#000', fontSize:22, fontWeight:900, letterSpacing:'.26em', textTransform:'uppercase', whiteSpace:'nowrap',
+              ...animStyle(vis, 'sgInRight', 'sgOutRight', 380) }}>
+              {flag.label}
+            </div>
+          )}
+        </Presence>
+      </div>
     </div>
   )
 }

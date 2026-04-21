@@ -43,7 +43,6 @@ export function OperatorPanel({ session, initialMatch, tournament, rules, allMat
   const [autoEnabled, setAutoEnabled] = useState(session.automation_enabled)
   const [events, setEvents] = useState<any[]>([])
   const [statsScope, setStatsScope] = useState<'auto'|'set_1'|'set_2'|'set_3'|'match'>('auto')
-  const [tickerStat, setTickerStat] = useState<string>('aces')
   const [showSponsor, setShowSponsor] = useState(true)
   const [copyState, setCopyState] = useState<'idle'|'copied'>('idle')
   const runner = useRef<AutomationRunner | null>(null)
@@ -91,6 +90,13 @@ export function OperatorPanel({ session, initialMatch, tournament, rules, allMat
     return () => { supabase.removeChannel(chState); supabase.removeChannel(chMatch); supabase.removeChannel(chEvt) }
   }, [session.id, session.match_id])
 
+  // Auto-hide del stats_ticker cuando el scorebug deja de estar en programa
+  useEffect(() => {
+    if (!program.scorebug?.visible && program.stats_ticker?.visible) {
+      hideGraphic(session.id, 'stats_ticker').catch(() => {})
+    }
+  }, [program.scorebug?.visible, program.stats_ticker?.visible, session.id])
+
   // Automation runner
   useEffect(() => {
     const r = new AutomationRunner(session.id, session.match_id, session.tournament_id)
@@ -111,11 +117,29 @@ export function OperatorPanel({ session, initialMatch, tournament, rules, allMat
   function resolveData(k: GraphicKey, bioTarget?: { player_id:string, team:1|2 }): any {
     if (k === 'player_bio')     return bioTarget ?? null
     if (k === 'stats_panel')    return { scope: statsScope }
-    if (k === 'stats_ticker')   return { stat: tickerStat }
     if (k === 'results_grid')   return { category: match.category }
     if (k === 'bracket')        return { category: match.category }
     if (k === 'big_scoreboard') return { show_sponsor: showSponsor }
     return undefined
+  }
+
+  // Toggle directo en programa del stats_ticker — siempre directo, solo
+  // tiene efecto si el scorebug está en programa. Clicks sucesivos:
+  //   off  -> on con stat X
+  //   on X -> on Y (cambiar stat)
+  //   on X -> off (mismo stat clicado de nuevo)
+  async function toggleTickerStat(stat: string) {
+    const scorebugOn = !!program.scorebug?.visible
+    if (!scorebugOn) return
+    const active = !!program.stats_ticker?.visible
+    const cur = (program.stats_ticker?.data as any)?.stat
+    if (active && cur === stat) {
+      await hideGraphic(session.id, 'stats_ticker')
+      logEvent(session.id, 'manual_hide', 'stats_ticker')
+    } else {
+      await showGraphic(session.id, 'stats_ticker', { data: { stat } })
+      logEvent(session.id, 'manual_show', 'stats_ticker', { data: { stat } })
+    }
   }
 
   async function directToProgram(k: GraphicKey, data?: any) {
@@ -216,8 +240,8 @@ export function OperatorPanel({ session, initialMatch, tournament, rules, allMat
     { team:2 as const, p: match.entry2?.player2 },
   ].filter(x => x.p)
 
-  // Graphics agrupados (sin player_bio ni awards_podium — tienen UIs propias)
-  const grouped = GRAPHIC_ORDER.filter(k => k !== 'player_bio' && k !== 'awards_podium').reduce<Record<string, GraphicKey[]>>((acc, k) => {
+  // Graphics agrupados (sin player_bio, awards_podium ni stats_ticker — tienen UIs propias)
+  const grouped = GRAPHIC_ORDER.filter(k => k !== 'player_bio' && k !== 'awards_podium' && k !== 'stats_ticker').reduce<Record<string, GraphicKey[]>>((acc, k) => {
     const g = GRAPHICS[k].group; (acc[g] ??= []).push(k); return acc
   }, {})
 
@@ -335,8 +359,10 @@ export function OperatorPanel({ session, initialMatch, tournament, rules, allMat
             setStatsScope={setStatsScope}
             showSponsor={showSponsor}
             setShowSponsor={setShowSponsor}
-            tickerStat={tickerStat}
-            setTickerStat={setTickerStat}
+            matchStats={match.stats}
+            toggleTickerStat={toggleTickerStat}
+            scorebugOn={!!program.scorebug?.visible}
+            activeTickerStat={program.stats_ticker?.visible ? ((program.stats_ticker?.data as any)?.stat ?? null) : null}
             allMatches={allMatches}
             isDoubles={match.match_type === 'doubles'}
             categoryLbl={(match.category ?? '').toString()}
@@ -381,7 +407,7 @@ function Monitor({ label, color, indicator, children }: { label:string, color:st
 }
 
 // ─── Manual Tab ──────────────────────────────────────────────────────────────
-function ManualTab({ grouped, playersList, selectGraphic, resolveData, previewKey, previewData, program, mode, statsScope, setStatsScope, showSponsor, setShowSponsor, tickerStat, setTickerStat, allMatches, isDoubles, categoryLbl }: {
+function ManualTab({ grouped, playersList, selectGraphic, resolveData, previewKey, previewData, program, mode, statsScope, setStatsScope, showSponsor, setShowSponsor, matchStats, toggleTickerStat, scorebugOn, activeTickerStat, allMatches, isDoubles, categoryLbl }: {
   grouped: Record<string, GraphicKey[]>
   playersList: Array<{ team:1|2, p:any }>
   selectGraphic: (k:GraphicKey, data?:any, direct?:boolean) => void
@@ -394,8 +420,10 @@ function ManualTab({ grouped, playersList, selectGraphic, resolveData, previewKe
   setStatsScope: (v:any) => void
   showSponsor: boolean
   setShowSponsor: (v:any) => void
-  tickerStat: string
-  setTickerStat: (v:string) => void
+  matchStats: any
+  toggleTickerStat: (stat:string) => void
+  scorebugOn: boolean
+  activeTickerStat: string | null
   allMatches: any[]
   isDoubles: boolean
   categoryLbl: string
@@ -431,26 +459,48 @@ function ManualTab({ grouped, playersList, selectGraphic, resolveData, previewKe
           </div>
         </div>
 
-        {/* Stats ticker — dato concreto a mostrar como sidecar del scorebug */}
-        <div style={{ marginTop:14 }}>
-          <div style={labelSm()}>Stat del ticker (sidecar del scorebug)</div>
-          <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginTop:6 }}>
-            {([
-              ['aces','Aces'], ['double_faults','Dobles faltas'],
-              ['winners','Winners'], ['unforced_errors','Err. N.F.'],
-              ['serve_pct','% Saque'], ['return_pct','% Resto'],
-              ['break_points_won','Breaks G.'], ['break_points_saved','Breaks Salv.'],
-              ['total_points_won','Puntos'], ['max_streak','Racha'],
-            ] as const).map(([k, lbl]) => (
-              <button key={k} onClick={() => {
-                setTickerStat(k)
-                // Si el ticker ya está en programa, re-publicar con nuevo stat
-                if (program.stats_ticker?.visible) {
-                  selectGraphic('stats_ticker', { stat: k }, true)
-                }
-              }} style={chip(tickerStat===k, '#fbbf24')}>{lbl}</button>
-            ))}
-          </div>
+      </section>
+
+      {/* STATS EN VIVO (reemplazan la columna de puntos del scorebug) */}
+      <section style={panel()}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
+          <Title t="Estadísticas en vivo · sobreimpresión scorebug"/>
+          {!scorebugOn && (
+            <span style={{ fontSize:11, color:'#fbbf24', letterSpacing:'.18em', fontWeight:800, textTransform:'uppercase' }}>
+              ⚠ scorebug no está en aire
+            </span>
+          )}
+        </div>
+        <p style={{ fontSize:11, opacity:.55, marginTop:-4, marginBottom:10 }}>
+          Click → sale sobre la columna de puntos (directo a programa). Click otra vez → se recoge. Cambia a otro stat y cambia inline.
+        </p>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(180px, 1fr))', gap:8 }}>
+          {TICKER_STATS.map(({ key, label }) => {
+            const { a, b } = statValuePairOp(matchStats, key)
+            const active = activeTickerStat === key
+            return (
+              <button key={key}
+                onClick={() => toggleTickerStat(key)}
+                disabled={!scorebugOn}
+                style={{
+                  textAlign:'left', padding:'10px 12px', borderRadius:12,
+                  background: active ? 'rgba(251,191,36,.14)' : '#0a101e',
+                  border: active ? '1px solid rgba(251,191,36,.7)' : '1px solid #243250',
+                  color:'#e5e7eb', cursor: scorebugOn ? 'pointer' : 'not-allowed',
+                  opacity: scorebugOn ? 1 : .45, transition:'all .15s',
+                }}>
+                <div style={{ fontSize:11, opacity:.7, letterSpacing:'.18em', textTransform:'uppercase', fontWeight:800, marginBottom:4 }}>
+                  {label}
+                </div>
+                <div style={{ display:'flex', alignItems:'baseline', gap:6 }}>
+                  <span style={{ fontSize:22, fontWeight:900, fontVariantNumeric:'tabular-nums', color: active ? '#fbbf24' : '#fff' }}>{a}</span>
+                  <span style={{ fontSize:14, opacity:.55 }}>/</span>
+                  <span style={{ fontSize:22, fontWeight:900, fontVariantNumeric:'tabular-nums', color: active ? '#fbbf24' : '#fff' }}>{b}</span>
+                </div>
+                {active && <div style={{ marginTop:4, fontSize:10, letterSpacing:'.22em', fontWeight:900, color:'#fbbf24' }}>● EN AIRE</div>}
+              </button>
+            )
+          })}
         </div>
       </section>
 
@@ -679,6 +729,36 @@ function graphicBtn(inProg:boolean, inPreview:boolean, accent:string): React.CSS
   }
 }
 function labelSm(): React.CSSProperties { return { fontSize:11, letterSpacing:'.2em', textTransform:'uppercase', fontWeight:800, opacity:.65 } }
+
+// ─── Ticker stats — catálogo usado por la grid y helper de valores ────────
+const TICKER_STATS: Array<{ key:string, label:string }> = [
+  { key:'aces',               label:'Aces' },
+  { key:'double_faults',      label:'Dobles faltas' },
+  { key:'winners',            label:'Winners' },
+  { key:'unforced_errors',    label:'Err. no forzados' },
+  { key:'serve_pct',          label:'% Saque' },
+  { key:'return_pct',         label:'% Resto' },
+  { key:'break_points_won',   label:'Breaks ganados' },
+  { key:'break_points_saved', label:'Breaks salvados' },
+  { key:'total_points_won',   label:'Puntos' },
+  { key:'max_streak',         label:'Racha máx.' },
+]
+function statValuePairOp(stats:any, key:string): { a:string, b:string } {
+  const t1 = stats?.t1 ?? {}, t2 = stats?.t2 ?? {}
+  switch (key) {
+    case 'aces':                return { a: String(t1.aces ?? 0),               b: String(t2.aces ?? 0) }
+    case 'double_faults':       return { a: String(t1.double_faults ?? 0),      b: String(t2.double_faults ?? 0) }
+    case 'winners':             return { a: String(t1.winners ?? 0),            b: String(t2.winners ?? 0) }
+    case 'unforced_errors':     return { a: String(t1.unforced_errors ?? 0),    b: String(t2.unforced_errors ?? 0) }
+    case 'serve_pct':           return { a: `${Math.round(t1.serve_points_won_pct ?? 0)}%`,  b: `${Math.round(t2.serve_points_won_pct ?? 0)}%` }
+    case 'return_pct':          return { a: `${Math.round(t1.return_points_won_pct ?? 0)}%`, b: `${Math.round(t2.return_points_won_pct ?? 0)}%` }
+    case 'break_points_won':    return { a: `${t1.break_points_won ?? 0}/${t1.break_points_played_on_return ?? 0}`, b: `${t2.break_points_won ?? 0}/${t2.break_points_played_on_return ?? 0}` }
+    case 'break_points_saved':  return { a: `${t1.break_points_saved ?? 0}/${t1.break_points_faced ?? 0}`,          b: `${t2.break_points_saved ?? 0}/${t2.break_points_faced ?? 0}` }
+    case 'total_points_won':    return { a: String(t1.total_points_won ?? 0),   b: String(t2.total_points_won ?? 0) }
+    case 'max_streak':          return { a: String(t1.max_points_streak ?? 0),  b: String(t2.max_points_streak ?? 0) }
+    default:                    return { a: '0', b: '0' }
+  }
+}
 
 // ─── Match data sidebar ────────────────────────────────────────────────────
 const PTS_LABEL = ['0','15','30','40']
