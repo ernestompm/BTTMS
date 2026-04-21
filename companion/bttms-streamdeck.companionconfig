@@ -1,0 +1,230 @@
+{
+  "version": 4,
+  "type": "page-export",
+  "page": {
+    "name": "BTTMS Stream"
+  },
+  "instances": {
+    "a5f2c8e1-b4d3-4f7a-8c9e-1a2b3c4d5e6f": {
+      "instance_type": "generic-http",
+      "label": "streamapi",
+      "enabled": true,
+      "sortOrder": 0,
+      "config": {}
+    }
+  },
+  "custom_variables": {
+    "baseUrl": {
+      "type": "string",
+      "description": "URL base de BTTMS (sin slash final). Ej: https://bttms.vercel.app",
+      "defaultValue": "https://bttms.vercel.app"
+    },
+    "matchId": {
+      "type": "string",
+      "description": "UUID del partido activo (desde /dashboard/streaming)",
+      "defaultValue": ""
+    },
+    "apiKey": {
+      "type": "string",
+      "description": "STREAM_API_KEY configurada en Vercel",
+      "defaultValue": ""
+    }
+  },
+  "controls": {
+    "0/0/0": {
+      "type": "button",
+      "style": { "text": "TAKE", "size": 18, "color": 16777215, "bgcolor": 1404198, "alignment": "center:center" },
+      "steps": { "0": { "action_sets": { "down": [
+        { "id": "take-act", "instance": "a5f2c8e1-b4d3-4f7a-8c9e-1a2b3c4d5e6f", "action": "post",
+          "options": {
+            "url": "$(internal:custom_baseUrl)/api/stream/$(internal:custom_matchId)/take",
+            "body": "",
+            "header": "Authorization: Bearer $(internal:custom_apiKey)\nContent-Type: application/json",
+            "contenttype": "application/json"
+          }, "delay": 0 }
+      ] } } }
+    },
+    "0/0/1": {
+      "type": "button",
+      "style": { "text": "OUT\\nPGM", "size": 14, "color": 16777215, "bgcolor": 11806217, "alignment": "center:center" },
+      "steps": { "0": { "action_sets": { "down": [
+        { "id": "outpgm-act", "instance": "a5f2c8e1-b4d3-4f7a-8c9e-1a2b3c4d5e6f", "action": "post",
+          "options": {
+            "url": "$(internal:custom_baseUrl)/api/stream/$(internal:custom_matchId)/stop",
+            "body": "",
+            "header": "Authorization: Bearer $(internal:custom_apiKey)\nContent-Type: application/json",
+            "contenttype": "application/json"
+          }, "delay": 0 }
+      ] } } }
+    },
+    "0/0/2": {
+      "type": "button",
+      "style": { "text": "OUT\\nPVW", "size": 14, "color": 16777215, "bgcolor": 3621680, "alignment": "center:center" },
+      "steps": { "0": { "action_sets": { "down": [
+        { "id": "outpvw-act", "instance": "a5f2c8e1-b4d3-4f7a-8c9e-1a2b3c4d5e6f", "action": "delete",
+          "options": {
+            "url": "$(internal:custom_baseUrl)/api/stream/$(internal:custom_matchId)/preview",
+            "body": "",
+            "header": "Authorization: Bearer $(internal:custom_apiKey)",
+            "contenttype": "application/json"
+          }, "delay": 0 }
+      ] } } }
+    },
+    "0/0/3": {
+      "type": "button",
+      "style": { "text": "STOP", "size": 18, "color": 16777215, "bgcolor": 10027008, "alignment": "center:center" },
+      "steps": { "0": { "action_sets": { "down": [
+        { "id": "stop-act", "instance": "a5f2c8e1-b4d3-4f7a-8c9e-1a2b3c4d5e6f", "action": "post",
+          "options": {
+            "url": "$(internal:custom_baseUrl)/api/stream/$(internal:custom_matchId)/stop",
+            "body": "",
+            "header": "Authorization: Bearer $(internal:custom_apiKey)",
+            "contenttype": "application/json"
+          }, "delay": 0 }
+      ] } } }
+    },
+    "0/0/4": {
+      "type": "button",
+      "style": { "text": "MATCH\\nPRES.", "size": 12, "color": 16777215, "bgcolor": 3158064, "alignment": "center:center" },
+      "steps": { "0": { "action_sets": { "down": [
+        { "id": "match-pvw", "instance": "a5f2c8e1-b4d3-4f7a-8c9e-1a2b3c4d5e6f", "action": "post",
+          "options": {
+            "url": "$(internal:custom_baseUrl)/api/stream/$(internal:custom_matchId)/preview",
+            "body": "{\"key\":\"match_presentation\"}",
+            "header": "Authorization: Bearer $(internal:custom_apiKey)\nContent-Type: application/json",
+            "contenttype": "application/json"
+          }, "delay": 0 }
+      ] } } }
+    },
+    "0/1/0": {
+      "type": "button",
+      "style": { "text": "SCORE\\nBUG", "size": 12, "color": 16777215, "bgcolor": 3158064, "alignment": "center:center" },
+      "steps": { "0": { "action_sets": { "down": [
+        { "id": "scorebug-pvw", "instance": "a5f2c8e1-b4d3-4f7a-8c9e-1a2b3c4d5e6f", "action": "post",
+          "options": {
+            "url": "$(internal:custom_baseUrl)/api/stream/$(internal:custom_matchId)/preview",
+            "body": "{\"key\":\"scorebug\"}",
+            "header": "Authorization: Bearer $(internal:custom_apiKey)\nContent-Type: application/json",
+            "contenttype": "application/json"
+          }, "delay": 0 }
+      ] } } }
+    },
+    "0/1/1": {
+      "type": "button",
+      "style": { "text": "MARC.\\nGRANDE", "size": 12, "color": 16777215, "bgcolor": 3158064, "alignment": "center:center" },
+      "steps": { "0": { "action_sets": { "down": [
+        { "id": "bigscore-pvw", "instance": "a5f2c8e1-b4d3-4f7a-8c9e-1a2b3c4d5e6f", "action": "post",
+          "options": {
+            "url": "$(internal:custom_baseUrl)/api/stream/$(internal:custom_matchId)/preview",
+            "body": "{\"key\":\"big_scoreboard\"}",
+            "header": "Authorization: Bearer $(internal:custom_apiKey)\nContent-Type: application/json",
+            "contenttype": "application/json"
+          }, "delay": 0 }
+      ] } } }
+    },
+    "0/1/2": {
+      "type": "button",
+      "style": { "text": "STATS", "size": 14, "color": 16777215, "bgcolor": 3158064, "alignment": "center:center" },
+      "steps": { "0": { "action_sets": { "down": [
+        { "id": "stats-pvw", "instance": "a5f2c8e1-b4d3-4f7a-8c9e-1a2b3c4d5e6f", "action": "post",
+          "options": {
+            "url": "$(internal:custom_baseUrl)/api/stream/$(internal:custom_matchId)/preview",
+            "body": "{\"key\":\"stats_panel\",\"data\":{\"scope\":\"auto\"}}",
+            "header": "Authorization: Bearer $(internal:custom_apiKey)\nContent-Type: application/json",
+            "contenttype": "application/json"
+          }, "delay": 0 }
+      ] } } }
+    },
+    "0/1/3": {
+      "type": "button",
+      "style": { "text": "RESULT", "size": 14, "color": 16777215, "bgcolor": 3158064, "alignment": "center:center" },
+      "steps": { "0": { "action_sets": { "down": [
+        { "id": "results-pvw", "instance": "a5f2c8e1-b4d3-4f7a-8c9e-1a2b3c4d5e6f", "action": "post",
+          "options": {
+            "url": "$(internal:custom_baseUrl)/api/stream/$(internal:custom_matchId)/preview",
+            "body": "{\"key\":\"results_grid\"}",
+            "header": "Authorization: Bearer $(internal:custom_apiKey)\nContent-Type: application/json",
+            "contenttype": "application/json"
+          }, "delay": 0 }
+      ] } } }
+    },
+    "0/1/4": {
+      "type": "button",
+      "style": { "text": "BRACKET", "size": 12, "color": 16777215, "bgcolor": 3158064, "alignment": "center:center" },
+      "steps": { "0": { "action_sets": { "down": [
+        { "id": "bracket-pvw", "instance": "a5f2c8e1-b4d3-4f7a-8c9e-1a2b3c4d5e6f", "action": "post",
+          "options": {
+            "url": "$(internal:custom_baseUrl)/api/stream/$(internal:custom_matchId)/preview",
+            "body": "{\"key\":\"bracket\"}",
+            "header": "Authorization: Bearer $(internal:custom_apiKey)\nContent-Type: application/json",
+            "contenttype": "application/json"
+          }, "delay": 0 }
+      ] } } }
+    },
+    "0/2/0": {
+      "type": "button",
+      "style": { "text": "VENUE", "size": 14, "color": 16777215, "bgcolor": 3158064, "alignment": "center:center" },
+      "steps": { "0": { "action_sets": { "down": [
+        { "id": "venue-pvw", "instance": "a5f2c8e1-b4d3-4f7a-8c9e-1a2b3c4d5e6f", "action": "post",
+          "options": {
+            "url": "$(internal:custom_baseUrl)/api/stream/$(internal:custom_matchId)/preview",
+            "body": "{\"key\":\"venue_card\"}",
+            "header": "Authorization: Bearer $(internal:custom_apiKey)\nContent-Type: application/json",
+            "contenttype": "application/json"
+          }, "delay": 0 }
+      ] } } }
+    },
+    "0/2/1": {
+      "type": "button",
+      "style": { "text": "INTRO\\nTORN.", "size": 12, "color": 16777215, "bgcolor": 3158064, "alignment": "center:center" },
+      "steps": { "0": { "action_sets": { "down": [
+        { "id": "intro-pvw", "instance": "a5f2c8e1-b4d3-4f7a-8c9e-1a2b3c4d5e6f", "action": "post",
+          "options": {
+            "url": "$(internal:custom_baseUrl)/api/stream/$(internal:custom_matchId)/preview",
+            "body": "{\"key\":\"tournament_intro\"}",
+            "header": "Authorization: Bearer $(internal:custom_apiKey)\nContent-Type: application/json",
+            "contenttype": "application/json"
+          }, "delay": 0 }
+      ] } } }
+    },
+    "0/2/2": {
+      "type": "button",
+      "style": { "text": "ÁRBITRO", "size": 12, "color": 16777215, "bgcolor": 3158064, "alignment": "center:center" },
+      "steps": { "0": { "action_sets": { "down": [
+        { "id": "ref-pvw", "instance": "a5f2c8e1-b4d3-4f7a-8c9e-1a2b3c4d5e6f", "action": "post",
+          "options": {
+            "url": "$(internal:custom_baseUrl)/api/stream/$(internal:custom_matchId)/preview",
+            "body": "{\"key\":\"referee_lower_third\"}",
+            "header": "Authorization: Bearer $(internal:custom_apiKey)\nContent-Type: application/json",
+            "contenttype": "application/json"
+          }, "delay": 0 }
+      ] } } }
+    },
+    "0/2/3": {
+      "type": "button",
+      "style": { "text": "TIEMPO", "size": 14, "color": 16777215, "bgcolor": 3158064, "alignment": "center:center" },
+      "steps": { "0": { "action_sets": { "down": [
+        { "id": "weather-pvw", "instance": "a5f2c8e1-b4d3-4f7a-8c9e-1a2b3c4d5e6f", "action": "post",
+          "options": {
+            "url": "$(internal:custom_baseUrl)/api/stream/$(internal:custom_matchId)/preview",
+            "body": "{\"key\":\"weather\"}",
+            "header": "Authorization: Bearer $(internal:custom_apiKey)\nContent-Type: application/json",
+            "contenttype": "application/json"
+          }, "delay": 0 }
+      ] } } }
+    },
+    "0/2/4": {
+      "type": "button",
+      "style": { "text": "SORTEO", "size": 14, "color": 16777215, "bgcolor": 3158064, "alignment": "center:center" },
+      "steps": { "0": { "action_sets": { "down": [
+        { "id": "toss-pvw", "instance": "a5f2c8e1-b4d3-4f7a-8c9e-1a2b3c4d5e6f", "action": "post",
+          "options": {
+            "url": "$(internal:custom_baseUrl)/api/stream/$(internal:custom_matchId)/preview",
+            "body": "{\"key\":\"coin_toss\"}",
+            "header": "Authorization: Bearer $(internal:custom_apiKey)\nContent-Type: application/json",
+            "contenttype": "application/json"
+          }, "delay": 0 }
+      ] } } }
+    }
+  }
+}
