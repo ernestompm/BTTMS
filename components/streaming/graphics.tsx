@@ -586,10 +586,15 @@ export function Scorebug({ visible, match, tournament, flag, tickerStat }: { vis
   const flagColor = flag.kind ? (flagColors[flag.kind] ?? pal.accentA) : null
 
   // Ticker: si está activo, REEMPLAZA el valor de la columna de puntos con
-  // el valor de la estadística. Muestra además un mini header con el label.
+  // el valor de la estadística. Muestra además un pill con el label.
   const showTicker = !!tickerStat && !!match.stats
   const tickerLabel = tickerStat ? (STAT_LABELS[tickerStat] ?? tickerStat.toUpperCase()) : ''
-  const tickerValues = showTicker ? statValuePair(match.stats, tickerStat!) : { a:'', b:'' }
+  const labelHasPct = tickerLabel.includes('%')
+  const _tickerValues = showTicker ? statValuePair(match.stats, tickerStat!) : { a:'', b:'' }
+  // Si el label lleva %, quita el % del número (evita el doble % y el overflow)
+  const tickerValues = labelHasPct
+    ? { a: String(_tickerValues.a).replace('%',''), b: String(_tickerValues.b).replace('%','') }
+    : _tickerValues
 
   const colW = 54
   // Grid sin columna extra: la de puntos sirve para ambos (pts o stat)
@@ -670,10 +675,13 @@ export function Scorebug({ visible, match, tournament, flag, tickerStat }: { vis
       <Presence show={showTicker} exitMs={650}>
         {(vis) => (
           <div style={{ display:'flex', justifyContent:'flex-end' }}>
-            <div key={`tlab-${tickerStat}`} style={{ padding:'5px 16px', background:'rgba(255,255,255,.08)', color:pal.accentA,
-              fontSize:20, fontWeight:900, letterSpacing:'.28em', textTransform:'uppercase', whiteSpace:'nowrap',
+            <div key={`tlab-${tickerStat}`} style={{
+              display:'inline-block', width:'fit-content',
+              padding:'5px 14px', background:'rgba(255,255,255,.08)', color:pal.accentA,
+              fontSize:20, fontWeight:900, letterSpacing:'.24em', textTransform:'uppercase', whiteSpace:'nowrap',
               borderTop:`1px solid ${hexAlpha(pal.accentA,.3)}`,
-              ...animStyle(vis, 'sgInRight', 'sgOutRight', 650) }}>
+              ...animStyle(vis, 'sgInRight', 'sgOutRight', 650),
+            }}>
               {tickerLabel}
             </div>
           </div>
@@ -682,8 +690,12 @@ export function Scorebug({ visible, match, tournament, flag, tickerStat }: { vis
       <Presence show={!!(flag.kind && flag.label)} exitMs={600}>
         {(vis) => (
           <div style={{ display:'flex', justifyContent:'flex-end' }}>
-            <div style={{ padding:'6px 18px', background:flagColor ?? '#ef6a4c', color:'#000', fontSize:22, fontWeight:900, letterSpacing:'.26em', textTransform:'uppercase', whiteSpace:'nowrap',
-              ...animStyle(vis, 'sgInRight', 'sgOutRight', 600) }}>
+            <div style={{
+              display:'inline-block', width:'fit-content',
+              padding:'6px 16px', background:flagColor ?? '#ef6a4c', color:'#000',
+              fontSize:22, fontWeight:900, letterSpacing:'.24em', textTransform:'uppercase', whiteSpace:'nowrap',
+              ...animStyle(vis, 'sgInRight', 'sgOutRight', 600),
+            }}>
               {flag.label}
             </div>
           </div>
@@ -1295,9 +1307,9 @@ const STAT_LABELS: Record<string, string> = {
   double_faults: 'DOBLES FALTAS',
   winners: 'WINNERS',
   unforced_errors: 'ERR. NO FORZADOS',
-  serve_pct: '% SAQUE',
-  return_pct: '% RESTO',
-  break_points_won: 'BREAKS',
+  serve_pct: '% PUNTOS AL SERVICIO',
+  return_pct: '% PUNTOS AL RESTO',
+  break_points_won: 'BREAKS GANADOS',
   break_points_saved: 'BREAKS SALVADOS',
   total_points_won: 'PUNTOS',
   max_streak: 'RACHA MÁX.',

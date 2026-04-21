@@ -476,7 +476,10 @@ function ManualTab({ grouped, playersList, selectGraphic, resolveData, previewKe
         </p>
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(180px, 1fr))', gap:8 }}>
           {TICKER_STATS.map(({ key, label }) => {
-            const { a, b } = statValuePairOp(matchStats, key)
+            const raw = statValuePairOp(matchStats, key)
+            const pct = label.includes('%')
+            const a = pct ? String(raw.a).replace('%','') : raw.a
+            const b = pct ? String(raw.b).replace('%','') : raw.b
             const active = activeTickerStat === key
             return (
               <button key={key}
@@ -736,8 +739,8 @@ const TICKER_STATS: Array<{ key:string, label:string }> = [
   { key:'double_faults',      label:'Dobles faltas' },
   { key:'winners',            label:'Winners' },
   { key:'unforced_errors',    label:'Err. no forzados' },
-  { key:'serve_pct',          label:'% Saque' },
-  { key:'return_pct',         label:'% Resto' },
+  { key:'serve_pct',          label:'% Puntos al servicio' },
+  { key:'return_pct',         label:'% Puntos al resto' },
   { key:'break_points_won',   label:'Breaks ganados' },
   { key:'break_points_saved', label:'Breaks salvados' },
   { key:'total_points_won',   label:'Puntos' },
