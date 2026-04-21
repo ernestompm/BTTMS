@@ -62,3 +62,22 @@ export async function hideAll(sessionId: string) {
 export async function logEvent(sessionId: string, kind: string, graphic: GraphicKey | null, payload: any = null) {
   await supabase().from('stream_events').insert({ session_id: sessionId, kind, graphic, payload })
 }
+
+// ─── PREVIEW ────────────────────────────────────────────────────────────────
+/** Sobrescribe el slot <key> del preview con visible+data. */
+export async function previewShowGraphic(sessionId: string, key: GraphicKey, data: any = null) {
+  const { error } = await supabase().rpc('stream_patch_preview', {
+    p_session_id: sessionId, p_key: key, p_patch: { visible: true, data },
+  })
+  if (error) throw error
+}
+/** Vacía todo el preview (ningún gráfico en preview). */
+export async function previewClear(sessionId: string) {
+  const { error } = await supabase().rpc('stream_clear_preview', { p_session_id: sessionId })
+  if (error) throw error
+}
+/** TAKE atómico: copia preview visible → programa y limpia preview. */
+export async function previewTake(sessionId: string) {
+  const { error } = await supabase().rpc('stream_take_preview', { p_session_id: sessionId })
+  if (error) throw error
+}

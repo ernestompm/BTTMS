@@ -123,7 +123,7 @@ interface OverlayStageProps {
   mainSponsor: any
   weather: WeatherData | null
 }
-export function OverlayStage({ sessionId, initialMatch, tournament, allMatches, referee, mainSponsor, weather }: OverlayStageProps) {
+function OverlayStageBase({ sessionId, initialMatch, tournament, allMatches, referee, mainSponsor, weather, sourceColumn }: OverlayStageProps & { sourceColumn: 'graphics' | 'preview_graphics' }) {
   const supabase = createClient()
   const [match, setMatch] = useState<any>(initialMatch)
   const [graphics, setGraphics] = useState<GraphicsMap>({})
@@ -139,14 +139,14 @@ export function OverlayStage({ sessionId, initialMatch, tournament, allMatches, 
   }, [])
 
   useEffect(() => {
-    const ch = supabase.channel(`overlay-state-${sessionId}`)
+    const ch = supabase.channel(`overlay-state-${sessionId}-${sourceColumn}`)
       .on('postgres_changes', { event:'*', schema:'public', table:'stream_state', filter:`session_id=eq.${sessionId}` },
-        (p) => setGraphics(((p.new as any)?.graphics ?? {}) as GraphicsMap))
+        (p) => setGraphics(((p.new as any)?.[sourceColumn] ?? {}) as GraphicsMap))
       .subscribe()
-    supabase.from('stream_state').select('graphics').eq('session_id', sessionId).single()
-      .then(({ data }) => { if (data?.graphics) setGraphics(data.graphics as any) })
+    supabase.from('stream_state').select(sourceColumn).eq('session_id', sessionId).single()
+      .then(({ data }) => { if ((data as any)?.[sourceColumn]) setGraphics((data as any)[sourceColumn] as any) })
     return () => { supabase.removeChannel(ch) }
-  }, [sessionId])
+  }, [sessionId, sourceColumn])
 
   useEffect(() => {
     const ch = supabase.channel(`overlay-match-${match.id}`)
@@ -170,4 +170,11 @@ export function OverlayStage({ sessionId, initialMatch, tournament, allMatches, 
       </div>
     </>
   )
+}
+
+export function OverlayStage(props: OverlayStageProps) {
+  return <OverlayStageBase {...props} sourceColumn="graphics"/>
+}
+export function OverlayPreviewStage(props: OverlayStageProps) {
+  return <OverlayStageBase {...props} sourceColumn="preview_graphics"/>
 }

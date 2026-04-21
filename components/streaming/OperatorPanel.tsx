@@ -14,7 +14,7 @@ import type { Tournament, WeatherData } from '@/types'
 import type { GraphicsMap, GraphicKey } from '@/types/streaming'
 import { GRAPHICS, GRAPHIC_ORDER, GROUP_LABELS } from '@/lib/streaming/catalog'
 import { AutomationRunner } from '@/lib/streaming/automation'
-import { showGraphic, hideGraphic, hideAll, logEvent } from '@/lib/streaming/commands'
+import { showGraphic, hideGraphic, hideAll, logEvent, previewShowGraphic, previewClear, previewTake } from '@/lib/streaming/commands'
 import { STREAM_KEYFRAMES } from './stage-shared'
 import { MiniStage } from './OverlayStage'
 
@@ -54,8 +54,9 @@ export function OperatorPanel({ session, initialMatch, tournament, rules, allMat
   useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('stream:mode', mode) }, [mode])
 
   // URLs
-  const overlayUrl = typeof window === 'undefined' ? '' : `${window.location.origin}/overlay/${session.match_id}`
-  const venueUrl   = typeof window === 'undefined' ? '' : `${window.location.origin}/scoreboard/${session.match_id}`
+  const overlayUrl     = typeof window === 'undefined' ? '' : `${window.location.origin}/overlay/${session.match_id}`
+  const previewUrl     = typeof window === 'undefined' ? '' : `${window.location.origin}/overlay/${session.match_id}/preview`
+  const venueUrl       = typeof window === 'undefined' ? '' : `${window.location.origin}/scoreboard/${session.match_id}`
 
   // Suscripciones
   useEffect(() => {
@@ -121,8 +122,11 @@ export function OperatorPanel({ session, initialMatch, tournament, rules, allMat
     if (direct || mode === 'take') {
       await directToProgram(k, data)
     } else {
+      // Local (respuesta instantánea)
       setPreviewKey(k)
       setPreviewData(data ?? null)
+      // + sync a DB para URL externa / API consumers
+      try { await previewShowGraphic(session.id, k, data ?? null) } catch {}
     }
   }
 
@@ -130,19 +134,24 @@ export function OperatorPanel({ session, initialMatch, tournament, rules, allMat
     if (!previewKey) return
     await showGraphic(session.id, previewKey, { data: previewData })
     logEvent(session.id, 'manual_show', previewKey, { data: previewData })
+    // Limpia preview remoto para mantener consistencia
+    try { await previewClear(session.id) } catch {}
+    setPreviewKey(null); setPreviewData(null)
   }
   async function outProgram() {
     if (!previewKey) return
     await hideGraphic(session.id, previewKey)
     logEvent(session.id, 'manual_hide', previewKey)
   }
-  function outPreview() {
+  async function outPreview() {
     setPreviewKey(null)
     setPreviewData(null)
+    try { await previewClear(session.id) } catch {}
   }
   async function stopAll() {
     await hideAll(session.id)
-    outPreview()
+    setPreviewKey(null); setPreviewData(null)
+    try { await previewClear(session.id) } catch {}
   }
 
   // Hotkeys
@@ -226,8 +235,10 @@ export function OperatorPanel({ session, initialMatch, tournament, rules, allMat
               </button>
             ))}
           </div>
-          <button onClick={copyUrl} style={btn('outline')}>{copyState==='copied' ? '✓ Copiada' : 'URL vMix'}</button>
+          <button onClick={copyUrl} style={btn('outline')}>{copyState==='copied' ? '✓ Programa copiada' : 'URL programa'}</button>
+          <button onClick={async ()=>{ try{ await navigator.clipboard.writeText(previewUrl); setCopyState('copied'); setTimeout(()=>setCopyState('idle'),1500) } catch {} }} style={btn('outline')}>URL preview</button>
           <a href={overlayUrl} target="_blank" rel="noreferrer" style={{ ...btn('outline'), textDecoration:'none' }}>Programa ↗</a>
+          <a href={previewUrl} target="_blank" rel="noreferrer" style={{ ...btn('outline'), textDecoration:'none' }}>Preview ↗</a>
           <button onClick={stopAll} style={btn('danger')}>STOP <span style={{opacity:.6, marginLeft:6, fontSize:11}}>ESC</span></button>
         </div>
       </div>
@@ -235,8 +246,8 @@ export function OperatorPanel({ session, initialMatch, tournament, rules, allMat
       {/* MAIN AREA — left column */}
       <div style={{ gridColumn:1, display:'flex', flexDirection:'column', height:'100%', overflow:'hidden' }}>
 
-      {/* MONITORES */}
-      <div style={{ flex:'0 0 auto', padding:'10px 16px', display:'grid', gridTemplateColumns: mode==='preview-take' ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)', gap:12, height:'calc(27vh + 44px)' }}>
+      {/* MONITORES — height natural 16:9 basado en ancho */}
+      <div style={{ flex:'0 0 auto', padding:'10px 16px', display:'grid', gridTemplateColumns: mode==='preview-take' ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)', gap:12 }}>
         <Monitor label="VENUE" color="#8ea2c6">
           <iframe src={venueUrl} style={{ width:'100%', height:'100%', border:0, background:'#050810', pointerEvents:'none' }}/>
         </Monitor>
@@ -334,12 +345,13 @@ export function OperatorPanel({ session, initialMatch, tournament, rules, allMat
 function Monitor({ label, color, indicator, children }: { label:string, color:string, indicator?:'live'|'ready', children:React.ReactNode }) {
   return (
     <div style={{ background:'#0a101e', border:'1px solid #141a2a', borderRadius:12, overflow:'hidden', display:'flex', flexDirection:'column' }}>
-      <div style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 14px', borderBottom:'1px solid #141a2a' }}>
+      <div style={{ flex:'0 0 auto', display:'flex', alignItems:'center', gap:10, padding:'6px 12px', borderBottom:'1px solid #141a2a' }}>
         {indicator === 'live' && <span style={{ width:8, height:8, borderRadius:'50%', background:'#ef4444', boxShadow:'0 0 10px #ef4444', animation:'sgBlink 1.2s infinite' }}/>}
         {indicator === 'ready' && <span style={{ width:8, height:8, borderRadius:'50%', background:'#22d3ee' }}/>}
         <span style={{ fontSize:11, letterSpacing:'.3em', fontWeight:900, textTransform:'uppercase', color }}>{label}</span>
       </div>
-      <div style={{ position:'relative', width:'100%', aspectRatio:'16/9' }}>{children}</div>
+      {/* Contenedor 16:9 natural a partir del ancho */}
+      <div style={{ position:'relative', width:'100%', aspectRatio:'16 / 9', flex:'0 0 auto' }}>{children}</div>
     </div>
   )
 }

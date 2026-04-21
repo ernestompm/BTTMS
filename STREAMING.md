@@ -39,13 +39,69 @@ SELECT seed_default_stream_rules('<TOURNAMENT_ID>');
 
 ## 2. URLs generadas por partido
 
-| URL                              | Uso                                  |
-|----------------------------------|--------------------------------------|
-| `/overlay/<matchId>`             | **Fuente para vMix (alpha)**         |
-| `/stream/<matchId>`              | **Botonera operador** (control)      |
-| `/dashboard/streaming`           | Admin: activar partidos, copiar URLs |
+| URL                                   | Uso                                                   |
+|---------------------------------------|-------------------------------------------------------|
+| `/overlay/<matchId>`                  | **PROGRAMA** — fuente para vMix (alpha, ingest)       |
+| `/overlay/<matchId>/preview`          | **PREVIEW externo** — input vMix separado para preview |
+| `/stream/<matchId>`                   | **Botonera operador** (dashboard de control)          |
+| `/dashboard/streaming`                | Admin: activar partidos, copiar URLs                  |
 
 > **vMix**: Input → Web Browser → URL `http://tu-dominio/overlay/<matchId>` → activa "Supports transparent backgrounds".
+
+Ejecuta también `supabase/migrations/016_stream_preview_and_api.sql` para tener disponible la URL de preview externa y las APIs.
+
+---
+
+## 2.bis APIs REST para Stream Deck / automatizaciones externas
+
+Todas las rutas van bajo `/api/stream/<matchId>/` y requieren el header:
+
+```
+Authorization: Bearer <STREAM_API_KEY>
+```
+
+Configura `STREAM_API_KEY` como variable de entorno en Vercel (un string aleatorio largo).
+
+| Método | Ruta                                      | Body JSON                                      | Descripción                             |
+|--------|-------------------------------------------|------------------------------------------------|-----------------------------------------|
+| POST   | `/api/stream/<matchId>/show`              | `{ "key": "scorebug", "data": null }`          | Mostrar gráfico en PROGRAMA             |
+| POST   | `/api/stream/<matchId>/hide`              | `{ "key": "scorebug" }`                        | Ocultar gráfico de PROGRAMA             |
+| POST   | `/api/stream/<matchId>/preview`           | `{ "key": "big_scoreboard", "data": {} }`      | Cargar gráfico en PREVIEW               |
+| DELETE | `/api/stream/<matchId>/preview`           | —                                              | Vaciar PREVIEW                          |
+| POST   | `/api/stream/<matchId>/take`              | —                                              | TAKE atómico (preview → programa)       |
+| POST   | `/api/stream/<matchId>/stop`              | —                                              | STOP (ocultar todo + limpiar preview)   |
+| GET    | `/api/stream/<matchId>/state`             | —                                              | Estado actual (graphics + preview)      |
+
+Ejemplos `curl`:
+
+```bash
+# Mostrar scorebug directo en programa
+curl -X POST https://tu-dominio/api/stream/<matchId>/show \
+  -H "Authorization: Bearer $STREAM_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"key":"scorebug"}'
+
+# Cargar bio de un jugador en preview
+curl -X POST https://tu-dominio/api/stream/<matchId>/preview \
+  -H "Authorization: Bearer $STREAM_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"key":"player_bio","data":{"player_id":"<uuid>","team":1}}'
+
+# TAKE (lleva lo previsualizado al programa)
+curl -X POST https://tu-dominio/api/stream/<matchId>/take \
+  -H "Authorization: Bearer $STREAM_API_KEY"
+
+# STOP
+curl -X POST https://tu-dominio/api/stream/<matchId>/stop \
+  -H "Authorization: Bearer $STREAM_API_KEY"
+```
+
+Cada llamada queda registrada en `stream_events` con `kind='api_*'`.
+
+### Stream Deck (Elgato)
+- Acción **HTTP Request** → método `POST` → URL `/api/stream/<matchId>/show` → header `Authorization: Bearer ...` → body JSON.
+- Crear un botón por cada gráfico con su payload.
+- Recomendado: asignar botones físicos para `show/hide scorebug`, `take`, `stop`.
 
 ---
 
