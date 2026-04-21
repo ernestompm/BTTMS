@@ -63,7 +63,7 @@ export function StageCanvas({ match, tournament, allMatches, referee, mainSponso
   const resultsCat = (d('results_grid') as any)?.category ?? match.category
   const bracketCat = (d('bracket') as any)?.category ?? match.category
   const awardsData = (d('awards_podium') as any) ?? null
-  const tickerInterval = (d('stats_ticker') as any)?.interval_ms ?? 5000
+  const tickerStat = (d('stats_ticker') as any)?.stat ?? 'aces'
 
   return (
     <>
@@ -78,7 +78,7 @@ export function StageCanvas({ match, tournament, allMatches, referee, mainSponso
       <Presence show={v('weather')}             exitMs={650}>{(vis) => <WeatherCard       visible={vis} weather={weather} tournament={tournament}/>}</Presence>
       <Presence show={v('big_scoreboard')}      exitMs={700}>{(vis) => <BigScoreboard     visible={vis} match={match} tournament={tournament} sponsor={mainSponsor} opts={bigScoreOpts}/>}</Presence>
       <Presence show={v('awards_podium') && !!awardsData} exitMs={750}>{(vis) => <AwardsPodium visible={vis} data={awardsData} tournament={tournament}/>}</Presence>
-      <Presence show={v('stats_ticker')}        exitMs={650}>{(vis) => <StatsTicker       visible={vis} match={match} tournament={tournament} interval_ms={tickerInterval}/>}</Presence>
+      <Presence show={v('stats_ticker')}        exitMs={550}>{(vis) => <StatsTicker       visible={vis} match={match} tournament={tournament} stat={tickerStat}/>}</Presence>
       <Presence show={v('referee_lower_third')} exitMs={700}>{(vis) => <RefereeLowerThird visible={vis} referee={referee} tournament={tournament}/>}</Presence>
       <Presence show={v('scorebug')}            exitMs={500}>{(vis) => <Scorebug          visible={vis} match={match} tournament={tournament} flag={flag}/>}</Presence>
     </>

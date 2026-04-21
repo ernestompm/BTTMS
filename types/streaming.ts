@@ -58,10 +58,15 @@ export interface AwardsPodiumData {
   category_label?: string
 }
 
+export type TickerStat =
+  | 'aces' | 'double_faults' | 'winners' | 'unforced_errors'
+  | 'serve_pct' | 'return_pct'
+  | 'break_points_won' | 'break_points_saved'
+  | 'total_points_won' | 'max_streak'
+
 export interface StatsTickerData {
-  scope?: 'auto' | 'set_1' | 'set_2' | 'set_3' | 'match'
-  /** ms por estadística antes de rotar a la siguiente */
-  interval_ms?: number
+  /** stat concreto a mostrar como sidecar del scorebug */
+  stat: TickerStat
 }
 
 // ─── Session + state ─────────────────────────────────────────────────────────

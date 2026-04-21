@@ -43,6 +43,7 @@ export function OperatorPanel({ session, initialMatch, tournament, rules, allMat
   const [autoEnabled, setAutoEnabled] = useState(session.automation_enabled)
   const [events, setEvents] = useState<any[]>([])
   const [statsScope, setStatsScope] = useState<'auto'|'set_1'|'set_2'|'set_3'|'match'>('auto')
+  const [tickerStat, setTickerStat] = useState<string>('aces')
   const [showSponsor, setShowSponsor] = useState(true)
   const [copyState, setCopyState] = useState<'idle'|'copied'>('idle')
   const runner = useRef<AutomationRunner | null>(null)
@@ -110,6 +111,7 @@ export function OperatorPanel({ session, initialMatch, tournament, rules, allMat
   function resolveData(k: GraphicKey, bioTarget?: { player_id:string, team:1|2 }): any {
     if (k === 'player_bio')     return bioTarget ?? null
     if (k === 'stats_panel')    return { scope: statsScope }
+    if (k === 'stats_ticker')   return { stat: tickerStat }
     if (k === 'results_grid')   return { category: match.category }
     if (k === 'bracket')        return { category: match.category }
     if (k === 'big_scoreboard') return { show_sponsor: showSponsor }
@@ -333,6 +335,8 @@ export function OperatorPanel({ session, initialMatch, tournament, rules, allMat
             setStatsScope={setStatsScope}
             showSponsor={showSponsor}
             setShowSponsor={setShowSponsor}
+            tickerStat={tickerStat}
+            setTickerStat={setTickerStat}
             allMatches={allMatches}
             isDoubles={match.match_type === 'doubles'}
             categoryLbl={(match.category ?? '').toString()}
@@ -377,7 +381,7 @@ function Monitor({ label, color, indicator, children }: { label:string, color:st
 }
 
 // ─── Manual Tab ──────────────────────────────────────────────────────────────
-function ManualTab({ grouped, playersList, selectGraphic, resolveData, previewKey, previewData, program, mode, statsScope, setStatsScope, showSponsor, setShowSponsor, allMatches, isDoubles, categoryLbl }: {
+function ManualTab({ grouped, playersList, selectGraphic, resolveData, previewKey, previewData, program, mode, statsScope, setStatsScope, showSponsor, setShowSponsor, tickerStat, setTickerStat, allMatches, isDoubles, categoryLbl }: {
   grouped: Record<string, GraphicKey[]>
   playersList: Array<{ team:1|2, p:any }>
   selectGraphic: (k:GraphicKey, data?:any, direct?:boolean) => void
@@ -390,6 +394,8 @@ function ManualTab({ grouped, playersList, selectGraphic, resolveData, previewKe
   setStatsScope: (v:any) => void
   showSponsor: boolean
   setShowSponsor: (v:any) => void
+  tickerStat: string
+  setTickerStat: (v:string) => void
   allMatches: any[]
   isDoubles: boolean
   categoryLbl: string
@@ -422,6 +428,28 @@ function ManualTab({ grouped, playersList, selectGraphic, resolveData, previewKe
                 {showSponsor ? '✓ con patrocinador' : '○ sin patrocinador'}
               </button>
             </div>
+          </div>
+        </div>
+
+        {/* Stats ticker — dato concreto a mostrar como sidecar del scorebug */}
+        <div style={{ marginTop:14 }}>
+          <div style={labelSm()}>Stat del ticker (sidecar del scorebug)</div>
+          <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginTop:6 }}>
+            {([
+              ['aces','Aces'], ['double_faults','Dobles faltas'],
+              ['winners','Winners'], ['unforced_errors','Err. N.F.'],
+              ['serve_pct','% Saque'], ['return_pct','% Resto'],
+              ['break_points_won','Breaks G.'], ['break_points_saved','Breaks Salv.'],
+              ['total_points_won','Puntos'], ['max_streak','Racha'],
+            ] as const).map(([k, lbl]) => (
+              <button key={k} onClick={() => {
+                setTickerStat(k)
+                // Si el ticker ya está en programa, re-publicar con nuevo stat
+                if (program.stats_ticker?.visible) {
+                  selectGraphic('stats_ticker', { stat: k }, true)
+                }
+              }} style={chip(tickerStat===k, '#fbbf24')}>{lbl}</button>
+            ))}
           </div>
         </div>
       </section>

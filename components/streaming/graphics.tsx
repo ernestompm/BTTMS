@@ -1255,83 +1255,75 @@ export function AwardsPodium({ visible, data, tournament }: { visible:boolean, d
 }
 
 // ╔══════════════════════════════════════════════════════════════════════════╗
-// ║ 14) STATS TICKER — banda inferior con estadísticas rotativas             ║
+// ║ 14) STATS TICKER — sidecar del scorebug (un stat a la vez)               ║
 // ╚══════════════════════════════════════════════════════════════════════════╝
-export function StatsTicker({ visible, match, tournament, interval_ms = 5000 }: { visible:boolean, match:any, tournament: Tournament | null, interval_ms?:number }) {
+// Se despliega a la derecha del scorebug, mismo top. Operador elige QUÉ
+// stat mostrar (ACES, WINNERS, etc.). Se desliza desde la izquierda como
+// si saliera del scorebug.
+const STAT_LABELS: Record<string, string> = {
+  aces: 'ACES',
+  double_faults: 'DOBLES FALTAS',
+  winners: 'WINNERS',
+  unforced_errors: 'ERR. NO FORZADOS',
+  serve_pct: '% SAQUE',
+  return_pct: '% RESTO',
+  break_points_won: 'BREAKS',
+  break_points_saved: 'BREAKS SALVADOS',
+  total_points_won: 'PUNTOS',
+  max_streak: 'RACHA MÁX.',
+}
+
+function statValuePair(stats:any, key:string): { a:string, b:string } {
+  const t1 = stats?.t1 ?? {}, t2 = stats?.t2 ?? {}
+  switch (key) {
+    case 'aces':                return { a: String(t1.aces ?? 0),               b: String(t2.aces ?? 0) }
+    case 'double_faults':       return { a: String(t1.double_faults ?? 0),      b: String(t2.double_faults ?? 0) }
+    case 'winners':             return { a: String(t1.winners ?? 0),            b: String(t2.winners ?? 0) }
+    case 'unforced_errors':     return { a: String(t1.unforced_errors ?? 0),    b: String(t2.unforced_errors ?? 0) }
+    case 'serve_pct':           return { a: `${Math.round(t1.serve_points_won_pct ?? 0)}%`,  b: `${Math.round(t2.serve_points_won_pct ?? 0)}%` }
+    case 'return_pct':          return { a: `${Math.round(t1.return_points_won_pct ?? 0)}%`, b: `${Math.round(t2.return_points_won_pct ?? 0)}%` }
+    case 'break_points_won':    return { a: `${t1.break_points_won ?? 0}/${t1.break_points_played_on_return ?? 0}`, b: `${t2.break_points_won ?? 0}/${t2.break_points_played_on_return ?? 0}` }
+    case 'break_points_saved':  return { a: `${t1.break_points_saved ?? 0}/${t1.break_points_faced ?? 0}`,          b: `${t2.break_points_saved ?? 0}/${t2.break_points_faced ?? 0}` }
+    case 'total_points_won':    return { a: String(t1.total_points_won ?? 0),   b: String(t2.total_points_won ?? 0) }
+    case 'max_streak':          return { a: String(t1.max_points_streak ?? 0),  b: String(t2.max_points_streak ?? 0) }
+    default:                    return { a: '0', b: '0' }
+  }
+}
+
+export function StatsTicker({ visible, match, tournament, stat = 'aces' }: { visible:boolean, match:any, tournament: Tournament | null, stat?:string }) {
+  if (!match?.stats) return null
   const pal = palette(tournament?.scoreboard_config)
-  const isDoubles = match.match_type === 'doubles'
-  const advanced = !!tournament?.advanced_stats_enabled
-  const s = match?.stats
-
-  const items = useMemo(() => {
-    if (!s?.t1 || !s?.t2) return [] as Array<{label:string, a:string, b:string}>
-    return [
-      { label: 'Aces',               a: String(s.t1.aces),           b: String(s.t2.aces) },
-      { label: 'Dobles faltas',      a: String(s.t1.double_faults),  b: String(s.t2.double_faults) },
-      ...(advanced ? [
-        { label: 'Winners',              a: String(s.t1.winners),         b: String(s.t2.winners) },
-        { label: 'Errores no forzados',  a: String(s.t1.unforced_errors), b: String(s.t2.unforced_errors) },
-      ] : []),
-      { label: '% Puntos saque',     a: `${Math.round(s.t1.serve_points_won_pct||0)}%`,  b: `${Math.round(s.t2.serve_points_won_pct||0)}%` },
-      { label: '% Puntos resto',     a: `${Math.round(s.t1.return_points_won_pct||0)}%`, b: `${Math.round(s.t2.return_points_won_pct||0)}%` },
-      { label: 'Breaks ganados',     a: String(s.t1.break_points_won),  b: String(s.t2.break_points_won) },
-      { label: 'Puntos totales',     a: String(s.t1.total_points_won),  b: String(s.t2.total_points_won) },
-    ]
-  }, [s, advanced])
-
-  const [idx, setIdx] = useState(0)
-  useEffect(() => {
-    if (!visible || items.length === 0) return
-    setIdx(0)
-    const id = setInterval(() => setIdx(i => (i+1) % items.length), Math.max(2000, interval_ms))
-    return () => clearInterval(id)
-  }, [visible, items.length, interval_ms])
-
-  if (items.length === 0 || !match?.entry1 || !match?.entry2) return null
-  const item = items[idx] ?? items[0]
-
-  const team1Name = isDoubles
-    ? `${firstSurname(match.entry1?.player1)} / ${firstSurname(match.entry1?.player2)}`
-    : (match.entry1?.player1?.last_name ?? '—')
-  const team2Name = isDoubles
-    ? `${firstSurname(match.entry2?.player1)} / ${firstSurname(match.entry2?.player2)}`
-    : (match.entry2?.player1?.last_name ?? '—')
-  const nat1 = match.entry1?.player1?.nationality
-  const nat2 = match.entry2?.player1?.nationality
-
-  const numA = parseFloat(String(item.a).replace('%','')) || 0
-  const numB = parseFloat(String(item.b).replace('%','')) || 0
+  const { a, b } = statValuePair(match.stats, stat)
+  const label = STAT_LABELS[stat] ?? stat.toUpperCase()
+  const numA = parseFloat(String(a).split('/')[0].replace('%','')) || 0
+  const numB = parseFloat(String(b).split('/')[0].replace('%','')) || 0
   const aWins = numA > numB, bWins = numB > numA
 
+  // Se posiciona a la derecha del scorebug (que está en top:40 left:40).
+  // Usamos un left fijo = scorebug maxWidth + margen para evitar solape.
   return (
-    <div style={{ position:'absolute', left:'50%', bottom:60, transform:'translateX(-50%)', width:1280, height:110, ...CARD, padding:0, overflow:'hidden',
-      borderTop:`4px solid ${pal.accentA}`,
-      display:'grid', gridTemplateColumns:'1fr auto 1fr',
-      ...animStyle(visible, 'sgInU', 'sgOutU', 650) }}>
-
-      {/* Team 1 side */}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr auto', alignItems:'center', gap:16, padding:'0 24px', borderRight:'1px solid rgba(255,255,255,.06)', background: aWins ? hexAlpha(pal.accentA,.08) : 'transparent' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:12, minWidth:0 }}>
-          <img src={flagPath(nat1)} alt="" style={{ flex:'none', width:44, height:30, borderRadius:4, objectFit:'cover' }}/>
-          <span style={{ fontSize:28, fontWeight:900, textTransform:'uppercase', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{team1Name.toUpperCase()}</span>
-        </div>
-        <span key={`a${idx}`} style={{ fontSize:56, fontWeight:900, fontVariantNumeric:'tabular-nums', color: aWins ? pal.accentA : '#fff', animation:'sgDigitIn 420ms both', lineHeight:1 }}>{item.a}</span>
-      </div>
-
-      {/* Label */}
-      <div style={{ padding:'0 26px', display:'grid', placeItems:'center' }}>
-        <span key={`l${idx}`} style={{ fontSize:24, fontWeight:900, letterSpacing:'.3em', textTransform:'uppercase', opacity:.9, color:pal.accentA, animation:'sgDigitIn 420ms both', textAlign:'center', lineHeight:1 }}>
-          {item.label.toUpperCase()}
+    <div style={{
+      position:'absolute', top:40, left:860, width:260, ...CARD, padding:0, overflow:'hidden',
+      borderLeft:`4px solid ${pal.accentA}`,
+      ...animStyle(visible, 'sgInR', 'sgOutR', 550),
+    }}>
+      {/* Label header */}
+      <div style={{ padding:'8px 14px', background:'rgba(255,255,255,.04)', borderBottom:'1px solid rgba(255,255,255,.06)', textAlign:'center' }}>
+        <span key={`lab-${stat}`} style={{ fontSize:18, letterSpacing:'.28em', textTransform:'uppercase', fontWeight:900, color:pal.accentA, display:'inline-block', animation:'sgDigitIn 380ms both' }}>
+          {label}
         </span>
       </div>
-
-      {/* Team 2 side */}
-      <div style={{ display:'grid', gridTemplateColumns:'auto 1fr', alignItems:'center', gap:16, padding:'0 24px', borderLeft:'1px solid rgba(255,255,255,.06)', background: bWins ? hexAlpha(pal.accentB,.08) : 'transparent' }}>
-        <span key={`b${idx}`} style={{ fontSize:56, fontWeight:900, fontVariantNumeric:'tabular-nums', color: bWins ? pal.accentB : '#fff', animation:'sgDigitIn 420ms both', lineHeight:1 }}>{item.b}</span>
-        <div style={{ display:'flex', alignItems:'center', gap:12, minWidth:0, justifyContent:'flex-end' }}>
-          <span style={{ fontSize:28, fontWeight:900, textTransform:'uppercase', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{team2Name.toUpperCase()}</span>
-          <img src={flagPath(nat2)} alt="" style={{ flex:'none', width:44, height:30, borderRadius:4, objectFit:'cover' }}/>
-        </div>
+      {/* Team 1 row */}
+      <div style={{ display:'grid', gridTemplateColumns:'10px 1fr auto', alignItems:'stretch', height:54, background: aWins ? hexAlpha(pal.accentA,.1) : 'transparent' }}>
+        <div style={{ background:pal.accentA }}/>
+        <div style={{ padding:'0 12px', display:'flex', alignItems:'center', fontSize:24, fontWeight:900, textTransform:'uppercase', opacity:.85 }}>EQUIPO 1</div>
+        <div key={`a-${stat}-${a}`} style={{ padding:'0 16px', display:'flex', alignItems:'center', fontSize:34, fontWeight:900, fontVariantNumeric:'tabular-nums', color: aWins ? pal.accentA : '#fff', animation:'sgDigitIn 380ms both' }}>{a}</div>
+      </div>
+      {/* Team 2 row */}
+      <div style={{ display:'grid', gridTemplateColumns:'10px 1fr auto', alignItems:'stretch', height:54, borderTop:'1px solid rgba(255,255,255,.06)', background: bWins ? hexAlpha(pal.accentB,.1) : 'transparent' }}>
+        <div style={{ background:pal.accentB }}/>
+        <div style={{ padding:'0 12px', display:'flex', alignItems:'center', fontSize:24, fontWeight:900, textTransform:'uppercase', opacity:.85 }}>EQUIPO 2</div>
+        <div key={`b-${stat}-${b}`} style={{ padding:'0 16px', display:'flex', alignItems:'center', fontSize:34, fontWeight:900, fontVariantNumeric:'tabular-nums', color: bWins ? pal.accentB : '#fff', animation:'sgDigitIn 380ms both' }}>{b}</div>
       </div>
     </div>
   )
