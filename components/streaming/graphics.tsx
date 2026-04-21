@@ -580,62 +580,71 @@ export function Scorebug({ visible, match, tournament, flag }: { visible:boolean
   }
   const flagColor = flag.kind ? (flagColors[flag.kind] ?? pal.accentA) : null
 
-  const colW = 54                                         // sets y puntos misma anchura
-  const gridCols = `12px 1fr ${Array(setCount + 1).fill(`${colW}px`).join(' ')}`
-  const cardW = 12 + 230 + colW * (setCount + 1)          // 296 - 404px (< 1/4 pantalla)
+  const colW = 54
+  // Grid unico con 2 filas — columnas compartidas: la columna de nombres
+  // usa minmax(min, max-content) para crecer segun el nombre mas largo
+  // (sin truncar). Limitamos el max para evitar explosiones con nombres
+  // extremos.
+  const gridCols = `12px minmax(220px, max-content) ${Array(setCount + 1).fill(`${colW}px`).join(' ')}`
 
   return (
-    <div style={{ position:'absolute', top:40, left:40, width: cardW, ...CARD, padding:0, overflow:'hidden',
+    <div style={{ position:'absolute', top:40, left:40, minWidth: 420, maxWidth: 820, ...CARD, padding:0, overflow:'hidden',
       ...animStyle(visible, 'sgInR', 'sgOutR', 500) }}>
-      {/* Rows (sin header) */}
-      {rows.map((r,ri) => (
-        <div key={r.team} style={{ display:'grid', gridTemplateColumns:gridCols, alignItems:'stretch', borderBottom: ri===0 ? '1px solid rgba(255,255,255,.06)' : 'none', height:54 }}>
-          <div style={{ background:r.accent }}/>
-          <div style={{ padding:'0 12px', display:'flex', alignItems:'center', gap:10, minWidth:0 }}>
-            {isDoubles ? (
-              <>
-                <div style={{ display:'flex', gap:3, flex:'none' }}>
-                  {r.players.map((p:any,i:number) => (
-                    <img key={i} src={flagPath(p.nationality)} alt="" style={{ width:26, height:18, borderRadius:3, objectFit:'cover' }}/>
-                  ))}
+
+      <div style={{ display:'grid', gridTemplateColumns:gridCols, gridTemplateRows:'54px 54px' }}>
+        {rows.map((r, ri) => {
+          const row = ri + 1
+          return (
+            <div key={r.team} style={{ display:'contents' }}>
+              {/* Accent bar */}
+              <div style={{ gridRow:row, gridColumn:1, background:r.accent }}/>
+              {/* Name cell */}
+              <div style={{ gridRow:row, gridColumn:2, padding:'0 14px', display:'flex', alignItems:'center', gap:10,
+                borderBottom: ri===0 ? '1px solid rgba(255,255,255,.06)' : 'none' }}>
+                {isDoubles ? (
+                  <>
+                    <div style={{ display:'flex', gap:3, flex:'none' }}>
+                      {r.players.map((p:any,i:number) => (
+                        <img key={i} src={flagPath(p.nationality)} alt="" style={{ width:26, height:18, borderRadius:3, objectFit:'cover' }}/>
+                      ))}
+                    </div>
+                    <span style={{ fontSize:28, fontWeight:900, textTransform:'uppercase', whiteSpace:'nowrap', lineHeight:1 }}>
+                      {r.players.map((p:any) => firstSurname(p).toUpperCase()).join(' / ')}
+                    </span>
+                    {r.serving && <span style={{ width:12, height:12, borderRadius:'50%', background:pal.serve, flex:'none', animation:'sgSrvPulse 1.4s infinite', marginLeft:2 }}/>}
+                  </>
+                ) : (
+                  <>
+                    <img src={flagPath(r.players[0]?.nationality)} alt="" style={{ width:34, height:23, borderRadius:3, objectFit:'cover', flex:'none' }}/>
+                    <span style={{ fontSize:36, fontWeight:900, textTransform:'uppercase', whiteSpace:'nowrap', lineHeight:1 }}>
+                      {(r.players[0]?.last_name ?? '').toUpperCase()}
+                    </span>
+                    {r.serving && <span style={{ width:12, height:12, borderRadius:'50%', background:pal.serve, flex:'none', animation:'sgSrvPulse 1.4s infinite', marginLeft:2 }}/>}
+                  </>
+                )}
+              </div>
+              {/* Sets */}
+              {r.sets.map((v,i) => (
+                <div key={i} style={{ gridRow:row, gridColumn:3+i, display:'grid', placeItems:'center', fontSize:32, fontWeight:900, borderLeft:'1px solid rgba(255,255,255,.06)', borderBottom: ri===0 ? '1px solid rgba(255,255,255,.06)' : 'none',
+                  background: i === currentSetIdx ? hexAlpha(r.accent,.25) : 'rgba(0,0,0,.22)',
+                  color: v===null ? 'rgba(255,255,255,.3)' : '#fff', fontVariantNumeric:'tabular-nums', overflow:'hidden' }}>
+                  <span key={`t${r.team}-s${i}-${v ?? '-'}`} style={{ display:'inline-block', animation:'sgDigitIn 380ms cubic-bezier(.22,.9,.25,1) both' }}>
+                    {v===null ? '–' : v}
+                  </span>
                 </div>
-                <span style={{ fontSize:28, fontWeight:900, textTransform:'uppercase', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:1, flex:1 }}>
-                  {r.players.map((p:any) => firstSurname(p).toUpperCase()).join(' / ')}
+              ))}
+              {/* Puntos */}
+              <div style={{ gridRow:row, gridColumn:3+setCount, display:'grid', placeItems:'center', background:hexAlpha(r.accent,.92), color:'#fff', fontSize:32, fontWeight:900, letterSpacing:'-.01em', borderBottom: ri===0 ? '1px solid rgba(255,255,255,.12)' : 'none', overflow:'hidden' }}>
+                <span key={`pt${r.team}-${r.pt}`} style={{ display:'inline-block', animation:'sgDigitIn 380ms cubic-bezier(.22,.9,.25,1) both' }}>
+                  {r.pt}
                 </span>
-                {r.serving && (
-                  <span style={{ width:12, height:12, borderRadius:'50%', background:pal.serve, flex:'none', animation:'sgSrvPulse 1.4s infinite' }}/>
-                )}
-              </>
-            ) : (
-              <>
-                <img src={flagPath(r.players[0]?.nationality)} alt="" style={{ width:34, height:23, borderRadius:3, objectFit:'cover', flex:'none' }}/>
-                <span style={{ fontSize:36, fontWeight:900, textTransform:'uppercase', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:1, flex:1 }}>
-                  {(r.players[0]?.last_name ?? '').toUpperCase()}
-                </span>
-                {r.serving && (
-                  <span style={{ width:12, height:12, borderRadius:'50%', background:pal.serve, flex:'none', animation:'sgSrvPulse 1.4s infinite' }}/>
-                )}
-              </>
-            )}
-          </div>
-          {r.sets.map((v,i) => (
-            <div key={i} style={{ display:'grid', placeItems:'center', fontSize:32, fontWeight:900, borderLeft:'1px solid rgba(255,255,255,.06)',
-              background: i === currentSetIdx ? hexAlpha(r.accent,.18) : 'rgba(0,0,0,.2)',
-              color: v===null ? 'rgba(255,255,255,.3)' : '#fff', fontVariantNumeric:'tabular-nums', overflow:'hidden' }}>
-              {/* key forces remount cuando cambia el valor -> se dispara sgDigitIn */}
-              <span key={`t${r.team}-s${i}-${v ?? '-'}`} style={{ display:'inline-block', animation:'sgDigitIn 380ms cubic-bezier(.22,.9,.25,1) both' }}>
-                {v===null ? '–' : v}
-              </span>
+              </div>
             </div>
-          ))}
-          <div style={{ display:'grid', placeItems:'center', background:r.accent, color:'#fff', fontSize:32, fontWeight:900, letterSpacing:'-.01em', overflow:'hidden' }}>
-            <span key={`pt${r.team}-${r.pt}`} style={{ display:'inline-block', animation:'sgDigitIn 380ms cubic-bezier(.22,.9,.25,1) both' }}>
-              {r.pt}
-            </span>
-          </div>
-        </div>
-      ))}
-      {/* Flag banner — se despliega desde arriba al entrar y se retrae al salir */}
+          )
+        })}
+      </div>
+
+      {/* Flag banner — se despliega desde arriba */}
       <Presence show={!!(flag.kind && flag.label)} exitMs={360}>
         {(vis) => (
           <div style={{ padding:'9px 12px', background:flagColor ?? '#ef6a4c', color:'#000', fontSize:20, fontWeight:900, letterSpacing:'.28em', textAlign:'center', textTransform:'uppercase',

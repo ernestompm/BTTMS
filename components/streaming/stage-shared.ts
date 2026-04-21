@@ -77,13 +77,16 @@ export function palette(cfg: any) {
   }
 }
 
-/** Unified card style — same across every graphic for visual consistency. */
+/** Unified card style — glassy dark, sutilmente transparente para que se vea
+ *  como una capa sobre el video (vMix) en lugar de un bloque opaco. */
 export const CARD: React.CSSProperties = {
-  background: 'linear-gradient(180deg, rgba(12,18,36,.97) 0%, rgba(5,8,20,.99) 100%)',
-  border: '1px solid rgba(255,255,255,.08)',
+  background: 'linear-gradient(180deg, rgba(10,16,30,.82) 0%, rgba(4,6,14,.9) 100%)',
+  border: '1px solid rgba(255,255,255,.09)',
   borderRadius: 18,
   boxShadow: '0 24px 60px rgba(0,0,0,.55)',
   overflow: 'hidden',
+  backdropFilter: 'blur(6px)',
+  WebkitBackdropFilter: 'blur(6px)',
 }
 
 /** Small header label used across cards (top-left kicker). */
