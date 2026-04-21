@@ -51,6 +51,9 @@ export const STREAM_KEYFRAMES = `
 @keyframes sgOutClip{ from{clip-path:inset(0 0 0 0);opacity:1}                        to{clip-path:inset(0 0 0 100%);opacity:0} }
 @keyframes sgSrvPulse { 0%,100%{box-shadow:0 0 0 0 rgba(239,106,76,.7)} 50%{box-shadow:0 0 0 12px rgba(239,106,76,0)} }
 @keyframes sgSheen    { 0%{transform:translateX(-110%)} 60%,100%{transform:translateX(210%)} }
+/* Digit pop-in — usado al cambiar puntos/sets para darle vida */
+@keyframes sgDigitIn  { from{opacity:0;transform:translateY(-16px) scale(.85);filter:blur(4px)} to{opacity:1;transform:none;filter:blur(0)} }
+@keyframes sgDigitUp  { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:none} }
 `
 
 /** Build an animation style using explicit enter/exit keyframes. */

@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react'
 import type { Score, Player, Sponsor, Tournament, WeatherData, Category } from '@/types'
 import { CATEGORY_LABELS } from '@/types'
 import { animStyle, hexAlpha, flagPath, palette, firstSurname, CARD, KICKER } from './stage-shared'
+import { Presence } from './presence'
 
 // ─── Labels ─────────────────────────────────────────────────────────────────
 const ROUND_LABELS: Record<string, string> = {
@@ -620,19 +621,30 @@ export function Scorebug({ visible, match, tournament, flag }: { visible:boolean
           {r.sets.map((v,i) => (
             <div key={i} style={{ display:'grid', placeItems:'center', fontSize:32, fontWeight:900, borderLeft:'1px solid rgba(255,255,255,.06)',
               background: i === currentSetIdx ? hexAlpha(r.accent,.18) : 'rgba(0,0,0,.2)',
-              color: v===null ? 'rgba(255,255,255,.3)' : '#fff', fontVariantNumeric:'tabular-nums' }}>
-              {v===null ? '–' : v}
+              color: v===null ? 'rgba(255,255,255,.3)' : '#fff', fontVariantNumeric:'tabular-nums', overflow:'hidden' }}>
+              {/* key forces remount cuando cambia el valor -> se dispara sgDigitIn */}
+              <span key={`t${r.team}-s${i}-${v ?? '-'}`} style={{ display:'inline-block', animation:'sgDigitIn 380ms cubic-bezier(.22,.9,.25,1) both' }}>
+                {v===null ? '–' : v}
+              </span>
             </div>
           ))}
-          <div style={{ display:'grid', placeItems:'center', background:r.accent, color:'#fff', fontSize:32, fontWeight:900, letterSpacing:'-.01em' }}>{r.pt}</div>
+          <div style={{ display:'grid', placeItems:'center', background:r.accent, color:'#fff', fontSize:32, fontWeight:900, letterSpacing:'-.01em', overflow:'hidden' }}>
+            <span key={`pt${r.team}-${r.pt}`} style={{ display:'inline-block', animation:'sgDigitIn 380ms cubic-bezier(.22,.9,.25,1) both' }}>
+              {r.pt}
+            </span>
+          </div>
         </div>
       ))}
-      {/* Flag banner — NO blink */}
-      {flag.kind && flag.label && (
-        <div style={{ padding:'7px 12px', background:flagColor!, color:'#000', fontSize:18, fontWeight:900, letterSpacing:'.28em', textAlign:'center', textTransform:'uppercase' }}>
-          {flag.label}
-        </div>
-      )}
+      {/* Flag banner — se despliega desde arriba al entrar y se retrae al salir */}
+      <Presence show={!!(flag.kind && flag.label)} exitMs={360}>
+        {(vis) => (
+          <div style={{ padding:'9px 12px', background:flagColor ?? '#ef6a4c', color:'#000', fontSize:20, fontWeight:900, letterSpacing:'.28em', textAlign:'center', textTransform:'uppercase',
+            transformOrigin:'top center',
+            ...animStyle(vis, 'sgInD', 'sgOutD', 360) }}>
+            {flag.label}
+          </div>
+        )}
+      </Presence>
     </div>
   )
 }

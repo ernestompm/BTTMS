@@ -80,9 +80,16 @@ export class AutomationRunner {
   }
 
   private run(actions: AutomationAction[], context: Record<string, any>) {
+    // Cancelar solo UNA VEZ los timers previos de los gráficos que esta cadena
+    // va a tocar. Antes cancelábamos en cada iteración, lo que hacía que las
+    // acciones posteriores sobre un mismo gráfico mataran a las anteriores
+    // (p. ej. set_end programaba show+hide de stats_panel, pero el hide
+    // cancelaba el show y el panel nunca aparecía).
+    const touched = new Set(actions.map(a => a.graphic))
+    touched.forEach(g => this.cancelGraphic(g))
+
     for (const action of actions) {
       const delay = action.delay_ms ?? 0
-      this.cancelGraphic(action.graphic)
       const t = setTimeout(async () => {
         try {
           const mergedData = { ...(action.data ?? {}), ...(context.data_override ?? {}) }
