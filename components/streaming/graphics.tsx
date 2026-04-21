@@ -672,32 +672,33 @@ export function Scorebug({ visible, match, tournament, flag, tickerStat }: { vis
       {/* Pills derechos (stat label + flag banner) — ancho auto, alineados
           al borde derecho del card. Cada uno tiene su propio slot flex así
           que aparecen uno encima del otro, siempre anclados a la derecha. */}
-      <Presence show={showTicker} exitMs={900}>
+      {/* Pill del stat label — right-aligned via text-align + inline-block */}
+      <Presence show={showTicker} exitMs={850}>
         {(vis) => (
-          <div style={{ display:'flex', justifyContent:'flex-end', overflow:'hidden' }}>
-            <div key={`tlab-${tickerStat}`} style={{
-              display:'inline-block', width:'fit-content',
+          <div style={{ overflow:'hidden', textAlign:'right' }}>
+            <span key={`tlab-${tickerStat}`} style={{
+              display:'inline-block',
               padding:'5px 14px', background:'rgba(255,255,255,.08)', color:pal.accentA,
               fontSize:20, fontWeight:900, letterSpacing:'.24em', textTransform:'uppercase', whiteSpace:'nowrap',
               borderTop:`1px solid ${hexAlpha(pal.accentA,.3)}`,
-              ...animStyle(vis, 'sgInPillR', 'sgOutPillR', 900, 'cubic-bezier(.19,1,.22,1)'),
+              ...animStyle(vis, 'sgInPillR', 'sgOutPillR', 700, 'cubic-bezier(.19,1,.22,1)'),
             }}>
               {tickerLabel}
-            </div>
+            </span>
           </div>
         )}
       </Presence>
       <Presence show={!!(flag.kind && flag.label)} exitMs={850}>
         {(vis) => (
-          <div style={{ display:'flex', justifyContent:'flex-end', overflow:'hidden' }}>
-            <div style={{
-              display:'inline-block', width:'fit-content',
+          <div style={{ overflow:'hidden', textAlign:'right' }}>
+            <span style={{
+              display:'inline-block',
               padding:'6px 16px', background:flagColor ?? '#ef6a4c', color:'#000',
               fontSize:22, fontWeight:900, letterSpacing:'.24em', textTransform:'uppercase', whiteSpace:'nowrap',
-              ...animStyle(vis, 'sgInPillR', 'sgOutPillR', 850, 'cubic-bezier(.19,1,.22,1)'),
+              ...animStyle(vis, 'sgInPillR', 'sgOutPillR', 700, 'cubic-bezier(.19,1,.22,1)'),
             }}>
               {flag.label}
-            </div>
+            </span>
           </div>
         )}
       </Presence>

@@ -52,16 +52,11 @@ export const STREAM_KEYFRAMES = `
 /* Reveal desde el borde derecho hacia la izquierda (flag pill del scorebug) */
 @keyframes sgInRight { from{clip-path:inset(0 0 0 100%);opacity:0}                    to{clip-path:inset(0 0 0 0);opacity:1} }
 @keyframes sgOutRight{ from{clip-path:inset(0 0 0 0);opacity:1}                       to{clip-path:inset(0 0 0 100%);opacity:0} }
-/* Pill emergiendo desde la derecha — combina slide + clip + fade para un
-   efecto m\u00e1s visible y elegante. Emparejar con easing ease-out-expo. */
-@keyframes sgInPillR {
-  from { opacity:0; transform:translateX(34px); clip-path:inset(0 0 0 100%) }
-  to   { opacity:1; transform:translateX(0);    clip-path:inset(0 0 0 0) }
-}
-@keyframes sgOutPillR {
-  from { opacity:1; transform:translateX(0);    clip-path:inset(0 0 0 0) }
-  to   { opacity:0; transform:translateX(34px); clip-path:inset(0 0 0 100%) }
-}
+/* Pill emergiendo/retirandose a la derecha — slide + fade puros, sin
+   clip-path (para evitar artefactos al salir). Combinar con
+   overflow:hidden en el contenedor padre para clipping del slide. */
+@keyframes sgInPillR  { from{opacity:0;transform:translateX(44px)} to{opacity:1;transform:translateX(0)} }
+@keyframes sgOutPillR { from{opacity:1;transform:translateX(0)}    to{opacity:0;transform:translateX(44px)} }
 @keyframes sgBlink    { 0%,100%{opacity:1} 50%{opacity:.3} }
 @keyframes sgSrvPulse { 0%,100%{box-shadow:0 0 0 0 rgba(239,106,76,.7)} 50%{box-shadow:0 0 0 12px rgba(239,106,76,0)} }
 @keyframes sgSheen    { 0%{transform:translateX(-110%)} 60%,100%{transform:translateX(210%)} }
