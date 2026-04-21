@@ -11,7 +11,7 @@
 import { useEffect, useState } from 'react'
 import type { Score, Player, Sponsor, Tournament, WeatherData, Category } from '@/types'
 import { CATEGORY_LABELS } from '@/types'
-import { animStyle, hexAlpha, flagPath, palette, CARD, KICKER } from './stage-shared'
+import { animStyle, hexAlpha, flagPath, palette, firstSurname, CARD, KICKER } from './stage-shared'
 
 // ─── Labels ─────────────────────────────────────────────────────────────────
 const ROUND_LABELS: Record<string, string> = {
@@ -570,66 +570,68 @@ export function Scorebug({ visible, match, tournament, flag }: { visible:boolean
   }
   const flagColor = flag.kind ? (flagColors[flag.kind] ?? pal.accentA) : null
 
-  const setColW = 42
-  const gridCols = `10px 1fr ${Array(setCount).fill(`${setColW}px`).join(' ')} 64px`
+  const setColW = 60
+  const ptsColW = 92
+  const gridCols = `14px 1fr ${Array(setCount).fill(`${setColW}px`).join(' ')} ${ptsColW}px`
+  const cardW = 420 + setCount * setColW + ptsColW  // ~572-692px
 
   return (
-    <div style={{ position:'absolute', top:40, left:40, width: 280 + setCount*setColW, ...CARD, padding:0, overflow:'hidden',
+    <div style={{ position:'absolute', top:40, left:40, width: cardW, ...CARD, padding:0, overflow:'hidden',
       ...animStyle(visible, 'sgInR', 'sgOutR', 500) }}>
       {/* Header — tournament name + round (full label) */}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr auto', alignItems:'center', padding:'8px 14px', background:'rgba(255,255,255,.04)', borderBottom:'1px solid rgba(255,255,255,.06)', gap:14 }}>
-        <span style={{ fontSize:13, letterSpacing:'.2em', textTransform:'uppercase', opacity:.8, fontWeight:800, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+      <div style={{ display:'grid', gridTemplateColumns:'1fr auto', alignItems:'center', padding:'10px 16px', background:'rgba(255,255,255,.04)', borderBottom:'1px solid rgba(255,255,255,.06)', gap:14 }}>
+        <span style={{ fontSize:18, letterSpacing:'.2em', textTransform:'uppercase', opacity:.9, fontWeight:900, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
           {tournament?.name ?? ''}
         </span>
-        <span style={{ fontSize:12, letterSpacing:'.22em', textTransform:'uppercase', opacity:.55, fontWeight:800, whiteSpace:'nowrap' }}>
+        <span style={{ fontSize:16, letterSpacing:'.22em', textTransform:'uppercase', opacity:.65, fontWeight:800, whiteSpace:'nowrap' }}>
           {roundLabel(match.round)}
         </span>
       </div>
 
       {/* Rows */}
       {rows.map((r,ri) => (
-        <div key={r.team} style={{ display:'grid', gridTemplateColumns:gridCols, alignItems:'stretch', borderBottom: ri===0 ? '1px solid rgba(255,255,255,.06)' : 'none', height:48 }}>
+        <div key={r.team} style={{ display:'grid', gridTemplateColumns:gridCols, alignItems:'stretch', borderBottom: ri===0 ? '1px solid rgba(255,255,255,.06)' : 'none', height:68 }}>
           <div style={{ background:r.accent }}/>
-          <div style={{ padding:'0 10px', display:'flex', alignItems:'center', gap:8, minWidth:0 }}>
+          <div style={{ padding:'0 14px', display:'flex', alignItems:'center', gap:12, minWidth:0 }}>
             {isDoubles ? (
               <>
-                <div style={{ display:'flex', gap:3, flex:'none' }}>
+                <div style={{ display:'flex', gap:4, flex:'none' }}>
                   {r.players.map((p:any,i:number) => (
-                    <img key={i} src={flagPath(p.nationality)} alt="" style={{ width:22, height:15, borderRadius:2, objectFit:'cover' }}/>
+                    <img key={i} src={flagPath(p.nationality)} alt="" style={{ width:32, height:22, borderRadius:3, objectFit:'cover' }}/>
                   ))}
                 </div>
-                <span style={{ fontSize:22, fontWeight:900, textTransform:'uppercase', letterSpacing:'.005em', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:1, flex:1 }}>
-                  {r.players.map((p:any) => (p.last_name ?? '').toUpperCase()).join(' / ')}
+                <span style={{ fontSize:34, fontWeight:900, textTransform:'uppercase', letterSpacing:'.005em', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:1, flex:1 }}>
+                  {r.players.map((p:any) => firstSurname(p).toUpperCase()).join(' / ')}
                 </span>
                 {r.serving && (
-                  <span style={{ width:10, height:10, borderRadius:'50%', background:pal.serve, flex:'none', animation:'sgSrvPulse 1.4s infinite' }}/>
+                  <span style={{ width:14, height:14, borderRadius:'50%', background:pal.serve, flex:'none', animation:'sgSrvPulse 1.4s infinite' }}/>
                 )}
               </>
             ) : (
               <>
-                <img src={flagPath(r.players[0]?.nationality)} alt="" style={{ width:28, height:19, borderRadius:3, objectFit:'cover', flex:'none' }}/>
-                <span style={{ fontSize:28, fontWeight:900, textTransform:'uppercase', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:1, flex:1 }}>
+                <img src={flagPath(r.players[0]?.nationality)} alt="" style={{ width:40, height:28, borderRadius:4, objectFit:'cover', flex:'none' }}/>
+                <span style={{ fontSize:42, fontWeight:900, textTransform:'uppercase', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:1, flex:1 }}>
                   {(r.players[0]?.last_name ?? '').toUpperCase()}
                 </span>
                 {r.serving && (
-                  <span style={{ width:10, height:10, borderRadius:'50%', background:pal.serve, flex:'none', animation:'sgSrvPulse 1.4s infinite' }}/>
+                  <span style={{ width:14, height:14, borderRadius:'50%', background:pal.serve, flex:'none', animation:'sgSrvPulse 1.4s infinite' }}/>
                 )}
               </>
             )}
           </div>
           {r.sets.map((v,i) => (
-            <div key={i} style={{ display:'grid', placeItems:'center', fontSize:26, fontWeight:900, borderLeft:'1px solid rgba(255,255,255,.06)',
+            <div key={i} style={{ display:'grid', placeItems:'center', fontSize:40, fontWeight:900, borderLeft:'1px solid rgba(255,255,255,.06)',
               background: i === currentSetIdx ? hexAlpha(r.accent,.18) : 'rgba(0,0,0,.2)',
               color: v===null ? 'rgba(255,255,255,.3)' : '#fff', fontVariantNumeric:'tabular-nums' }}>
               {v===null ? '–' : v}
             </div>
           ))}
-          <div style={{ display:'grid', placeItems:'center', background:r.accent, color:'#fff', fontSize:30, fontWeight:900, letterSpacing:'-.01em' }}>{r.pt}</div>
+          <div style={{ display:'grid', placeItems:'center', background:r.accent, color:'#fff', fontSize:46, fontWeight:900, letterSpacing:'-.01em' }}>{r.pt}</div>
         </div>
       ))}
       {/* Flag banner — NO blink */}
       {flag.kind && flag.label && (
-        <div style={{ padding:'6px 14px', background:flagColor!, color:'#000', fontSize:17, fontWeight:900, letterSpacing:'.3em', textAlign:'center', textTransform:'uppercase' }}>
+        <div style={{ padding:'9px 14px', background:flagColor!, color:'#000', fontSize:22, fontWeight:900, letterSpacing:'.3em', textAlign:'center', textTransform:'uppercase' }}>
           {flag.label}
         </div>
       )}
@@ -809,6 +811,9 @@ function ResultMatchRow({ entry, score, team, accent, isDoubles }:{ entry:any, s
   const players = [entry?.player1, isDoubles?entry?.player2:null].filter(Boolean)
   const sets = threeSetsFor(score, team)
   const winner = (score?.winner_team ?? null) === team
+  const nameStr = isDoubles
+    ? players.map((p:any) => firstSurname(p)).filter(Boolean).join(' / ')
+    : (players[0]?.last_name ?? '')
   return (
     <div style={{ display:'grid', gridTemplateColumns:'auto 1fr auto auto auto', alignItems:'center', gap:10, padding:'3px 0' }}>
       <div style={{ display:'flex', gap:3, flex:'none' }}>
@@ -817,7 +822,7 @@ function ResultMatchRow({ entry, score, team, accent, isDoubles }:{ entry:any, s
         ))}
       </div>
       <span style={{ fontSize:24, fontWeight: winner?900:700, color: winner?'#fff':'rgba(255,255,255,.8)', textTransform:'uppercase', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-        {players.map((p:any) => p?.last_name).filter(Boolean).join(' / ')}
+        {nameStr.toUpperCase()}
       </span>
       {sets.map((v,i) => (
         <span key={i} style={{ fontSize:26, fontWeight:900, minWidth:28, textAlign:'center', color: v===null?'rgba(255,255,255,.22)':winner?accent:'rgba(255,255,255,.75)', fontVariantNumeric:'tabular-nums' }}>
@@ -962,11 +967,11 @@ function BracketMatch({ m, hot, accentA, accentB }: { m:any, hot:boolean, accent
   const score = m.score as Score | null
   const isDoubles = m.match_type === 'doubles'
   return (
-    <div style={{ padding:'8px 10px', borderRadius:8,
-      background: hot ? hexAlpha(accentA, .18) : 'rgba(255,255,255,.03)',
-      border: hot ? `2px solid ${accentA}` : '1px solid rgba(255,255,255,.06)' }}>
+    <div style={{ padding:'12px 14px', borderRadius:10,
+      background: hot ? hexAlpha(accentA, .2) : 'rgba(255,255,255,.04)',
+      border: hot ? `2px solid ${accentA}` : '1px solid rgba(255,255,255,.08)' }}>
       <BracketLine entry={m.entry1} score={score} team={1} accent={accentA} isDoubles={isDoubles}/>
-      <div style={{ height:1, background:'rgba(255,255,255,.08)', margin:'4px 0' }}/>
+      <div style={{ height:1, background:'rgba(255,255,255,.08)', margin:'6px 0' }}/>
       <BracketLine entry={m.entry2} score={score} team={2} accent={accentB} isDoubles={isDoubles}/>
     </div>
   )
@@ -975,16 +980,22 @@ function BracketLine({ entry, score, team, accent, isDoubles }:{ entry:any, scor
   const players = [entry?.player1, isDoubles?entry?.player2:null].filter(Boolean)
   const sets = threeSetsFor(score, team)
   const winner = (score?.winner_team ?? null) === team
-  const nat = players[0]?.nationality ?? null
+  const nameStr = isDoubles
+    ? players.map((p:any) => firstSurname(p)).filter(Boolean).join(' / ')
+    : (players[0]?.last_name ?? '')
   return (
-    <div style={{ display:'grid', gridTemplateColumns:'20px auto 1fr auto auto auto', alignItems:'center', gap:8 }}>
-      <span style={{ fontSize:11, fontWeight:800, opacity:.55 }}>{entry?.seed ?? ''}</span>
-      <img src={flagPath(nat)} alt="" style={{ width:22, height:15, borderRadius:2, objectFit:'cover' }}/>
-      <span style={{ fontSize:15, fontWeight: winner?900:600, textTransform:'uppercase', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', color: winner?'#fff':'rgba(255,255,255,.72)' }}>
-        {players.map((p:any) => p?.last_name).filter(Boolean).join(' / ')}
+    <div style={{ display:'grid', gridTemplateColumns:'auto auto 1fr auto auto auto', alignItems:'center', gap:10 }}>
+      <span style={{ fontSize:16, fontWeight:900, opacity:.6, minWidth:20, textAlign:'center' }}>{entry?.seed ?? ''}</span>
+      <div style={{ display:'flex', gap:3 }}>
+        {players.map((p:any,i:number) => (
+          <img key={i} src={flagPath(p?.nationality)} alt="" style={{ width:28, height:19, borderRadius:3, objectFit:'cover' }}/>
+        ))}
+      </div>
+      <span style={{ fontSize:24, fontWeight: winner?900:700, textTransform:'uppercase', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', color: winner?'#fff':'rgba(255,255,255,.78)' }}>
+        {nameStr.toUpperCase()}
       </span>
       {sets.map((v,i) => (
-        <span key={i} style={{ fontSize:15, fontWeight:800, minWidth:16, textAlign:'center', fontVariantNumeric:'tabular-nums', color: v===null?'rgba(255,255,255,.2)':winner?accent:'rgba(255,255,255,.7)' }}>
+        <span key={i} style={{ fontSize:24, fontWeight:900, minWidth:26, textAlign:'center', fontVariantNumeric:'tabular-nums', color: v===null?'rgba(255,255,255,.2)':winner?accent:'rgba(255,255,255,.75)' }}>
           {v===null?'':v}
         </span>
       ))}

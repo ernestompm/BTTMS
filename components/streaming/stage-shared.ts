@@ -20,6 +20,13 @@ export function fullName(p: any) {
   return `${p.first_name ?? ''} ${p.last_name ?? ''}`.trim()
 }
 
+/** Primer apellido — útil para dobles (ALONSO CANO → ALONSO). */
+export function firstSurname(p: any): string {
+  if (!p?.last_name) return ''
+  const parts = String(p.last_name).trim().split(/\s+/)
+  return parts[0] ?? p.last_name
+}
+
 // ─── Keyframes — explicit direction naming ──────────────────────────────────
 // Enter  keyframes: sgIn<Dir>   (from hidden → visible)
 // Exit   keyframes: sgOut<Dir>  (from visible → hidden)
