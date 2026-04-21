@@ -46,6 +46,14 @@ export function StageCanvas({ match, tournament, allMatches, referee, mainSponso
     }
     return null
   })()
+  // Derive team from player_id if data.team is missing — evita que preview y
+  // programa aparezcan en lados distintos por un payload sin team.
+  const bioTeam: 1|2 = (() => {
+    if (bioData?.team === 1 || bioData?.team === 2) return bioData.team
+    const pid = bioData?.player_id
+    if (pid && (match.entry1?.player1?.id === pid || match.entry1?.player2?.id === pid)) return 1
+    return 2
+  })()
 
   const isFinal = match.round === 'F'
   const flag = deriveLiveFlag(match.score as Score | null, { isFinal, servingTeam: match.serving_team })
@@ -63,7 +71,7 @@ export function StageCanvas({ match, tournament, allMatches, referee, mainSponso
       <Presence show={v('bracket')}             exitMs={700}>{(vis) => <BracketView        visible={vis} matches={allMatches} highlightMatchId={match.id} tournament={tournament} category={bracketCat}/>}</Presence>
       <Presence show={v('coin_toss')}           exitMs={700}>{(vis) => <CoinToss           visible={vis} match={match} tournament={tournament}/>}</Presence>
       <Presence show={v('stats_panel')}         exitMs={700}>{(vis) => <StatsPanel         visible={vis} match={match} tournament={tournament} scope={statsScope}/>}</Presence>
-      <Presence show={v('player_bio') && !!bioPlayer} exitMs={700}>{(vis) => <PlayerBio    visible={vis} player={bioPlayer!} team={bioData?.team ?? 1} category={match.category} tournament={tournament}/>}</Presence>
+      <Presence show={v('player_bio') && !!bioPlayer} exitMs={700}>{(vis) => <PlayerBio    visible={vis} player={bioPlayer!} team={bioTeam} category={match.category} tournament={tournament}/>}</Presence>
       <Presence show={v('weather')}             exitMs={650}>{(vis) => <WeatherCard       visible={vis} weather={weather} tournament={tournament}/>}</Presence>
       <Presence show={v('big_scoreboard')}      exitMs={700}>{(vis) => <BigScoreboard     visible={vis} match={match} tournament={tournament} sponsor={mainSponsor} opts={bigScoreOpts}/>}</Presence>
       <Presence show={v('referee_lower_third')} exitMs={700}>{(vis) => <RefereeLowerThird visible={vis} referee={referee} tournament={tournament}/>}</Presence>

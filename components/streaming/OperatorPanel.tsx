@@ -107,16 +107,20 @@ export function OperatorPanel({ session, initialMatch, tournament, rules, allMat
     return undefined
   }
 
-  async function selectGraphic(k: GraphicKey, data?: any) {
-    if (mode === 'take') {
-      // Directo: toggle en programa
-      if (isInProgram(k)) {
-        await hideGraphic(session.id, k); logEvent(session.id, 'manual_hide', k)
-      } else {
-        await showGraphic(session.id, k, { data }); logEvent(session.id, 'manual_show', k, { data })
-      }
+  async function directToProgram(k: GraphicKey, data?: any) {
+    // Bypass preview, salta directo a programa. Toggle si ya esta.
+    if (isInProgram(k)) {
+      await hideGraphic(session.id, k); logEvent(session.id, 'manual_hide', k)
     } else {
-      // Preview
+      await showGraphic(session.id, k, { data }); logEvent(session.id, 'manual_show', k, { data })
+    }
+  }
+
+  async function selectGraphic(k: GraphicKey, data?: any, direct = false) {
+    // direct=true OR modo take -> directo a programa
+    if (direct || mode === 'take') {
+      await directToProgram(k, data)
+    } else {
       setPreviewKey(k)
       setPreviewData(data ?? null)
     }
@@ -127,17 +131,27 @@ export function OperatorPanel({ session, initialMatch, tournament, rules, allMat
     await showGraphic(session.id, previewKey, { data: previewData })
     logEvent(session.id, 'manual_show', previewKey, { data: previewData })
   }
-  async function out() {
+  async function outProgram() {
     if (!previewKey) return
     await hideGraphic(session.id, previewKey)
     logEvent(session.id, 'manual_hide', previewKey)
   }
+  function outPreview() {
+    setPreviewKey(null)
+    setPreviewData(null)
+  }
   async function stopAll() {
     await hideAll(session.id)
-    setPreviewKey(null); setPreviewData(null)
+    outPreview()
   }
 
   // Hotkeys
+  //   <key>         -> IN preview (o directo en modo TAKE)
+  //   Shift+<key>   -> TAKE DIRECTO a programa (bypass preview, siempre)
+  //   T             -> OUT PREVIEW (limpia preview sin tocar programa)
+  //   N             -> TAKE (preview -> programa)
+  //   M             -> OUT PROGRAMA (ocultar lo que esta en preview, del programa)
+  //   ESC           -> STOP (oculta todo + limpia preview)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName
@@ -145,16 +159,16 @@ export function OperatorPanel({ session, initialMatch, tournament, rules, allMat
       if (e.metaKey || e.ctrlKey || e.altKey) return
       const up = e.key.toUpperCase()
       if (e.key === 'Escape') { e.preventDefault(); stopAll(); return }
-      if (up === 'N') { e.preventDefault(); take(); return }
-      if (up === 'M') { e.preventDefault(); out(); return }
-      if (up === 'T') { e.preventDefault(); if (previewKey) selectGraphic(previewKey, previewData); return }
+      if (up === 'N' && !e.shiftKey) { e.preventDefault(); take(); return }
+      if (up === 'M' && !e.shiftKey) { e.preventDefault(); outProgram(); return }
+      if (up === 'T' && !e.shiftKey) { e.preventDefault(); outPreview(); return }
       for (const k of GRAPHIC_ORDER) {
         const meta = GRAPHICS[k]
         if (!meta.hotkey) continue
         if (up === meta.hotkey) {
           e.preventDefault()
           if (k === 'player_bio') return       // bio se selecciona por jugador (boton)
-          selectGraphic(k, resolveData(k))
+          selectGraphic(k, resolveData(k), e.shiftKey)
           return
         }
       }
@@ -240,12 +254,15 @@ export function OperatorPanel({ session, initialMatch, tournament, rules, allMat
 
       {/* TAKE / OUT BAR (solo preview-take) */}
       {mode === 'preview-take' && (
-        <div style={{ padding:'8px 20px 18px', display:'flex', gap:10, alignItems:'center', justifyContent:'center' }}>
-          <button onClick={take}   disabled={!previewKey} style={bigBtn('#15803d', !previewKey)}>
+        <div style={{ padding:'8px 20px 18px', display:'flex', gap:10, alignItems:'center', justifyContent:'center', flexWrap:'wrap' }}>
+          <button onClick={take}        disabled={!previewKey} style={bigBtn('#15803d', !previewKey)}>
             TAKE <span style={{ opacity:.7, marginLeft:8, fontSize:12 }}>[N]</span>
           </button>
-          <button onClick={out}    disabled={!previewKey} style={bigBtn('#b45309', !previewKey)}>
-            OUT <span style={{ opacity:.7, marginLeft:8, fontSize:12 }}>[M]</span>
+          <button onClick={outProgram}  disabled={!previewKey} style={bigBtn('#b45309', !previewKey)}>
+            OUT PROGRAMA <span style={{ opacity:.7, marginLeft:8, fontSize:12 }}>[M]</span>
+          </button>
+          <button onClick={outPreview}  disabled={!previewKey} style={bigBtn('#374151', !previewKey)}>
+            OUT PREVIEW <span style={{ opacity:.7, marginLeft:8, fontSize:12 }}>[T]</span>
           </button>
           <button onClick={stopAll} style={bigBtn('#991b1b', false)}>
             STOP <span style={{ opacity:.7, marginLeft:8, fontSize:12 }}>[ESC]</span>
@@ -253,7 +270,7 @@ export function OperatorPanel({ session, initialMatch, tournament, rules, allMat
           <div style={{ marginLeft:14, fontSize:12, opacity:.6, letterSpacing:'.18em', textTransform:'uppercase' }}>
             {previewKey
               ? <>Preview: <b style={{ color:'#22d3ee' }}>{GRAPHICS[previewKey].label}</b> {isInProgram(previewKey) && <span style={{ color:'#ef4444', marginLeft:8 }}>● YA EN AIRE</span>}</>
-              : 'Pulsa un gráfico para cargar en preview'}
+              : <>Pulsa un gráfico para cargar preview · <span style={{ color:'#a78bfa' }}>SHIFT+click</span> o <span style={{ color:'#a78bfa' }}>SHIFT+hotkey</span> = directo a programa</>}
           </div>
         </div>
       )}
@@ -318,7 +335,7 @@ function Monitor({ label, color, indicator, children }: { label:string, color:st
 function ManualTab({ grouped, playersList, selectGraphic, resolveData, previewKey, previewData, program, mode, statsScope, setStatsScope, showSponsor, setShowSponsor }: {
   grouped: Record<string, GraphicKey[]>
   playersList: Array<{ team:1|2, p:any }>
-  selectGraphic: (k:GraphicKey, data?:any) => void
+  selectGraphic: (k:GraphicKey, data?:any, direct?:boolean) => void
   resolveData: (k:GraphicKey, bio?:{player_id:string,team:1|2}) => any
   previewKey: GraphicKey | null
   previewData: any
@@ -370,7 +387,7 @@ function ManualTab({ grouped, playersList, selectGraphic, resolveData, previewKe
             const inPreview = isInPreview('player_bio', data)
             const inProg = isInProgram('player_bio') && (program.player_bio?.data as any)?.player_id === p.id
             return (
-              <button key={p.id} onClick={() => selectGraphic('player_bio', data)} style={graphicBtn(inProg, inPreview, team===1?'#ef6a4c':'#af005f')}>
+              <button key={p.id} onClick={(e) => selectGraphic('player_bio', data, e.shiftKey)} title="Click = preview · Shift+Click = directo a programa" style={graphicBtn(inProg, inPreview, team===1?'#ef6a4c':'#af005f')}>
                 <div style={{ fontSize:12, opacity:.7, letterSpacing:'.12em', textTransform:'uppercase', marginBottom:2 }}>Eq. {team} · Bio</div>
                 <div style={{ fontSize:15, fontWeight:900, textTransform:'uppercase' }}>{p.first_name} {p.last_name}</div>
                 <StateBadge inProg={inProg} inPreview={inPreview} mode={mode}/>
@@ -391,7 +408,7 @@ function ManualTab({ grouped, playersList, selectGraphic, resolveData, previewKe
               const inPreview = isInPreview(k, data)
               const inProg = isInProgram(k)
               return (
-                <button key={k} onClick={() => selectGraphic(k, data)} style={graphicBtn(inProg, inPreview, '#ef6a4c')}>
+                <button key={k} onClick={(e) => selectGraphic(k, data, e.shiftKey)} title="Click = preview · Shift+Click = directo a programa" style={graphicBtn(inProg, inPreview, '#ef6a4c')}>
                   <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                     <span style={{ fontSize:13, fontWeight:900, letterSpacing:'.08em', textTransform:'uppercase' }}>{meta.label}</span>
                     <span style={{ fontSize:11, opacity:.55 }}>{meta.hotkey ? `[${meta.hotkey}]` : ''}</span>
