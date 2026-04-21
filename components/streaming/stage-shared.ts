@@ -52,6 +52,16 @@ export const STREAM_KEYFRAMES = `
 /* Reveal desde el borde derecho hacia la izquierda (flag pill del scorebug) */
 @keyframes sgInRight { from{clip-path:inset(0 0 0 100%);opacity:0}                    to{clip-path:inset(0 0 0 0);opacity:1} }
 @keyframes sgOutRight{ from{clip-path:inset(0 0 0 0);opacity:1}                       to{clip-path:inset(0 0 0 100%);opacity:0} }
+/* Pill emergiendo desde la derecha — combina slide + clip + fade para un
+   efecto m\u00e1s visible y elegante. Emparejar con easing ease-out-expo. */
+@keyframes sgInPillR {
+  from { opacity:0; transform:translateX(34px); clip-path:inset(0 0 0 100%) }
+  to   { opacity:1; transform:translateX(0);    clip-path:inset(0 0 0 0) }
+}
+@keyframes sgOutPillR {
+  from { opacity:1; transform:translateX(0);    clip-path:inset(0 0 0 0) }
+  to   { opacity:0; transform:translateX(34px); clip-path:inset(0 0 0 100%) }
+}
 @keyframes sgBlink    { 0%,100%{opacity:1} 50%{opacity:.3} }
 @keyframes sgSrvPulse { 0%,100%{box-shadow:0 0 0 0 rgba(239,106,76,.7)} 50%{box-shadow:0 0 0 12px rgba(239,106,76,0)} }
 @keyframes sgSheen    { 0%{transform:translateX(-110%)} 60%,100%{transform:translateX(210%)} }
@@ -60,10 +70,12 @@ export const STREAM_KEYFRAMES = `
 @keyframes sgDigitUp  { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:none} }
 `
 
-/** Build an animation style using explicit enter/exit keyframes. */
-export function animStyle(visible: boolean, enter: string, exit: string, ms = 650): React.CSSProperties {
+/** Build an animation style using explicit enter/exit keyframes.
+ *  Por defecto usa ease-out estandar; se puede pasar custom ease para
+ *  algunas transiciones (p.ej. pills con 'cubic-bezier(.19,1,.22,1)'). */
+export function animStyle(visible: boolean, enter: string, exit: string, ms = 650, ease = 'cubic-bezier(.22,.9,.25,1)'): React.CSSProperties {
   return {
-    animation: `${visible ? enter : exit} ${ms}ms cubic-bezier(.22,.9,.25,1) both`,
+    animation: `${visible ? enter : exit} ${ms}ms ${ease} both`,
     willChange: 'transform, opacity',
   }
 }
