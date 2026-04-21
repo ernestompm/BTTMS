@@ -642,27 +642,21 @@ export function Scorebug({ visible, match, tournament, flag, tickerStat }: { vis
                   </span>
                 </div>
               ))}
-              {/* Puntos / Stat (misma celda 54px, sin cambio de layout) */}
+              {/* Puntos / Stat (misma celda 54px, sin cambio de layout).
+                  El LABEL de la stat no va dentro — va como pill debajo. */}
               <div style={{ gridRow:row, gridColumn:3+setCount, display:'grid', placeItems:'center',
                 background: showTicker ? 'rgba(0,0,0,.35)' : hexAlpha(r.accent,.92),
-                color:'#fff', fontWeight:900, letterSpacing:'-.01em',
+                color:'#fff', fontSize:32, fontWeight:900, letterSpacing:'-.01em',
                 borderBottom: ri===0 ? '1px solid rgba(255,255,255,.12)' : 'none',
                 borderLeft: showTicker ? '1px solid rgba(255,255,255,.06)' : 'none',
-                overflow:'hidden', fontVariantNumeric:'tabular-nums', padding:'0 4px' }}>
+                overflow:'hidden', fontVariantNumeric:'tabular-nums' }}>
                 {showTicker
-                  ? (
-                    <div key={`st-${r.team}-${tickerStat}`} style={{ display:'flex', flexDirection:'column', alignItems:'center', lineHeight:1, animation:'sgDigitIn 380ms cubic-bezier(.22,.9,.25,1) both' }}>
-                      <span style={{ fontSize:28, color: r.accent, fontWeight:900 }}>{tickerVal}</span>
-                      <span style={{ fontSize:11, opacity:.6, letterSpacing:'.16em', fontWeight:800, marginTop:3, textTransform:'uppercase', whiteSpace:'nowrap' }}>
-                        {tickerLabel}
-                      </span>
-                    </div>
-                  )
-                  : (
-                    <span key={`pt${r.team}-${r.pt}`} style={{ display:'inline-block', fontSize:32, animation:'sgDigitIn 380ms cubic-bezier(.22,.9,.25,1) both' }}>
+                  ? <span key={`st-${r.team}-${tickerStat}-${tickerVal}`} style={{ display:'inline-block', color: r.accent, animation:'sgDigitIn 380ms cubic-bezier(.22,.9,.25,1) both' }}>
+                      {tickerVal}
+                    </span>
+                  : <span key={`pt${r.team}-${r.pt}`} style={{ display:'inline-block', animation:'sgDigitIn 380ms cubic-bezier(.22,.9,.25,1) both' }}>
                       {r.pt}
                     </span>
-                  )
                 }
               </div>
             </div>
@@ -670,18 +664,31 @@ export function Scorebug({ visible, match, tournament, flag, tickerStat }: { vis
         })}
       </div>
 
-      {/* Flag banner — pill de una línea alineada a la derecha, sale desde
-          el borde derecho y crece hacia la izquierda (ancho automático). */}
-      <div style={{ display:'flex', justifyContent:'flex-end' }}>
-        <Presence show={!!(flag.kind && flag.label)} exitMs={380}>
-          {(vis) => (
+      {/* Pills derechos (stat label + flag banner) — ancho auto, alineados
+          al borde derecho del card. Cada uno tiene su propio slot flex así
+          que aparecen uno encima del otro, siempre anclados a la derecha. */}
+      <Presence show={showTicker} exitMs={650}>
+        {(vis) => (
+          <div style={{ display:'flex', justifyContent:'flex-end' }}>
+            <div key={`tlab-${tickerStat}`} style={{ padding:'5px 16px', background:'rgba(255,255,255,.08)', color:pal.accentA,
+              fontSize:20, fontWeight:900, letterSpacing:'.28em', textTransform:'uppercase', whiteSpace:'nowrap',
+              borderTop:`1px solid ${hexAlpha(pal.accentA,.3)}`,
+              ...animStyle(vis, 'sgInRight', 'sgOutRight', 650) }}>
+              {tickerLabel}
+            </div>
+          </div>
+        )}
+      </Presence>
+      <Presence show={!!(flag.kind && flag.label)} exitMs={600}>
+        {(vis) => (
+          <div style={{ display:'flex', justifyContent:'flex-end' }}>
             <div style={{ padding:'6px 18px', background:flagColor ?? '#ef6a4c', color:'#000', fontSize:22, fontWeight:900, letterSpacing:'.26em', textTransform:'uppercase', whiteSpace:'nowrap',
-              ...animStyle(vis, 'sgInRight', 'sgOutRight', 380) }}>
+              ...animStyle(vis, 'sgInRight', 'sgOutRight', 600) }}>
               {flag.label}
             </div>
-          )}
-        </Presence>
-      </div>
+          </div>
+        )}
+      </Presence>
     </div>
   )
 }
