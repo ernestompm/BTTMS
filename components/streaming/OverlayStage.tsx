@@ -96,8 +96,17 @@ export function MiniStage(props: StageCanvasProps) {
   const scale = size.w && size.h ? Math.min(size.w / STAGE_W, size.h / STAGE_H) : 0
   return (
     <div ref={boxRef} style={{ position:'relative', width:'100%', height:'100%', overflow:'hidden' }}>
-      <div style={{ position:'absolute', left:'50%', top:'50%', width:STAGE_W, height:STAGE_H, transformOrigin:'center center',
-        transform:`translate(-50%,-50%) scale(${scale || 0.01})`, opacity: scale ? 1 : 0 }}>
+      {/* Fuente forzada a Barlow Condensed (igual que el overlay) — el panel
+          operador usa Barlow y sin esto el preview renderiza con tipografia
+          mas ancha que el programa, provocando wraps distintos. */}
+      <div style={{
+        position:'absolute', left:'50%', top:'50%', width:STAGE_W, height:STAGE_H,
+        transformOrigin:'center center',
+        transform:`translate(-50%,-50%) scale(${scale || 0.01})`,
+        opacity: scale ? 1 : 0,
+        fontFamily: "'Barlow Condensed', system-ui, sans-serif",
+        color: '#fff',
+      }}>
         <StageCanvas {...props}/>
       </div>
     </div>
