@@ -311,148 +311,119 @@ export function VenueScoreboard({ initialMatch, config, tournamentName, sponsors
           )}
 
           {/* ── FINISHED ─────────────────────────────────────── */}
+          {/* Misma layout que el pre-match (cards laterales con nombres
+              grandes y bandera) pero en el centro, en vez del VS, se
+              muestran los sets apilados con los resultados. El equipo
+              ganador queda visualmente resaltado (fondo glow + borde
+              accent + nombres bold + texto "GANA EL PARTIDO" debajo). */}
           {isFinished && (() => {
-            // Computar los sets a mostrar. Fallback: si la partida acabo con
-            // super TB y por algun bug no se empujo a score.sets, lo
-            // reconstruimos desde tiebreak_score.
+            // Sets a mostrar — fallback super TB orfano si el engine antiguo
+            // no lo pusheo a score.sets
             const baseSets = score?.sets ?? []
             const tb = score?.tiebreak_score
             const hasOrphanSuperTB = !!(score?.super_tiebreak_active && tb && (tb.t1 > 0 || tb.t2 > 0))
             const displaySets = hasOrphanSuperTB
               ? [...baseSets, { t1: tb!.t1, t2: tb!.t2 }]
               : baseSets
-            // Detectar si el ULTIMO set guardado es un super TB. Convencion
-            // beach tennis: best_of_2_sets_super_tb -> set 3 con valores >=10
-            // es el super TB.
             const isSuperTbAt = (i: number) => {
               const s = displaySets[i]
               if (!s) return false
               if (i === displaySets.length - 1 && (match.scoring_system === 'best_of_2_sets_super_tb' || hasOrphanSuperTB)) {
-                if (i >= 2) return true  // set 3 en best-of-2 = super TB
-                if (Math.max(s.t1, s.t2) >= 10) return true  // o cualquier valor >=10
+                if (i >= 2) return true
+                if (Math.max(s.t1, s.t2) >= 10) return true
               }
               return false
             }
-            // Ancho de columna: super TB a 200px porque caben 2 digitos
-            const setColWidth = (i: number) => isSuperTbAt(i) ? '200px' : '170px'
-            // Reservar mas espacio para el "GANADOR" — 220px en vez de 80px
-            const winnerColPx = 220
+
+            // Tamaño compartido entre A y B para los apellidos (mismo
+            // criterio que el pre-match) — sin autoshrink, con wrap a 2
+            // lineas si el apellido lleva espacios.
+            const isDoubles = teamA.players.length > 1
+            const finishedNameFs = isDoubles ? 110 : 156
 
             return (
-            <div className="absolute z-10" style={{ left:64, right:64, top:190, bottom: showSponsors && sponsorList.length ? 260 : 60, display:'flex', flexDirection:'column', justifyContent:'center', gap:28 }}>
+            <div className="absolute z-10" style={{
+              left:64, right:64, top:172, bottom: showSponsors&&sponsorList.length>0?252:60,
+              display:'grid', gridTemplateColumns:'1fr auto 1fr', gap:40, alignItems:'stretch',
+              animation:'phaseIn .75s cubic-bezier(.2,.9,.25,1) both',
+            }}>
 
-              {/* Status banner */}
-              <div style={{ textAlign:'center', marginBottom:8 }}>
-                <span style={{ display:'inline-block', padding:'14px 48px', background: hexAlpha(accentA,.18), border:`2px solid ${hexAlpha(accentA,.5)}`, borderRadius:999, fontWeight:900, fontSize:30, letterSpacing:'.3em', textTransform:'uppercase', color:accentA }}>
+              {/* Team A card — reutiliza el mismo PreMatchTeamCard */}
+              <FinishedTeamCard
+                team={teamA} accent={accentA} isRight={false}
+                showFlags={showFlags} showSeed={showSeed} nameFs={finishedNameFs}
+                won={winnerTeam === 1}
+              />
+
+              {/* CENTER — set scores apilados en lugar del VS */}
+              <div style={{
+                display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+                animation:'vsIn .9s cubic-bezier(.2,.9,.25,1) .15s both', minWidth:340,
+              }}>
+                {/* Status banner arriba (PARTIDO FINALIZADO / RETIRADO / W.O.) */}
+                <div style={{
+                  fontSize:30, letterSpacing:'.36em', opacity:.85, textTransform:'uppercase',
+                  fontWeight:900, marginBottom:24, textAlign:'center', lineHeight:1.2,
+                  whiteSpace:'nowrap', color:accentA,
+                }}>
                   {STATUS_LABELS[status] ?? status.toUpperCase()}
-                  {status === 'retired' && match.retired_team ? ` — EQUIPO ${match.retired_team}` : ''}
-                </span>
-              </div>
+                  {status === 'retired' && match.retired_team ? ` (Eq.${match.retired_team})` : ''}
+                </div>
 
-              {/* Set headers (SET 1, SET 2, SUPER TB) */}
-              <div style={{ display:'grid', gridTemplateColumns:`${showSeed?'100px ':''}minmax(0,1fr) ${displaySets.map((_,i)=>setColWidth(i)).join(' ')} ${winnerColPx}px`, padding:'0 0 6px 0' }}>
-                {showSeed && <div/>}
-                <div/>
-                {displaySets.map((_,i) => (
-                  <div key={i} style={{
-                    textAlign:'center',
-                    fontWeight:700, fontSize: isSuperTbAt(i) ? 22 : 24,
-                    letterSpacing:'.26em', textTransform:'uppercase',
-                    color: isSuperTbAt(i) ? '#fbbf24' : 'rgba(255,255,255,.55)',
-                  }}>
-                    {isSuperTbAt(i) ? 'SUPER TB' : `SET ${i+1}`}
-                  </div>
-                ))}
-                <div/>
-              </div>
-
-              {/* Final score rows */}
-              {(['A','B'] as const).map(key => {
-                const t = key==='A' ? teamA : teamB
-                const accent = key==='A' ? accentA : accentB
-                const teamNum = key==='A' ? 1 : 2
-                const won = winnerTeam === teamNum
-                return (
-                  <div key={key} style={{
-                    display:'grid',
-                    gridTemplateColumns:`${showSeed?'100px ':''}minmax(0,1fr) ${displaySets.map((_,i)=>setColWidth(i)).join(' ')} ${winnerColPx}px`,
-                    alignItems:'stretch',
-                    // Resalte del ganador: fondo MAS saturado + glow + borde
-                    // izquierdo gordo del color del equipo. Sin icono trofeo.
-                    background: won
-                      ? `linear-gradient(90deg, ${hexAlpha(accent,.32)} 0%, ${hexAlpha(accent,.12)} 100%)`
-                      : 'rgba(255,255,255,.03)',
-                    borderLeft: `${won ? 18 : 8}px solid ${won?accent:'rgba(255,255,255,.10)'}`,
-                    borderRadius:10, overflow:'hidden',
-                    boxShadow: won ? `inset 0 0 0 2px ${hexAlpha(accent,.5)}, 0 0 32px ${hexAlpha(accent,.30)}` : 'none',
-                    opacity: won ? 1 : .65,
-                    animation:'vsbPop .4s ease',
-                  }}>
-                    {showSeed && (
-                      <div style={{ display:'grid', placeItems:'center', fontWeight:800, fontSize:48, color: won ? accent : 'rgba(255,255,255,.45)', borderRight:'1px solid rgba(255,255,255,.06)' }}>
-                        {t.seed??''}
-                      </div>
-                    )}
-                    <div style={{ display:'flex', flexDirection:'column', justifyContent:'center', padding:'0 28px', gap:10, borderRight:'1px solid rgba(255,255,255,.06)' }}>
-                      {t.players.map((p:any,i:number) => (
-                        <div key={p?.id??i} style={{ display:'flex', alignItems:'center', gap:20 }}>
-                          {showFlags && p?.nationality && (
-                            <span style={{ flex:'none', width:58, height:40, borderRadius:4, overflow:'hidden', boxShadow:'0 2px 8px rgba(0,0,0,.4)' }}>
-                              <img src={`/Flags/${p.nationality.toUpperCase()}.jpg`} alt={p.nationality} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
-                            </span>
-                          )}
-                          <span style={{
-                            fontWeight: won ? 900 : 700,
-                            fontSize: t.players.length===1 ? 110 : 78,
-                            lineHeight:.9, letterSpacing:'.015em', textTransform:'uppercase', whiteSpace:'nowrap',
-                            color: won ? '#fff' : 'rgba(255,255,255,.78)',
-                          }}>
-                            {(p?.last_name??p?.name??'').toUpperCase()}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                    {displaySets.map((s,i) => {
-                      const my = key==='A' ? s.t1 : s.t2
-                      const op = key==='A' ? s.t2 : s.t1
-                      const setWon = my > op
-                      const isTb = isSuperTbAt(i)
-                      return (
-                        <div key={i} style={{
-                          display:'grid', placeItems:'center',
+                {/* Set scores stacked — t1-t2 separados por dash, ganador
+                    de cada set se ve en color del equipo */}
+                <div style={{ display:'flex', flexDirection:'column', gap:18, alignItems:'center' }}>
+                  {displaySets.map((s, i) => {
+                    const aWon = s.t1 > s.t2
+                    const bWon = s.t2 > s.t1
+                    const isTb = isSuperTbAt(i)
+                    return (
+                      <div key={i} style={{
+                        display:'flex', flexDirection:'column', alignItems:'center', lineHeight:1,
+                      }}>
+                        {/* Label set / super TB */}
+                        <span style={{
+                          fontSize: isTb ? 22 : 22,
+                          letterSpacing:'.32em', textTransform:'uppercase',
                           fontWeight:800,
-                          fontSize: isTb ? 130 : 148,  // un pelin mas chico para 2 digitos
-                          lineHeight:.92, fontVariantNumeric:'tabular-nums',
-                          borderRight:'1px solid rgba(255,255,255,.06)',
-                          background: isTb
-                            ? (setWon ? 'rgba(251,191,36,.15)' : 'rgba(0,0,0,.18)')
-                            : 'rgba(0,0,0,.18)',
-                          opacity: setWon ? 1 : .45,
-                          color: setWon ? (isTb ? '#fbbf24' : 'rgba(255,255,255,.95)') : 'rgba(255,255,255,.6)',
-                          position:'relative',
+                          color: isTb ? '#fbbf24' : 'rgba(255,255,255,.55)',
+                          marginBottom:6,
                         }}>
-                          {my}
-                          {setWon && <span style={{ position:'absolute', bottom:10, left:'18%', right:'18%', height:6, borderRadius:3, background: isTb ? '#fbbf24' : accent }} />}
+                          {isTb ? 'SUPER TB' : `SET ${i+1}`}
+                        </span>
+                        {/* Score */}
+                        <div style={{
+                          display:'flex', alignItems:'baseline', gap:18,
+                          fontSize:140, fontWeight:900, lineHeight:.95,
+                          letterSpacing:'-.025em', fontVariantNumeric:'tabular-nums',
+                        }}>
+                          <span style={{ color: aWon ? accentA : 'rgba(255,255,255,.55)' }}>{s.t1}</span>
+                          <span style={{ color:'rgba(255,255,255,.30)', fontWeight:600 }}>—</span>
+                          <span style={{ color: bWon ? accentB : 'rgba(255,255,255,.55)' }}>{s.t2}</span>
                         </div>
-                      )
-                    })}
-                    {/* Winner column — texto GRANDE, horizontal, color del
-                        equipo. Sin icono. */}
-                    <div style={{ display:'grid', placeItems:'center', padding:'0 12px' }}>
-                      {won ? (
-                        <div style={{ textAlign:'center', lineHeight:1 }}>
-                          <div style={{ fontWeight:900, fontSize:64, color:accent, letterSpacing:'-.01em', textTransform:'uppercase', textShadow:`0 4px 24px ${hexAlpha(accent,.55)}` }}>
-                            GANA
-                          </div>
-                          <div style={{ marginTop:8, fontWeight:800, fontSize:22, color:'rgba(255,255,255,.85)', letterSpacing:'.30em', textTransform:'uppercase' }}>
-                            EL PARTIDO
-                          </div>
-                        </div>
-                      ) : null}
-                    </div>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Tiempo total del partido */}
+                {match.started_at && (
+                  <div style={{
+                    marginTop:30,
+                    fontSize:20, letterSpacing:'.28em', opacity:.65, textTransform:'uppercase',
+                    fontWeight:800, textAlign:'center',
+                  }}>
+                    {`Duración · ${matchTime}`}
                   </div>
-                )
-              })}
+                )}
+              </div>
+
+              {/* Team B card */}
+              <FinishedTeamCard
+                team={teamB} accent={accentB} isRight={true}
+                showFlags={showFlags} showSeed={showSeed} nameFs={finishedNameFs}
+                won={winnerTeam === 2}
+              />
             </div>
             )
           })()}
@@ -581,6 +552,93 @@ function PreMatchTeamCard({ team, accent, isRight, showFlags, showSeed, nameFs }
           )
         })}
       </div>
+    </div>
+  )
+}
+
+// ── Finished team card ────────────────────────────────────────────────────
+// Misma estructura que PreMatchTeamCard pero con resaltado del equipo
+// ganador: borde gordo accent + glow + fondo saturado + tag "GANA EL
+// PARTIDO" debajo. El equipo perdedor se muestra atenuado (.65 opacity).
+interface FinishedTeamCardProps extends PreMatchTeamCardProps { won: boolean }
+function FinishedTeamCard({ team, accent, isRight, showFlags, showSeed, nameFs, won }: FinishedTeamCardProps) {
+  const isDoubles = team.players.length > 1
+  const fs = nameFs ?? (isDoubles ? 110 : 156)
+  return (
+    <div style={{
+      display:'flex', flexDirection:'column', justifyContent:'center',
+      gap: isDoubles ? 32 : 0,
+      padding:'48px 52px', borderRadius:14,
+      background: won
+        ? `linear-gradient(180deg, ${hexAlpha(accent,.22)} 0%, ${hexAlpha(accent,.05)} 100%)`
+        : 'linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.01))',
+      border: '1px solid rgba(255,255,255,.09)',
+      borderTop: `${won ? 14 : 8}px solid ${won ? accent : hexAlpha(accent,.4)}`,
+      boxShadow: won ? `inset 0 0 0 2px ${hexAlpha(accent,.4)}, 0 0 60px ${hexAlpha(accent,.30)}` : 'none',
+      alignItems: isRight ? 'flex-end' : 'flex-start',
+      animation:`cardIn .75s cubic-bezier(.2,.9,.25,1) ${isRight?'.2s':'0s'} both`,
+      overflow:'hidden',
+      minWidth: 0,
+      opacity: won ? 1 : .68,
+      transition: 'all 300ms ease',
+    }}>
+      {/* Seed */}
+      {showSeed && team.seed && (
+        <div style={{ fontWeight:900, fontSize:60, letterSpacing:'.24em', color: won ? accent : `${hexAlpha(accent,.55)}`, lineHeight:1 }}>
+          ({team.seed})
+        </div>
+      )}
+
+      {/* Nombres + bandera */}
+      <div style={{ display:'flex', flexDirection:'column', gap: isDoubles ? 36 : 0, alignItems: isRight?'flex-end':'flex-start', width:'100%' }}>
+        {team.players.map((p:any, i:number) => {
+          const nat = (p?.nationality ?? 'ESP').toUpperCase()
+          const last = (p?.last_name ?? p?.name ?? '').toUpperCase()
+          const first = (p?.first_name ?? '').toUpperCase()
+          return (
+            <div key={p?.id??i} style={{ display:'flex', alignItems:'center', gap:20, flexDirection: isRight?'row-reverse':'row', width:'100%', minWidth:0 }}>
+              {showFlags && (
+                <span style={{ flex:'none', width:78, height:54, borderRadius:6, overflow:'hidden', boxShadow:'0 2px 8px rgba(0,0,0,.4),inset 0 0 0 1px rgba(0,0,0,.25)', alignSelf:'flex-start', marginTop:Math.round(fs*0.35) }}>
+                  <img src={`/Flags/${nat}.jpg`} alt={nat} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                </span>
+              )}
+              <div style={{ display:'flex', flexDirection:'column', alignItems: isRight?'flex-end':'flex-start', minWidth:0, flex:1 }}>
+                {first && (
+                  <span style={{ fontWeight:700, fontSize:Math.round(fs*0.28), lineHeight:1, letterSpacing:'.04em', textTransform:'uppercase', opacity: won ? .9 : .7, marginBottom:6 }}>
+                    {first}
+                  </span>
+                )}
+                <span style={{
+                  fontWeight:900, fontSize:fs, lineHeight:.86,
+                  textTransform:'uppercase', letterSpacing:'-.005em',
+                  whiteSpace:'normal', wordBreak:'normal', overflowWrap:'normal',
+                  hyphens:'none',
+                  textAlign: isRight ? 'right' : 'left',
+                  width:'100%',
+                  color: won ? '#fff' : 'rgba(255,255,255,.78)',
+                  textShadow: won ? `0 4px 24px ${hexAlpha(accent,.55)}` : 'none',
+                }}>
+                  {last}
+                </span>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Tag "GANA EL PARTIDO" — solo en el card ganador */}
+      {won && (
+        <div style={{
+          marginTop: 24, alignSelf: isRight ? 'flex-end' : 'flex-start',
+          padding: '14px 36px', borderRadius: 999,
+          background: accent, color: '#fff',
+          boxShadow: `0 12px 32px ${hexAlpha(accent,.55)}, inset 0 1px 0 rgba(255,255,255,.30)`,
+        }}>
+          <span style={{ fontWeight: 900, fontSize: 32, letterSpacing: '.30em', textTransform: 'uppercase' }}>
+            GANA EL PARTIDO
+          </span>
+        </div>
+      )}
     </div>
   )
 }
