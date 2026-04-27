@@ -8,7 +8,7 @@
 //  · dark glass card  · 6-8px accent top bar  · 'Barlow Condensed'
 // ============================================================================
 
-import { useEffect, useState, useMemo } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import type { Score, Player, Sponsor, Tournament, WeatherData, Category } from '@/types'
 import { CATEGORY_LABELS } from '@/types'
 import { animStyle, hexAlpha, flagPath, palette, firstSurname, CARD, KICKER } from './stage-shared'
@@ -1122,80 +1122,125 @@ function WxMetric({ icon, value, unit, extra }: { icon:string, value:string, uni
 }
 
 // ╔══════════════════════════════════════════════════════════════════════════╗
-// ║ 12) BRACKET — llaves QF → SF → F con conectores                          ║
+// ║ 12) BRACKET — dinámico desde la primera ronda con datos hasta la FINAL   ║
 // ╚══════════════════════════════════════════════════════════════════════════╝
+const BRACKET_KO_ROUNDS = ['R32','R16','QF','SF','F'] as const
+type KoRound = typeof BRACKET_KO_ROUNDS[number]
+const BRACKET_HEADER_LBL: Record<KoRound,string> = {
+  R32: '1/16',
+  R16: 'OCTAVOS',
+  QF:  'CUARTOS',
+  SF:  'SEMIFINALES',
+  F:   'FINAL',
+}
+const BRACKET_SLOTS: Record<KoRound, number> = { R32:16, R16:8, QF:4, SF:2, F:1 }
+
 export function BracketView({ visible, matches, highlightMatchId, tournament, category }:
   { visible:boolean, matches:any[], highlightMatchId?:string|null, tournament: Tournament | null, category?: string }) {
   const pal = palette(tournament?.scoreboard_config)
+  const LC = 'rgba(255,255,255,.3)'
 
-  const byRound: Record<string, any[]> = { QF:[], SF:[], F:[] }
+  // Agrupar por ronda y ordenar
+  const byRound: Record<string, any[]> = { R32:[], R16:[], QF:[], SF:[], F:[] }
   matches.forEach(m => { if (byRound[m.round]) byRound[m.round].push(m) })
-  ;(['QF','SF','F'] as const).forEach(r => byRound[r].sort((a,b) => (a.match_number||0) - (b.match_number||0)))
-  const qf = [...byRound.QF]; while (qf.length < 4) qf.push(null as any)
-  const sf = [...byRound.SF]; while (sf.length < 2) sf.push(null as any)
-  const f  = [...byRound.F];  while (f.length  < 1) f.push(null as any)
+  BRACKET_KO_ROUNDS.forEach(r => byRound[r].sort((a,b) => (a.match_number||0) - (b.match_number||0)))
 
-  const LC = 'rgba(255,255,255,.3)' // line color
+  // Detectar primera ronda con partidos. Si no hay nada, arrancar en QF.
+  const present = BRACKET_KO_ROUNDS.filter(r => byRound[r].length > 0)
+  const firstRound: KoRound = (present[0] ?? 'QF') as KoRound
+  const firstIdx = BRACKET_KO_ROUNDS.indexOf(firstRound)
+  const visibleRounds = BRACKET_KO_ROUNDS.slice(firstIdx) as KoRound[]
+
+  // Por cada ronda visible, rellenar a tamaño esperado mapeando por match_number
+  const roundsData: Array<{ round: KoRound, slots: any[] }> = visibleRounds.map(r => {
+    const expected = BRACKET_SLOTS[r]
+    const byNum: Record<number, any> = {}
+    byRound[r].forEach((m:any) => { if (m.match_number) byNum[m.match_number] = m })
+    const slots: any[] = []
+    for (let i = 1; i <= expected; i++) slots.push(byNum[i] ?? null)
+    return { round: r, slots }
+  })
+
+  const totalRows = BRACKET_SLOTS[firstRound] * 2  // ej. R16 -> 16 filas
+  const N_COLS = visibleRounds.length
+
+  // Plantilla de columnas: alterna [ronda 1fr] [conector 60px] [ronda 1fr] ...
+  const colTracks: string[] = []
+  for (let i = 0; i < N_COLS; i++) {
+    if (i > 0) colTracks.push('60px')
+    colTracks.push('1fr')
+  }
+  const gridCols = colTracks.join(' ')
 
   return (
-    <div style={{ position:'absolute', left:'50%', top:'50%', transform:'translate(-50%,-50%)', width:1720, height:940, ...CARD, padding:0, overflow:'hidden',
+    <div style={{ position:'absolute', left:'50%', top:'50%', transform:'translate(-50%,-50%)', width:1760, height:960, ...CARD, padding:0, overflow:'hidden',
       borderTop:`10px solid ${pal.accentA}`,
       ...animStyle(visible, 'sgInZC', 'sgOutZC', 700) }}>
       {/* HEADER */}
-      <div style={{ padding:'22px 40px', borderBottom:'1px solid rgba(255,255,255,.08)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+      <div style={{ padding:'20px 36px', borderBottom:'1px solid rgba(255,255,255,.08)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
         <div>
-          <div style={{ fontSize:26, letterSpacing:'.34em', textTransform:'uppercase', fontWeight:900, opacity:.55, marginBottom:4 }}>Cuadro final</div>
-          <div style={{ fontSize:46, fontWeight:900, textTransform:'uppercase', lineHeight:.95 }}>{CATEGORY_LABELS[(category ?? matches[0]?.category) as Category] ?? ''}</div>
+          <div style={{ fontSize:24, letterSpacing:'.34em', textTransform:'uppercase', fontWeight:900, opacity:.55, marginBottom:4 }}>Cuadro</div>
+          <div style={{ fontSize:42, fontWeight:900, textTransform:'uppercase', lineHeight:.95 }}>{CATEGORY_LABELS[(category ?? matches[0]?.category) as Category] ?? ''}</div>
         </div>
-        {tournament?.logo_url && <img src={tournament.logo_url} alt="" style={{ height:66 }}/>}
+        {tournament?.logo_url && <img src={tournament.logo_url} alt="" style={{ height:60 }}/>}
       </div>
 
       {/* ROUND HEADERS */}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 70px 1fr 70px 1fr', padding:'16px 40px 0' }}>
-        {['CUARTOS DE FINAL','','SEMIFINALES','','FINAL'].map((t,i) => (
-          t ? <div key={i} style={{ textAlign:'center', fontSize:24, letterSpacing:'.3em', fontWeight:900, color:pal.accentA, textTransform:'uppercase' }}>{t}</div> : <div key={i}/>
+      <div style={{ display:'grid', gridTemplateColumns:gridCols, padding:'14px 32px 0', gap:0 }}>
+        {visibleRounds.map((r, i) => (
+          <React.Fragment key={r}>
+            {i > 0 && <div/>}
+            <div style={{ textAlign:'center', fontSize:22, letterSpacing:'.3em', fontWeight:900, color:pal.accentA, textTransform:'uppercase' }}>
+              {BRACKET_HEADER_LBL[r]}
+            </div>
+          </React.Fragment>
         ))}
       </div>
 
       {/* BRACKET GRID */}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 70px 1fr 70px 1fr', gridTemplateRows:'repeat(8, 1fr)', height:720, padding:'14px 40px 28px' }}>
-        {/* QF slots (rows 1/3, 3/5, 5/7, 7/9) */}
-        {qf.map((m,i) => (
-          <div key={`qf${i}`} style={{ gridColumn:1, gridRow:`${i*2+1}/${i*2+3}`, display:'flex', alignItems:'center', padding:'6px 0' }}>
-            <BracketSlot m={m} hot={m?.id===highlightMatchId} accentA={pal.accentA} accentB={pal.accentB}/>
-          </div>
-        ))}
-        {/* Connectors QF→SF */}
-        <div style={{ gridColumn:2, gridRow:'1/9', position:'relative' }}>
-          {/* Pair 1 (QF1+QF2 → SF1) */}
-          <div style={{ position:'absolute', left:0, width:'50%', top:'calc(12.5% - 1px)', height:2, background:LC }}/>
-          <div style={{ position:'absolute', left:0, width:'50%', top:'calc(37.5% - 1px)', height:2, background:LC }}/>
-          <div style={{ position:'absolute', left:'calc(50% - 1px)', top:'12.5%', height:'25%', width:2, background:LC }}/>
-          <div style={{ position:'absolute', left:'50%', right:0, top:'calc(25% - 1px)', height:2, background:LC }}/>
-          {/* Pair 2 (QF3+QF4 → SF2) */}
-          <div style={{ position:'absolute', left:0, width:'50%', top:'calc(62.5% - 1px)', height:2, background:LC }}/>
-          <div style={{ position:'absolute', left:0, width:'50%', top:'calc(87.5% - 1px)', height:2, background:LC }}/>
-          <div style={{ position:'absolute', left:'calc(50% - 1px)', top:'62.5%', height:'25%', width:2, background:LC }}/>
-          <div style={{ position:'absolute', left:'50%', right:0, top:'calc(75% - 1px)', height:2, background:LC }}/>
-        </div>
-        {/* SF slots (rows 2/4 and 6/8) */}
-        <div style={{ gridColumn:3, gridRow:'2/4', display:'flex', alignItems:'center', padding:'6px 0' }}>
-          <BracketSlot m={sf[0]} hot={sf[0]?.id===highlightMatchId} accentA={pal.accentA} accentB={pal.accentB}/>
-        </div>
-        <div style={{ gridColumn:3, gridRow:'6/8', display:'flex', alignItems:'center', padding:'6px 0' }}>
-          <BracketSlot m={sf[1]} hot={sf[1]?.id===highlightMatchId} accentA={pal.accentA} accentB={pal.accentB}/>
-        </div>
-        {/* Connectors SF→F */}
-        <div style={{ gridColumn:4, gridRow:'1/9', position:'relative' }}>
-          <div style={{ position:'absolute', left:0, width:'50%', top:'calc(25% - 1px)', height:2, background:LC }}/>
-          <div style={{ position:'absolute', left:0, width:'50%', top:'calc(75% - 1px)', height:2, background:LC }}/>
-          <div style={{ position:'absolute', left:'calc(50% - 1px)', top:'25%', height:'50%', width:2, background:LC }}/>
-          <div style={{ position:'absolute', left:'50%', right:0, top:'calc(50% - 1px)', height:2, background:LC }}/>
-        </div>
-        {/* F slot (rows 4/6) */}
-        <div style={{ gridColumn:5, gridRow:'4/6', display:'flex', alignItems:'center', padding:'6px 0' }}>
-          <BracketSlot m={f[0]} hot={f[0]?.id===highlightMatchId} accentA={pal.accentA} accentB={pal.accentB} isFinal/>
-        </div>
+      <div style={{ display:'grid', gridTemplateColumns:gridCols, gridTemplateRows:`repeat(${totalRows}, 1fr)`, height:780, padding:'10px 32px 24px' }}>
+        {roundsData.map(({ round, slots }, colIdx) => {
+          const slotsCount = slots.length
+          const span = totalRows / slotsCount  // filas que ocupa cada slot
+          const gridColumn = colIdx === 0 ? 1 : colIdx * 2 + 1
+          return (
+            <React.Fragment key={round}>
+              {slots.map((m, i) => {
+                const startRow = i * span + 1
+                const endRow = startRow + span
+                return (
+                  <div key={`${round}-${i}`} style={{ gridColumn, gridRow:`${startRow}/${endRow}`, display:'flex', alignItems:'center', padding:'4px 0' }}>
+                    <BracketSlot m={m} hot={m?.id===highlightMatchId} accentA={pal.accentA} accentB={pal.accentB} isFinal={round==='F'}/>
+                  </div>
+                )
+              })}
+              {/* Conector hacia la columna siguiente */}
+              {colIdx < roundsData.length - 1 && (
+                <div style={{ gridColumn: colIdx*2 + 2, gridRow:`1/${totalRows+1}`, position:'relative' }}>
+                  {/* Por cada par (i, i+1) -> dibuja H+V+H */}
+                  {Array.from({ length: slotsCount / 2 }).map((_, p) => {
+                    const i1 = p*2, i2 = p*2 + 1
+                    const c1 = ((i1 + 0.5) / slotsCount) * 100  // % vertical centro slot 1
+                    const c2 = ((i2 + 0.5) / slotsCount) * 100  // centro slot 2
+                    const cMid = (c1 + c2) / 2                  // centro del par (= centro siguiente slot)
+                    return (
+                      <React.Fragment key={p}>
+                        {/* H desde slot 1 a la mitad */}
+                        <div style={{ position:'absolute', left:0, width:'50%', top:`calc(${c1}% - 1px)`, height:2, background:LC }}/>
+                        {/* H desde slot 2 a la mitad */}
+                        <div style={{ position:'absolute', left:0, width:'50%', top:`calc(${c2}% - 1px)`, height:2, background:LC }}/>
+                        {/* V uniendo c1 y c2 */}
+                        <div style={{ position:'absolute', left:'calc(50% - 1px)', top:`${c1}%`, height:`${c2 - c1}%`, width:2, background:LC }}/>
+                        {/* H desde el midpoint hacia la siguiente columna */}
+                        <div style={{ position:'absolute', left:'50%', right:0, top:`calc(${cMid}% - 1px)`, height:2, background:LC }}/>
+                      </React.Fragment>
+                    )
+                  })}
+                </div>
+              )}
+            </React.Fragment>
+          )
+        })}
       </div>
     </div>
   )
