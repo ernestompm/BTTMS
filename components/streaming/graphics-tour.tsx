@@ -448,9 +448,9 @@ export function WeatherBarTour({ visible, weather, tournament }: {
       <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.05 }}>
         <span style={tourKicker('rgba(255,255,255,.55)', 12)}>{tournament?.venue_city ?? 'AHORA'}</span>
         <span style={{ fontSize: 36, fontWeight: 900, color: '#fff', fontVariantNumeric: 'tabular-nums', marginTop: 2 }}>
-          {Math.round(weather.temperature)}°
+          {Math.round(weather.temperature_c)}°
           <span style={{ fontSize: 18, fontWeight: 700, color: 'rgba(255,255,255,.6)', marginLeft: 8 }}>
-            {weather.humidity}% HR · {Math.round(weather.wind_kmh)} km/h
+            {weather.humidity_pct}% HR · {Math.round(weather.wind_speed_kmh)} km/h
           </span>
         </span>
       </div>
