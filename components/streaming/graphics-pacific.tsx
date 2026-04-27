@@ -1,18 +1,14 @@
 'use client'
 // ============================================================================
-// Streaming Graphics — PACIFIC skin
+// Streaming Graphics — PACIFIC skin (v2: organic, contrast-safe)
 // ============================================================================
-// Estetica "sunset beach": gradientes turquesa-coral, cards translucidas con
-// blur, formas organicas (border-radius irregular), tipografia ligera (Inter),
-// pesos 300-700, mucho whitespace, premium minimalista tipo Apple Sport.
+// Lenguaje visual: blobs SVG, splashes en esquinas, capsules orgánicas,
+// numeros flotantes sin marco. Preparado para fondos CLAROS (sunset beach,
+// daylight) — todas las cards usan glass NAVY oscuro y todo el texto blanco
+// lleva text-shadow para legibilidad sobre cualquier fondo.
 //
-// La paleta del torneo (palette()) sigue presente como acento secundario para
-// distinguir equipos, pero la atmosfera principal viene de los gradientes
-// pacific (cyan-coral). Si el cliente quiere su rojo Vinteon, tambien aparece
-// pero como acento puntual, no como fondo.
-//
-// Mismas dimensiones / posiciones que classic+tour: vMix no necesita
-// re-rigging al cambiar de skin.
+// Estructura intacta (mismas posiciones / dimensiones que classic+tour):
+// vMix no necesita re-rigging al cambiar de skin.
 // ============================================================================
 
 import React, { useEffect, useState } from 'react'
@@ -20,70 +16,138 @@ import type { Player, Score, Sponsor, Tournament, WeatherData, Category } from '
 import { CATEGORY_LABELS } from '@/types'
 import { animStyle, hexAlpha, flagPath, palette, firstSurname } from './stage-shared'
 
-// ─── PACIFIC PALETTE ────────────────────────────────────────────────────────
+// ─── PALETA ─────────────────────────────────────────────────────────────────
 const PAC = {
   cyan:    '#5fc4cc',
   cyanLt:  '#7dd3d8',
   blue:    '#4a90c2',
-  blueDk:  '#3a72a0',
   coral:   '#ff8a72',
   coralLt: '#ffb39d',
   amber:   '#ffd07a',
   ink:     '#0e1c29',
-  textHi:  '#ffffff',
-  textMid: 'rgba(255,255,255,.78)',
-  textLo:  'rgba(255,255,255,.55)',
 }
 
-// Gradientes reutilizables
-const GRAD_HORIZ = `linear-gradient(90deg, ${hexAlpha(PAC.cyan,.55)} 0%, ${hexAlpha(PAC.blue,.55)} 50%, ${hexAlpha(PAC.coral,.55)} 100%)`
-const GRAD_DIAG  = `linear-gradient(135deg, ${hexAlpha(PAC.cyan,.28)} 0%, ${hexAlpha(PAC.blue,.20)} 50%, ${hexAlpha(PAC.coral,.30)} 100%)`
-const GRAD_DARK  = `linear-gradient(135deg, ${hexAlpha(PAC.cyan,.18)} 0%, ${hexAlpha(PAC.ink,.55)} 60%, ${hexAlpha(PAC.coral,.22)} 100%)`
+// Texto SIEMPRE con text-shadow — legible sobre fondos claros y oscuros
+const TEXT_SHADOW = '0 1px 2px rgba(0,0,0,.55), 0 2px 12px rgba(0,0,0,.35)'
+const TEXT_SHADOW_LIGHT = '0 1px 2px rgba(0,0,0,.45)'
+
+const COLORS = {
+  white:   '#ffffff',
+  textHi:  '#ffffff',
+  textMid: 'rgba(255,255,255,.82)',
+  textLo:  'rgba(255,255,255,.62)',
+}
+
+// Glass NAVY oscuro — funciona en fondos claros/sunset/daylight
+const GLASS_DARK = 'linear-gradient(135deg, rgba(8,18,32,.72) 0%, rgba(15,28,52,.68) 100%)'
+const GLASS_BORDER = '1px solid rgba(255,255,255,.22)'
+
+// Gradientes acento (para pills y splashes)
+const GRAD_HORIZ = `linear-gradient(90deg, ${hexAlpha(PAC.cyan,.85)} 0%, ${hexAlpha(PAC.blue,.85)} 50%, ${hexAlpha(PAC.coral,.85)} 100%)`
+const GRAD_CYAN_CORAL = `linear-gradient(135deg, ${PAC.cyan} 0%, ${PAC.coral} 100%)`
 
 const PAC_FONT = "'Inter', 'SF Pro Display', system-ui, -apple-system, sans-serif"
 
-// Card translucida con backdrop blur — base de la mayoria de graficos
-function pacCard(opts?: { intensity?: 'soft' | 'medium' | 'dark' }): React.CSSProperties {
-  const i = opts?.intensity ?? 'soft'
-  return {
-    background: i === 'dark' ? GRAD_DARK : i === 'medium' ? GRAD_DIAG : `linear-gradient(135deg, ${hexAlpha(PAC.cyan,.15)} 0%, ${hexAlpha(PAC.coral,.18)} 100%)`,
-    border: '1px solid rgba(255,255,255,.22)',
-    borderRadius: 28,
-    boxShadow: '0 18px 50px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.20)',
-    backdropFilter: 'blur(22px) saturate(1.2)',
-    WebkitBackdropFilter: 'blur(22px) saturate(1.2)',
-    overflow: 'hidden',
-  }
+// ─── HELPERS DE TEXTO ───────────────────────────────────────────────────────
+const text = (size: number, weight: number = 500, color: string = COLORS.textHi): React.CSSProperties => ({
+  fontSize: size, fontWeight: weight, color, textShadow: TEXT_SHADOW,
+})
+const kicker = (color: string = COLORS.textLo, size: number = 13): React.CSSProperties => ({
+  fontSize: size, letterSpacing: '.24em', textTransform: 'uppercase',
+  fontWeight: 500, color, textShadow: TEXT_SHADOW_LIGHT,
+})
+
+// ─── BLOBS ORGÁNICOS REUTILIZABLES ──────────────────────────────────────────
+// Path SVG de blob (en viewBox 100x100). Extremos asimetricos para que se vea
+// claramente como una "gota" liquida y no como un rectangulo redondeado.
+const BLOB_PATHS = [
+  'M58.8,8.4 C75.5,12.3 91.2,24.5 92.4,42.8 C93.6,61.1 80.5,80.0 60.5,87.6 C40.5,95.2 13.7,91.4 6.6,73.6 C-0.5,55.8 12.0,24.0 30.5,12.5 C38.5,7.5 47.5,5.6 58.8,8.4 Z',
+  'M42.7,9.5 C61.7,5.0 81.5,15.2 89.5,33.4 C97.5,51.6 93.7,77.8 76.6,86.8 C59.5,95.8 28.0,87.6 13.5,72.4 C-1.0,57.2 6.5,34.0 17.5,21.5 C25.0,13.0 32.0,12.0 42.7,9.5 Z',
+  'M50.0,5.0 C72.0,8.0 92.0,22.0 91.0,46.0 C90.0,70.0 70.0,90.0 50.0,92.0 C30.0,94.0 8.0,82.0 7.0,58.0 C6.0,34.0 28.0,2.0 50.0,5.0 Z',
+  'M48,12 C70,8 90,28 88,52 C86,76 64,90 42,86 C20,82 6,62 10,40 C14,18 30,16 48,12 Z',
+]
+const SPLASH_WAVE = 'M0,40 C20,15 45,55 70,30 C90,12 100,30 100,30 L100,100 L0,100 Z'
+
+function Blob({
+  path, fill, width = 200, height = 200, opacity = 1, blur = 0,
+  style,
+}: { path: string, fill: string, width?: number, height?: number, opacity?: number, blur?: number, style?: React.CSSProperties }) {
+  return (
+    <svg width={width} height={height} viewBox="0 0 100 100" preserveAspectRatio="none"
+         style={{ position: 'absolute', filter: blur ? `blur(${blur}px)` : undefined, opacity, pointerEvents: 'none', ...style }}>
+      <path d={path} fill={fill}/>
+    </svg>
+  )
 }
 
-// Forma organica (asymmetric border-radius). Para cards con vibe blob.
-function pacBlob(seed: number = 1): React.CSSProperties {
-  const sets = [
-    { borderRadius: '40px 60px 38px 56px / 50px 40px 60px 44px' },
-    { borderRadius: '60px 38px 56px 40px / 40px 60px 44px 50px' },
-    { borderRadius: '50px 30px 60px 50px / 60px 50px 30px 50px' },
-    { borderRadius: '30px 60px 40px 60px / 50px 30px 60px 40px' },
+// Decoracion: splash en una esquina del card (wave gradient)
+function CornerSplash({ pos, color = PAC.cyan, size = 220, opacity = .55 }: {
+  pos: 'tl' | 'tr' | 'bl' | 'br', color?: string, size?: number, opacity?: number
+}) {
+  const positions: Record<typeof pos, React.CSSProperties> = {
+    tl: { top: -size*0.4, left: -size*0.4, transform: 'rotate(0deg)' },
+    tr: { top: -size*0.4, right: -size*0.4, transform: 'rotate(90deg)' },
+    bl: { bottom: -size*0.4, left: -size*0.4, transform: 'rotate(-90deg)' },
+    br: { bottom: -size*0.4, right: -size*0.4, transform: 'rotate(180deg)' },
+  } as any
+  return <Blob path={BLOB_PATHS[0]} fill={color} width={size} height={size} opacity={opacity} blur={28}
+    style={positions[pos]}/>
+}
+
+// Card orgánica: glass NAVY + border-radius asimetrico extremo + 2 blobs
+// decorativos internos (uno cyan, otro coral) suaves para dar el rollo
+// "fluido". Texto blanco con shadow garantiza contraste.
+function OrganicCard({
+  children, style, blobSeed = 0, decorate = true, radius,
+}: {
+  children: React.ReactNode, style?: React.CSSProperties, blobSeed?: number,
+  decorate?: boolean, radius?: string,
+}) {
+  const radii = [
+    '52% 48% 42% 58% / 56% 42% 58% 44%',
+    '46% 54% 38% 62% / 50% 56% 44% 50%',
+    '60% 40% 56% 44% / 44% 60% 40% 56%',
+    '50% 50% 38% 62% / 60% 40% 60% 40%',
   ]
-  return sets[seed % sets.length]
+  const r = radius ?? radii[blobSeed % radii.length]
+  return (
+    <div style={{
+      position: 'relative',
+      background: GLASS_DARK,
+      border: GLASS_BORDER,
+      borderRadius: r,
+      backdropFilter: 'blur(24px) saturate(1.3)',
+      WebkitBackdropFilter: 'blur(24px) saturate(1.3)',
+      boxShadow: '0 24px 60px rgba(0,0,0,.40), inset 0 1px 0 rgba(255,255,255,.18)',
+      overflow: 'hidden',
+      ...style,
+    }}>
+      {decorate && (
+        <>
+          <Blob path={BLOB_PATHS[(blobSeed+1) % BLOB_PATHS.length]} fill={PAC.cyan}
+            width={300} height={300} opacity={.30} blur={32}
+            style={{ top: -120, left: -100 }}/>
+          <Blob path={BLOB_PATHS[(blobSeed+2) % BLOB_PATHS.length]} fill={PAC.coral}
+            width={260} height={260} opacity={.32} blur={32}
+            style={{ bottom: -100, right: -80 }}/>
+        </>
+      )}
+      <div style={{ position: 'relative', zIndex: 1, height: '100%' }}>{children}</div>
+    </div>
+  )
 }
 
-// Pill horizontal con gradiente (header chips)
-function pacPill(): React.CSSProperties {
+// Pill horizontal — capsule con gradiente cyan→coral
+function pacPillStyle(): React.CSSProperties {
   return {
     background: GRAD_HORIZ,
-    border: '1px solid rgba(255,255,255,.30)',
+    border: '1px solid rgba(255,255,255,.35)',
     borderRadius: 999,
-    boxShadow: '0 10px 30px rgba(0,0,0,.20), inset 0 1px 0 rgba(255,255,255,.25)',
+    boxShadow: '0 8px 24px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.30)',
     backdropFilter: 'blur(14px)',
     WebkitBackdropFilter: 'blur(14px)',
   }
 }
-
-// Texto kicker (etiqueta uppercase ligera)
-const pacKicker = (color: string = PAC.textLo, size: number = 13): React.CSSProperties => ({
-  fontSize: size, letterSpacing: '.22em', textTransform: 'uppercase',
-  fontWeight: 500, color,
-})
 
 // ─── ETIQUETAS ──────────────────────────────────────────────────────────────
 const ROUND_LABELS: Record<string, string> = {
@@ -148,7 +212,7 @@ function lateralityText(laterality: 'right'|'left'|'ambidextrous', category?: Ca
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// 1) SCOREBUG PACIFIC — top-left, blob organico
+// 1) SCOREBUG PACIFIC — capsule organica top-left
 // ════════════════════════════════════════════════════════════════════════════
 const STAT_LABELS: Record<string, string> = {
   aces: 'Aces',
@@ -176,7 +240,6 @@ export function ScorebugPacific({ visible, match, tournament, tickerStat }: {
   const serving = match.serving_team as 1|2|null
   const inProgress = score?.match_status === 'in_progress'
   const setsPlayed = score?.sets?.length ?? 0
-  // No mostrar set 0-0
   const cs = score?.current_set ?? { t1: 0, t2: 0 }
   const tb = score?.tiebreak_score ?? { t1: 0, t2: 0 }
   const tbActive = !!(score?.tiebreak_active || score?.super_tiebreak_active)
@@ -192,13 +255,7 @@ export function ScorebugPacific({ visible, match, tournament, tickerStat }: {
       position: 'absolute', top: 40, left: 40,
       ...animStyle(visible, 'sgInR', 'sgOutR', 600),
     }}>
-      <div style={{
-        ...pacCard({ intensity: 'medium' }),
-        ...pacBlob(1),
-        padding: '14px 18px',
-        fontFamily: PAC_FONT,
-        minWidth: 380,
-      }}>
+      <OrganicCard blobSeed={1} style={{ padding: '14px 22px', minWidth: 400, fontFamily: PAC_FONT }}>
         {[1,2].map(tn => {
           const team = tn as 1|2
           const opTeam = (team === 1 ? 2 : 1) as 1|2
@@ -211,26 +268,23 @@ export function ScorebugPacific({ visible, match, tournament, tickerStat }: {
           const isServe = serving === team
           const tickerVal = showTicker ? statValue(match.stats, tickerStat!, team) : ''
           const finishedSetCount = setsPlayed
-          // Ordenar de derecha a izquierda: set 1 a la derecha, set N a la izquierda
-          const setIdx = Array.from({ length: setCount }, (_, i) => i).reverse()  // [N-1..0] => set N..1 visual L->R
-          // actually we want set 1 rightmost: visual order should be [N-1, N-2, ..., 0] so set N is leftmost, set 1 rightmost
-          const renderIdx = Array.from({ length: setCount }, (_, i) => setCount - 1 - i)  // [N-1..0]
-          // ^ for each visual position from left, the actual set index
+          // Sets de derecha a izquierda
+          const visualPositions = Array.from({ length: setCount }, (_, p) => setCount - 1 - p)
 
           return (
             <div key={team} style={{
               display: 'grid',
-              gridTemplateColumns: `28px auto 1fr ${setCount > 0 ? `repeat(${setCount}, 36px)` : ''} 56px`,
+              gridTemplateColumns: `22px auto 1fr ${setCount > 0 ? `repeat(${setCount}, 36px)` : ''} 56px`,
               alignItems: 'center', gap: 10,
               padding: '8px 0',
-              borderTop: tn === 2 ? '1px solid rgba(255,255,255,.10)' : 'none',
+              borderTop: tn === 2 ? '1px solid rgba(255,255,255,.14)' : 'none',
             }}>
-              {/* Serve dot */}
+              {/* Serve dot ámbar */}
               <div>
                 {isServe && (
                   <span style={{
-                    display: 'block', width: 10, height: 10, borderRadius: '50%',
-                    background: PAC.amber, boxShadow: `0 0 12px ${PAC.amber}`,
+                    display: 'block', width: 11, height: 11, borderRadius: '50%',
+                    background: PAC.amber, boxShadow: `0 0 14px ${PAC.amber}`,
                     animation: 'sgSrvPulse 1.4s infinite',
                   }}/>
                 )}
@@ -244,68 +298,69 @@ export function ScorebugPacific({ visible, match, tournament, tickerStat }: {
                     ))}
                   </div>
                 ) : (
-                  <img src={flagPath(players[0]?.nationality)} alt="" style={{ width: 28, height: 19, borderRadius: 3, objectFit: 'cover' }}/>
+                  <img src={flagPath(players[0]?.nationality)} alt="" style={{ width: 30, height: 20, borderRadius: 3, objectFit: 'cover' }}/>
                 )}
               </div>
               {/* Names */}
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, whiteSpace: 'nowrap', minWidth: 220 }}>
-                <span style={{ fontSize: 22, fontWeight: 600, color: PAC.textHi, letterSpacing: '-.005em' }}>
+                <span style={{ ...text(22, 600), letterSpacing: '-.005em' }}>
                   {isDoubles
                     ? players.map((p:any) => firstSurname(p)).join(' / ')
                     : (players[0]?.last_name ?? '')}
                 </span>
-                {entry?.seed && <span style={{ fontSize: 12, fontWeight: 500, color: PAC.textLo }}>({entry.seed})</span>}
+                {entry?.seed && <span style={{ ...text(12, 500, COLORS.textLo) }}>({entry.seed})</span>}
               </div>
-              {/* Set tabs (right-to-left visually) */}
-              {renderIdx.map((actualIdx, visualPos) => {
+              {/* Set tabs (derecha→izquierda) */}
+              {visualPositions.map((actualIdx, p) => {
                 const v = setsT[actualIdx]
                 const opV = setsOp[actualIdx]
                 const isFinishedSet = actualIdx < finishedSetCount
                 const isCurrent = !isFinishedSet
                 const isWonSet = isFinishedSet && v != null && opV != null && v > opV
                 return (
-                  <div key={`s${visualPos}`} style={{
+                  <div key={p} style={{
                     width: 32, height: 28, display: 'grid', placeItems: 'center',
                     background: isWonSet
-                      ? `linear-gradient(135deg, ${PAC.cyan} 0%, ${PAC.coral} 100%)`
-                      : isCurrent ? hexAlpha(accent, .25) : 'rgba(255,255,255,.06)',
-                    border: isCurrent && !isWonSet ? `1px solid ${accent}` : '1px solid rgba(255,255,255,.14)',
-                    borderRadius: 8,
-                    color: PAC.textHi, fontSize: 17, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
+                      ? GRAD_CYAN_CORAL
+                      : isCurrent ? hexAlpha(accent, .35) : 'rgba(255,255,255,.10)',
+                    border: isCurrent && !isWonSet ? `1px solid ${accent}` : '1px solid rgba(255,255,255,.18)',
+                    borderRadius: '40% 60% 40% 60% / 60% 40% 60% 40%',
+                    color: COLORS.white, fontSize: 17, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
+                    textShadow: TEXT_SHADOW_LIGHT,
                   }}>
                     {v == null ? '' : v}
                   </div>
                 )
               })}
-              {/* Points / Ticker */}
+              {/* Points / Ticker — capsule fluida */}
               <div style={{
-                height: 32, padding: '0 10px', display: 'grid', placeItems: 'center',
+                height: 32, padding: '0 12px', display: 'grid', placeItems: 'center',
                 background: showTicker
-                  ? 'rgba(255,255,255,.08)'
-                  : tbActive ? PAC.amber : `linear-gradient(135deg, ${PAC.cyan} 0%, ${PAC.blue} 100%)`,
-                color: showTicker ? PAC.textHi : tbActive ? PAC.ink : PAC.textHi,
-                borderRadius: 10,
+                  ? 'rgba(255,255,255,.10)'
+                  : tbActive ? PAC.amber : GRAD_CYAN_CORAL,
+                color: showTicker ? COLORS.white : tbActive ? PAC.ink : COLORS.white,
+                borderRadius: 999,
                 fontSize: 18, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
                 whiteSpace: 'nowrap',
+                textShadow: tbActive ? 'none' : TEXT_SHADOW_LIGHT,
               }}>
                 {showTicker ? tickerVal : pt}
               </div>
             </div>
           )
         })}
-        {/* Ticker label */}
         {showTicker && (
-          <div style={{ paddingTop: 6, marginTop: 4, borderTop: '1px solid rgba(255,255,255,.10)', textAlign: 'right' }}>
-            <span style={pacKicker(PAC.coralLt, 11)}>{tickerLabel}</span>
+          <div style={{ paddingTop: 6, marginTop: 4, borderTop: '1px solid rgba(255,255,255,.14)', textAlign: 'right' }}>
+            <span style={kicker(PAC.coralLt, 11)}>{tickerLabel}</span>
           </div>
         )}
-      </div>
+      </OrganicCard>
     </div>
   )
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// 2) BIG SCOREBOARD PACIFIC — barra horizontal centrada bottom 50
+// 2) BIG SCOREBOARD PACIFIC — capsule organica horizontal centrada bottom 50
 // ════════════════════════════════════════════════════════════════════════════
 export function BigScoreboardPacific({ visible, match, tournament, sponsor, opts }: {
   visible: boolean, match: any, tournament: Tournament | null, sponsor?: Sponsor | null, opts?: any,
@@ -327,7 +382,6 @@ export function BigScoreboardPacific({ visible, match, tournament, sponsor, opts
   const cT2 = tbActive ? (tb.t2 ?? 0) : (cs.t2 ?? 0)
   const currentHasScore = inProgress && (cT1 > 0 || cT2 > 0)
   const setCount = Math.min(3, finishedSetCount + (currentHasScore ? 1 : 0))
-  // Right-to-left sets: visual position p (0=leftmost) maps to actual set index setCount-1-p
   const visualToActual = (p: number) => setCount - 1 - p
 
   const setColW = 86
@@ -339,167 +393,171 @@ export function BigScoreboardPacific({ visible, match, tournament, sponsor, opts
       position: 'absolute', left: 0, right: 0, bottom: 50,
       display: 'flex', justifyContent: 'center', pointerEvents: 'none',
     }}>
-      <div style={{
-        width: 'fit-content', maxWidth: cardMaxW,
-        ...pacCard({ intensity: 'medium' }),
-        borderRadius: 36,
-        padding: 0,
-        pointerEvents: 'auto',
-        fontFamily: PAC_FONT,
-        ...animStyle(visible, 'sgInU', 'sgOutU', 700),
-      }}>
-        {/* HEADER */}
+      <div style={{ width: 'fit-content', maxWidth: cardMaxW, pointerEvents: 'auto', fontFamily: PAC_FONT,
+        ...animStyle(visible, 'sgInU', 'sgOutU', 700) }}>
+        {/* Capsule organica con border-radius pill para que parezca fluida */}
         <div style={{
-          display: 'grid', gridTemplateColumns: 'auto 1fr auto',
-          alignItems: 'center', padding: '12px 24px', gap: 18,
-          borderBottom: '1px solid rgba(255,255,255,.12)',
+          background: GLASS_DARK,
+          border: GLASS_BORDER,
+          borderRadius: '60px 60px 60px 60px / 80px 80px 80px 80px',
+          backdropFilter: 'blur(28px) saturate(1.3)',
+          WebkitBackdropFilter: 'blur(28px) saturate(1.3)',
+          boxShadow: '0 28px 70px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.18)',
+          overflow: 'hidden',
+          position: 'relative',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            {tournament?.logo_url && <img src={tournament.logo_url} alt="" style={{ height: 40, objectFit: 'contain' }}/>}
-            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.05 }}>
-              <span style={{ fontSize: 20, fontWeight: 700, color: PAC.textHi, letterSpacing: '-.005em', whiteSpace: 'nowrap' }}>
-                {tournament?.name}
-              </span>
-              <span style={pacKicker(PAC.textLo, 12)}>
-                {CATEGORY_LABELS[match.category as Category] ?? match.category}
-              </span>
-            </div>
-          </div>
-          <div style={{ textAlign: 'center' }}>
-            <span style={{
-              ...pacPill(),
-              padding: '6px 22px', fontSize: 16, fontWeight: 700, letterSpacing: '.18em',
-              textTransform: 'uppercase', color: PAC.textHi, whiteSpace: 'nowrap', display: 'inline-block',
-            }}>
-              {roundLabel(match.round) || '—'}
-            </span>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', lineHeight: 1.05 }}>
-            <span style={pacKicker(PAC.textLo, 11)}>TIEMPO</span>
-            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 22, fontWeight: 600, color: PAC.textHi, marginTop: 2 }}>
-              {fmtHHmm(totalSecs)}
-            </span>
-          </div>
-        </div>
+          {/* Splashes decorativos */}
+          <CornerSplash pos="bl" color={PAC.cyan} size={300} opacity={.40}/>
+          <CornerSplash pos="tr" color={PAC.coral} size={280} opacity={.35}/>
 
-        {/* BODY */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: setCount > 0
-            ? (showSponsor
-                ? `8px minmax(380px, max-content) repeat(${setCount}, ${setColW}px) ${sponsorColW}px`
-                : `8px minmax(380px, max-content) repeat(${setCount}, ${setColW}px)`)
-            : (showSponsor
-                ? `8px minmax(380px, max-content) ${sponsorColW}px`
-                : `8px minmax(380px, max-content)`),
-          gridTemplateRows: setCount > 0 ? '26px 1fr 1fr' : '1fr 1fr',
-        }}>
-          {/* Set headers row */}
-          {setCount > 0 && (
-            <>
-              <div style={{ gridColumn: '1 / span 2', gridRow: 1, borderBottom: '1px solid rgba(255,255,255,.10)' }}/>
-              {Array.from({ length: setCount }).map((_, p) => {
-                const actual = visualToActual(p)
-                const dur = opts?.set_durations?.[actual]
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            {/* HEADER */}
+            <div style={{
+              display: 'grid', gridTemplateColumns: 'auto 1fr auto',
+              alignItems: 'center', padding: '12px 36px', gap: 18,
+              borderBottom: '1px solid rgba(255,255,255,.14)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                {tournament?.logo_url && <img src={tournament.logo_url} alt="" style={{ height: 40, objectFit: 'contain' }}/>}
+                <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.05 }}>
+                  <span style={{ ...text(20, 600), letterSpacing: '-.005em', whiteSpace: 'nowrap' }}>
+                    {tournament?.name}
+                  </span>
+                  <span style={kicker(COLORS.textLo, 12)}>
+                    {CATEGORY_LABELS[match.category as Category] ?? match.category}
+                  </span>
+                </div>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <span style={{
+                  ...pacPillStyle(),
+                  padding: '6px 24px', fontSize: 16, fontWeight: 600, letterSpacing: '.18em',
+                  textTransform: 'uppercase', color: COLORS.white, whiteSpace: 'nowrap', display: 'inline-block',
+                  textShadow: TEXT_SHADOW_LIGHT,
+                }}>
+                  {roundLabel(match.round) || '—'}
+                </span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', lineHeight: 1.05 }}>
+                <span style={kicker(COLORS.textLo, 11)}>TIEMPO</span>
+                <span style={{ ...text(22, 600), fontFamily: "'JetBrains Mono', monospace", marginTop: 2 }}>
+                  {fmtHHmm(totalSecs)}
+                </span>
+              </div>
+            </div>
+
+            {/* BODY */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: setCount > 0
+                ? (showSponsor
+                    ? `8px minmax(380px, max-content) repeat(${setCount}, ${setColW}px) ${sponsorColW}px`
+                    : `8px minmax(380px, max-content) repeat(${setCount}, ${setColW}px)`)
+                : (showSponsor
+                    ? `8px minmax(380px, max-content) ${sponsorColW}px`
+                    : `8px minmax(380px, max-content)`),
+              gridTemplateRows: setCount > 0 ? '26px 1fr 1fr' : '1fr 1fr',
+            }}>
+              {setCount > 0 && (
+                <>
+                  <div style={{ gridColumn: '1 / span 2', gridRow: 1 }}/>
+                  {Array.from({ length: setCount }).map((_, p) => {
+                    const actual = visualToActual(p)
+                    const dur = opts?.set_durations?.[actual]
+                    return (
+                      <div key={`st${p}`} style={{
+                        gridColumn: 3 + p, gridRow: 1,
+                        display: 'grid', placeItems: 'center',
+                        ...kicker(COLORS.textLo, 12),
+                      }}>
+                        SET {actual+1}{dur ? ` · ${fmtClock(dur)}` : ''}
+                      </div>
+                    )
+                  })}
+                </>
+              )}
+
+              {[1,2].map(tn => {
+                const team = tn as 1|2
+                const opTeam = (team === 1 ? 2 : 1) as 1|2
+                const entry = team === 1 ? match.entry1 : match.entry2
+                const accent = team === 1 ? pal.accentA : pal.accentB
+                const setsT = threeSetsFor(score, team).slice(0, setCount)
+                const setsOp = threeSetsFor(score, opTeam).slice(0, setCount)
+                const won = match.status === 'finished' && score?.winner_team === team
+                const players = [entry?.player1, isDoubles ? entry?.player2 : null].filter(Boolean)
+                const isServingTeam = serving === team
+                const row = setCount > 0 ? 1 + team : team
+                const rowBg = won
+                  ? `linear-gradient(90deg, ${hexAlpha(PAC.cyan,.18)} 0%, ${hexAlpha(PAC.coral,.18)} 100%)`
+                  : isServingTeam ? hexAlpha(accent, .08) : 'transparent'
                 return (
-                  <div key={`st${p}`} style={{
-                    gridColumn: 3 + p, gridRow: 1,
-                    display: 'grid', placeItems: 'center',
-                    fontSize: 13, letterSpacing: '.20em', fontWeight: 600, color: PAC.textLo,
-                    textTransform: 'uppercase',
-                    borderLeft: '1px solid rgba(255,255,255,.08)',
-                    borderBottom: '1px solid rgba(255,255,255,.10)',
-                  }}>
-                    SET {actual+1}{dur ? ` · ${fmtClock(dur)}` : ''}
+                  <div key={team} style={{ display: 'contents' }}>
+                    {/* Accent bar */}
+                    <div style={{ gridColumn: 1, gridRow: row, background: `linear-gradient(180deg, ${accent} 0%, ${hexAlpha(accent,.5)} 100%)` }}/>
+                    {/* Names */}
+                    <div style={{
+                      gridColumn: 2, gridRow: row,
+                      display: 'flex', flexDirection: 'column', justifyContent: 'center',
+                      gap: isDoubles ? 4 : 0, padding: '12px 22px',
+                      background: rowBg,
+                      borderTop: team === 2 ? '1px solid rgba(255,255,255,.10)' : 'none',
+                    }}>
+                      {players.map((p:any, i:number) => {
+                        const isServer = isServingTeam && (!isDoubles || p.id === match.current_server_id)
+                        return (
+                          <PacificPlayerLine key={i} player={p} accent={accent} isDoubles={isDoubles} isServer={isServer}/>
+                        )
+                      })}
+                    </div>
+                    {/* Set scores */}
+                    {Array.from({ length: setCount }).map((_, p) => {
+                      const actualIdx = visualToActual(p)
+                      const v = setsT[actualIdx]
+                      const opV = setsOp[actualIdx]
+                      const isFinishedSet = actualIdx < finishedSetCount
+                      const isCurrent = !isFinishedSet && currentHasScore
+                      const isSetWon = isFinishedSet && v != null && opV != null && v > opV
+                      return (
+                        <div key={p} style={{
+                          gridColumn: 3 + p, gridRow: row,
+                          display: 'grid', placeItems: 'center',
+                          fontSize: 50, fontWeight: 500,
+                          borderTop: team === 2 ? '1px solid rgba(255,255,255,.10)' : 'none',
+                          background: isSetWon
+                            ? GRAD_CYAN_CORAL
+                            : isCurrent ? hexAlpha(accent, .14) : 'transparent',
+                          color: v == null ? COLORS.textLo : COLORS.white,
+                          fontVariantNumeric: 'tabular-nums',
+                          textShadow: TEXT_SHADOW,
+                        }}>
+                          {v == null ? '–' : v}
+                        </div>
+                      )
+                    })}
                   </div>
                 )
               })}
-            </>
-          )}
 
-          {/* TEAM ROWS */}
-          {[1,2].map(tn => {
-            const team = tn as 1|2
-            const opTeam = (team === 1 ? 2 : 1) as 1|2
-            const entry = team === 1 ? match.entry1 : match.entry2
-            const accent = team === 1 ? pal.accentA : pal.accentB
-            const setsT = threeSetsFor(score, team).slice(0, setCount)
-            const setsOp = threeSetsFor(score, opTeam).slice(0, setCount)
-            const won = match.status === 'finished' && score?.winner_team === team
-            const players = [entry?.player1, isDoubles ? entry?.player2 : null].filter(Boolean)
-            const isServingTeam = serving === team
-            const row = setCount > 0 ? 1 + team : team
-            const rowBg = won ? hexAlpha(PAC.cyan, .14) : isServingTeam ? hexAlpha(accent, .08) : 'transparent'
-            return (
-              <div key={team} style={{ display: 'contents' }}>
-                {/* Accent bar */}
+              {showSponsor && (
                 <div style={{
-                  gridColumn: 1, gridRow: row,
-                  background: `linear-gradient(180deg, ${accent} 0%, ${hexAlpha(accent,.6)} 100%)`,
-                }}/>
-                {/* Names */}
-                <div style={{
-                  gridColumn: 2, gridRow: row,
-                  display: 'flex', flexDirection: 'column', justifyContent: 'center',
-                  gap: isDoubles ? 4 : 0, padding: '12px 22px',
-                  background: rowBg,
-                  borderTop: team === 2 ? '1px solid rgba(255,255,255,.08)' : 'none',
+                  gridColumn: setCount > 0 ? `${3 + setCount} / ${4 + setCount}` : '3 / 4',
+                  gridRow: setCount > 0 ? '1 / 4' : '1 / 3',
+                  borderLeft: '1px solid rgba(255,255,255,.14)',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                  padding: 14,
                 }}>
-                  {players.map((p:any, i:number) => {
-                    const isServer = isServingTeam && (!isDoubles || p.id === match.current_server_id)
-                    return (
-                      <PacificPlayerLine key={i} player={p} accent={accent} isDoubles={isDoubles} isServer={isServer}/>
-                    )
-                  })}
+                  <div style={kicker(COLORS.textLo, 10)}>Patrocinador oficial</div>
+                  <div style={{ flex: 1, display: 'grid', placeItems: 'center', width: '100%', marginTop: 6 }}>
+                    {sponsor?.logo_url
+                      ? <img src={sponsor.logo_url} alt={sponsor?.name} style={{ maxWidth: 180, maxHeight: 80, objectFit: 'contain' }}/>
+                      : <span style={{ ...text(18, 700), letterSpacing: '.04em', textAlign: 'center', textTransform: 'uppercase' }}>{sponsor?.name ?? ''}</span>
+                    }
+                  </div>
                 </div>
-                {/* Set scores — right to left */}
-                {Array.from({ length: setCount }).map((_, p) => {
-                  const actualIdx = visualToActual(p)
-                  const v = setsT[actualIdx]
-                  const opV = setsOp[actualIdx]
-                  const isFinishedSet = actualIdx < finishedSetCount
-                  const isCurrent = !isFinishedSet && currentHasScore
-                  const isSetWon = isFinishedSet && v != null && opV != null && v > opV
-                  return (
-                    <div key={p} style={{
-                      gridColumn: 3 + p, gridRow: row,
-                      display: 'grid', placeItems: 'center',
-                      fontSize: 50, fontWeight: 600,
-                      borderLeft: '1px solid rgba(255,255,255,.08)',
-                      borderTop: team === 2 ? '1px solid rgba(255,255,255,.08)' : 'none',
-                      background: isSetWon
-                        ? `linear-gradient(135deg, ${hexAlpha(PAC.cyan,.85)} 0%, ${hexAlpha(PAC.coral,.85)} 100%)`
-                        : isCurrent ? hexAlpha(accent, .12) : 'rgba(255,255,255,.04)',
-                      color: v == null ? PAC.textLo : isSetWon ? PAC.ink : PAC.textHi,
-                      fontVariantNumeric: 'tabular-nums',
-                    }}>
-                      {v == null ? '–' : v}
-                    </div>
-                  )
-                })}
-              </div>
-            )
-          })}
-
-          {/* SPONSOR — anclado a la derecha */}
-          {showSponsor && (
-            <div style={{
-              gridColumn: setCount > 0 ? `${3 + setCount} / ${4 + setCount}` : '3 / 4',
-              gridRow: setCount > 0 ? '1 / 4' : '1 / 3',
-              borderLeft: '1px solid rgba(255,255,255,.12)',
-              background: 'rgba(255,255,255,.03)',
-              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-              padding: 14,
-            }}>
-              <div style={pacKicker(PAC.textLo, 10)}>Patrocinador oficial</div>
-              <div style={{ flex: 1, display: 'grid', placeItems: 'center', width: '100%', marginTop: 6 }}>
-                {sponsor?.logo_url
-                  ? <img src={sponsor.logo_url} alt={sponsor?.name} style={{ maxWidth: 180, maxHeight: 80, objectFit: 'contain' }}/>
-                  : <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: '.04em', textAlign: 'center', color: PAC.textHi, textTransform: 'uppercase' }}>{sponsor?.name ?? ''}</span>
-                }
-              </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </div>
     </div>
@@ -515,19 +573,19 @@ function PacificPlayerLine({ player, accent, isDoubles, isServer }: { player: an
     <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, whiteSpace: 'nowrap' }}>
       <img src={flagPath(player.nationality)} alt="" style={{ flex: 'none', width: flagSz.w, height: flagSz.h, borderRadius: 4, objectFit: 'cover', alignSelf: 'center' }}/>
       {player.first_name && (
-        <span style={{ fontSize: firstFs, fontWeight: 400, color: PAC.textMid, letterSpacing: '.01em', textTransform: 'uppercase' }}>
+        <span style={{ ...text(firstFs, 400, COLORS.textMid), letterSpacing: '.01em', textTransform: 'uppercase' }}>
           {player.first_name.toUpperCase()}
         </span>
       )}
-      <span style={{ fontSize: lastFs, fontWeight: 600, color: PAC.textHi, letterSpacing: '-.01em', textTransform: 'uppercase' }}>
+      <span style={{ ...text(lastFs, 600), letterSpacing: '-.01em', textTransform: 'uppercase' }}>
         {(player.last_name ?? '').toUpperCase()}
       </span>
       {isServer && (
         <span aria-label="saca" style={{
           alignSelf: 'center', display: 'inline-flex', alignItems: 'center', gap: 6,
           padding: '3px 10px 3px 6px', borderRadius: 999,
-          background: hexAlpha(PAC.amber, .16),
-          border: `1px solid ${hexAlpha(PAC.amber, .55)}`,
+          background: hexAlpha(PAC.amber, .20),
+          border: `1px solid ${hexAlpha(PAC.amber, .60)}`,
           marginLeft: 6,
         }}>
           <span style={{
@@ -535,7 +593,7 @@ function PacificPlayerLine({ player, accent, isDoubles, isServer }: { player: an
             boxShadow: `0 0 10px ${PAC.amber}`, animation: 'sgSrvPulse 1.3s infinite',
             display: 'inline-block',
           }}/>
-          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.18em', color: PAC.amber }}>SAQUE</span>
+          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.18em', color: PAC.amber, textShadow: TEXT_SHADOW_LIGHT }}>SAQUE</span>
         </span>
       )}
     </div>
@@ -543,7 +601,7 @@ function PacificPlayerLine({ player, accent, isDoubles, isServer }: { player: an
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// 3) WEATHER PACIFIC — blob organico bottom-right
+// 3) WEATHER PACIFIC — blob organico real
 // ════════════════════════════════════════════════════════════════════════════
 export function WeatherPacific({ visible, weather, tournament }: {
   visible: boolean, weather: WeatherData | null, tournament: Tournament | null,
@@ -557,39 +615,55 @@ export function WeatherPacific({ visible, weather, tournament }: {
   const icon = ICONS[weather.condition] ?? '☀️'
   return (
     <div style={{
-      position: 'absolute', right: 90, bottom: 90, width: 320,
-      ...pacCard({ intensity: 'soft' }),
-      ...pacBlob(2),
-      padding: '20px 26px',
-      fontFamily: PAC_FONT,
+      position: 'absolute', right: 90, bottom: 90, width: 340,
       ...animStyle(visible, 'sgInL', 'sgOutL', 650),
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 10 }}>
-        <span style={{ fontSize: 44, lineHeight: 1 }}>{icon}</span>
-        <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1 }}>
-          <span style={{ fontSize: 56, fontWeight: 300, color: PAC.textHi, letterSpacing: '-.02em' }}>
-            {Math.round(weather.temperature_c)}°
-          </span>
-          <span style={pacKicker(PAC.coralLt, 12)}>{weather.condition}</span>
-        </div>
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,.12)' }}>
-        <div>
-          <div style={pacKicker(PAC.textLo, 10)}>Sensación</div>
-          <div style={{ fontSize: 22, fontWeight: 500, color: PAC.textHi, marginTop: 2 }}>{Math.round(weather.feels_like_c)}°</div>
-        </div>
-        <div>
-          <div style={pacKicker(PAC.textLo, 10)}>Viento</div>
-          <div style={{ fontSize: 22, fontWeight: 500, color: PAC.textHi, marginTop: 2 }}>{Math.round(weather.wind_speed_kmh)} km/h</div>
-        </div>
-        <div>
-          <div style={pacKicker(PAC.textLo, 10)}>Humedad</div>
-          <div style={{ fontSize: 22, fontWeight: 500, color: PAC.textHi, marginTop: 2 }}>{weather.humidity_pct}%</div>
-        </div>
-        <div>
-          <div style={pacKicker(PAC.textLo, 10)}>Sede</div>
-          <div style={{ fontSize: 18, fontWeight: 500, color: PAC.textHi, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {tournament?.venue_city ?? '—'}
+      {/* Blob real con SVG path como mascara — forma totalmente irregular */}
+      <div style={{ position: 'relative', padding: '24px 28px', fontFamily: PAC_FONT }}>
+        {/* Background blob — ocupa todo y es la "card" */}
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none"
+             style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', filter: 'drop-shadow(0 18px 40px rgba(0,0,0,.40))' }}>
+          <defs>
+            <linearGradient id="weatherBg" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="rgb(8,18,32)" stopOpacity=".78"/>
+              <stop offset="100%" stopColor="rgb(15,28,52)" stopOpacity=".74"/>
+            </linearGradient>
+          </defs>
+          <path d={BLOB_PATHS[1]} fill="url(#weatherBg)" stroke="rgba(255,255,255,.22)" strokeWidth=".4"/>
+        </svg>
+        {/* Splash decorativo */}
+        <Blob path={BLOB_PATHS[2]} fill={PAC.coral} width={140} height={140} opacity={.40} blur={20}
+              style={{ top: -30, right: -20 }}/>
+        {/* Content */}
+        <div style={{ position: 'relative', padding: '8px 4px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 12 }}>
+            <span style={{ fontSize: 48, lineHeight: 1, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,.4))' }}>{icon}</span>
+            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1 }}>
+              <span style={{ ...text(58, 200), letterSpacing: '-.03em' }}>
+                {Math.round(weather.temperature_c)}°
+              </span>
+              <span style={kicker(PAC.coralLt, 12)}>{weather.condition}</span>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,.18)' }}>
+            <div>
+              <div style={kicker(COLORS.textLo, 10)}>Sensación</div>
+              <div style={{ ...text(20, 500), marginTop: 2 }}>{Math.round(weather.feels_like_c)}°</div>
+            </div>
+            <div>
+              <div style={kicker(COLORS.textLo, 10)}>Viento</div>
+              <div style={{ ...text(20, 500), marginTop: 2 }}>{Math.round(weather.wind_speed_kmh)} km/h</div>
+            </div>
+            <div>
+              <div style={kicker(COLORS.textLo, 10)}>Humedad</div>
+              <div style={{ ...text(20, 500), marginTop: 2 }}>{weather.humidity_pct}%</div>
+            </div>
+            <div>
+              <div style={kicker(COLORS.textLo, 10)}>Sede</div>
+              <div style={{ ...text(16, 500), marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {tournament?.venue_city ?? '—'}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -598,7 +672,7 @@ export function WeatherPacific({ visible, weather, tournament }: {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// 4) TOURNAMENT INTRO PACIFIC — 1400x720 centrado
+// 4) TOURNAMENT INTRO — composicion minimal con blobs flotantes
 // ════════════════════════════════════════════════════════════════════════════
 export function TournamentIntroPacific({ visible, tournament }: { visible: boolean, tournament: Tournament | null }) {
   if (!tournament) return null
@@ -609,65 +683,90 @@ export function TournamentIntroPacific({ visible, tournament }: { visible: boole
     <div style={{
       position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)',
       width: 1400, height: 720,
-      ...pacCard({ intensity: 'medium' }),
-      borderRadius: 48,
-      padding: '60px 80px', fontFamily: PAC_FONT,
-      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 32, textAlign: 'center',
+      fontFamily: PAC_FONT,
       ...animStyle(visible, 'sgInZC', 'sgOutZC', 750),
     }}>
-      {/* Decorative blobs */}
+      {/* Glass card con border-radius asimetrico organico (no es un rectangulo redondeado) */}
       <div style={{
-        position: 'absolute', top: -80, left: -60, width: 280, height: 280,
-        borderRadius: '50% 38% 60% 50%',
-        background: `radial-gradient(circle at 30% 30%, ${hexAlpha(PAC.cyan,.55)}, transparent 70%)`,
-        filter: 'blur(20px)', pointerEvents: 'none',
-      }}/>
-      <div style={{
-        position: 'absolute', bottom: -100, right: -80, width: 320, height: 320,
-        borderRadius: '50% 38% 60% 50%',
-        background: `radial-gradient(circle at 70% 70%, ${hexAlpha(PAC.coral,.55)}, transparent 70%)`,
-        filter: 'blur(22px)', pointerEvents: 'none',
-      }}/>
-
-      {tournament.logo_url && (
-        <img src={tournament.logo_url} alt="" style={{ maxWidth: 280, maxHeight: 240, objectFit: 'contain', position: 'relative', zIndex: 1 }}/>
-      )}
-      <div style={{ fontSize: 110, fontWeight: 300, lineHeight: .92, letterSpacing: '-.025em', color: PAC.textHi, position: 'relative', zIndex: 1 }}>
-        {tournament.name}
+        position: 'absolute', inset: 0,
+        background: GLASS_DARK,
+        border: GLASS_BORDER,
+        borderRadius: '54% 46% 50% 50% / 38% 50% 50% 62%',
+        backdropFilter: 'blur(28px) saturate(1.3)',
+        WebkitBackdropFilter: 'blur(28px) saturate(1.3)',
+        boxShadow: '0 30px 80px rgba(0,0,0,.45)',
+        overflow: 'hidden',
+      }}>
+        {/* Splashes decorativos grandes en esquinas */}
+        <Blob path={BLOB_PATHS[0]} fill={PAC.cyan} width={460} height={460} opacity={.40} blur={40}
+              style={{ top: -180, left: -140 }}/>
+        <Blob path={BLOB_PATHS[2]} fill={PAC.coral} width={500} height={500} opacity={.35} blur={42}
+              style={{ bottom: -220, right: -160 }}/>
+        <Blob path={BLOB_PATHS[3]} fill={PAC.blue} width={300} height={300} opacity={.20} blur={36}
+              style={{ top: 80, right: -50 }}/>
       </div>
-      <div style={{ ...pacPill(), display: 'inline-block', padding: '12px 36px', position: 'relative', zIndex: 1 }}>
-        <span style={{ fontSize: 22, fontWeight: 500, letterSpacing: '.08em', color: PAC.textHi, textTransform: 'uppercase' }}>{subtitle}</span>
+
+      {/* Contenido encima */}
+      <div style={{
+        position: 'relative', height: '100%',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        gap: 32, padding: '60px 80px', textAlign: 'center', zIndex: 1,
+      }}>
+        {tournament.logo_url && (
+          <img src={tournament.logo_url} alt="" style={{ maxWidth: 280, maxHeight: 240, objectFit: 'contain', filter: 'drop-shadow(0 8px 24px rgba(0,0,0,.4))' }}/>
+        )}
+        <div style={{ ...text(108, 300), lineHeight: .92, letterSpacing: '-.025em' }}>
+          {tournament.name}
+        </div>
+        <div style={{ ...pacPillStyle(), display: 'inline-block', padding: '12px 36px' }}>
+          <span style={{ ...text(22, 500), letterSpacing: '.08em', textTransform: 'uppercase' }}>{subtitle}</span>
+        </div>
       </div>
     </div>
   )
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// 5) VENUE CARD PACIFIC — 560 ancho, blob bottom-right
+// 5) VENUE CARD — blob orgánico bottom-right
 // ════════════════════════════════════════════════════════════════════════════
 export function VenueCardPacific({ visible, tournament }: { visible: boolean, tournament: Tournament | null }) {
   if (!tournament) return null
   return (
     <div style={{
       position: 'absolute', right: 90, bottom: 90, width: 560,
-      ...pacCard({ intensity: 'soft' }),
-      ...pacBlob(0),
-      padding: '24px 32px', fontFamily: PAC_FONT,
+      fontFamily: PAC_FONT,
       ...animStyle(visible, 'sgInL', 'sgOutL', 650),
     }}>
-      <div style={pacKicker(PAC.coralLt, 14)}>SEDE</div>
-      <div style={{ marginTop: 8, fontSize: 42, fontWeight: 500, lineHeight: .98, color: PAC.textHi, letterSpacing: '-.01em' }}>
-        {tournament.venue_name || tournament.venue_city}
-      </div>
-      <div style={{ marginTop: 6, fontSize: 22, fontWeight: 400, color: PAC.cyanLt, letterSpacing: '.06em', textTransform: 'uppercase' }}>
-        {tournament.venue_city}
+      <div style={{ position: 'relative', padding: '28px 36px' }}>
+        {/* Blob background con SVG path real */}
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none"
+             style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', filter: 'drop-shadow(0 20px 40px rgba(0,0,0,.42))' }}>
+          <defs>
+            <linearGradient id="venueBg" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="rgb(8,18,32)" stopOpacity=".74"/>
+              <stop offset="100%" stopColor="rgb(15,28,52)" stopOpacity=".70"/>
+            </linearGradient>
+          </defs>
+          <path d={BLOB_PATHS[2]} fill="url(#venueBg)" stroke="rgba(255,255,255,.22)" strokeWidth=".4"/>
+        </svg>
+        <Blob path={BLOB_PATHS[1]} fill={PAC.cyan} width={180} height={180} opacity={.40} blur={22}
+              style={{ top: -30, left: -30 }}/>
+        <div style={{ position: 'relative', zIndex: 1, padding: '14px 18px' }}>
+          <div style={kicker(PAC.coralLt, 14)}>SEDE</div>
+          <div style={{ ...text(40, 500), marginTop: 8, lineHeight: .98, letterSpacing: '-.01em' }}>
+            {tournament.venue_name || tournament.venue_city}
+          </div>
+          <div style={{ ...text(22, 500, PAC.cyanLt), marginTop: 6, letterSpacing: '.06em', textTransform: 'uppercase' }}>
+            {tournament.venue_city}
+          </div>
+        </div>
       </div>
     </div>
   )
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// 6) MATCH PRESENTATION PACIFIC
+// 6) MATCH PRESENTATION
 // ════════════════════════════════════════════════════════════════════════════
 export function MatchPresentationPacific({ visible, match, tournament }: {
   visible: boolean, match: any, tournament: Tournament | null,
@@ -682,38 +781,57 @@ export function MatchPresentationPacific({ visible, match, tournament }: {
   return (
     <div style={{
       position: 'absolute', left: 170, right: 170, top: 160, bottom: 160,
-      ...pacCard({ intensity: 'medium' }),
-      borderRadius: 44,
-      padding: 0, fontFamily: PAC_FONT,
-      display: 'flex', flexDirection: 'column',
+      fontFamily: PAC_FONT,
       ...animStyle(visible, 'sgInZ', 'sgOutZ', 750),
     }}>
-      {/* Header */}
-      <div style={{ padding: '36px 60px 24px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 36, borderBottom: '1px solid rgba(255,255,255,.10)' }}>
-        {tournament?.logo_url && <img src={tournament.logo_url} alt="" style={{ height: 100, width: 100, objectFit: 'contain', flex: 'none' }}/>}
-        <div style={{ fontSize: 64, fontWeight: 300, lineHeight: .98, color: PAC.textHi, letterSpacing: '-.018em', textAlign: 'center', maxWidth: 1100 }}>
-          {tournament?.name}
-        </div>
+      {/* Background blob organico */}
+      <div style={{
+        position: 'absolute', inset: 0,
+        background: GLASS_DARK,
+        border: GLASS_BORDER,
+        borderRadius: '46% 54% 50% 50% / 50% 46% 54% 50%',
+        backdropFilter: 'blur(28px) saturate(1.3)',
+        WebkitBackdropFilter: 'blur(28px) saturate(1.3)',
+        boxShadow: '0 30px 80px rgba(0,0,0,.45)',
+        overflow: 'hidden',
+      }}>
+        <Blob path={BLOB_PATHS[0]} fill={PAC.cyan} width={500} height={500} opacity={.32} blur={42}
+              style={{ top: -200, left: -180 }}/>
+        <Blob path={BLOB_PATHS[3]} fill={PAC.coral} width={520} height={520} opacity={.32} blur={44}
+              style={{ bottom: -220, right: -180 }}/>
       </div>
-      {/* Phase pill */}
-      {pillText && (
-        <div style={{ textAlign: 'center', padding: '24px 0 12px' }}>
-          <span style={{ ...pacPill(), display: 'inline-block', padding: '12px 36px', fontSize: 22, fontWeight: 500, letterSpacing: '.18em', textTransform: 'uppercase', color: PAC.textHi }}>
-            {pillText}
-          </span>
+
+      <div style={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column', zIndex: 1 }}>
+        {/* Header */}
+        <div style={{ padding: '36px 60px 24px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 36, borderBottom: '1px solid rgba(255,255,255,.14)' }}>
+          {tournament?.logo_url && <img src={tournament.logo_url} alt="" style={{ height: 100, width: 100, objectFit: 'contain', flex: 'none', filter: 'drop-shadow(0 6px 18px rgba(0,0,0,.4))' }}/>}
+          <div style={{ ...text(64, 300), lineHeight: .98, letterSpacing: '-.018em', textAlign: 'center', maxWidth: 1100 }}>
+            {tournament?.name}
+          </div>
         </div>
-      )}
-      {/* Teams */}
-      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 240px 1fr', alignItems: 'center', padding: '12px 40px 36px' }}>
-        <PacTeamBlock entry={match.entry1} accent={pal.accentA} align="right" isDoubles={isDoubles}/>
-        <div style={{ display: 'grid', placeItems: 'center' }}>
-          <div style={{
-            fontSize: 200, fontWeight: 200, lineHeight: .85, letterSpacing: '-.05em',
-            background: `linear-gradient(135deg, ${PAC.cyan} 0%, ${PAC.coral} 100%)`,
-            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
-          }}>vs</div>
+        {pillText && (
+          <div style={{ textAlign: 'center', padding: '24px 0 12px' }}>
+            <span style={{
+              ...pacPillStyle(),
+              display: 'inline-block', padding: '12px 36px',
+              ...text(22, 500), letterSpacing: '.18em', textTransform: 'uppercase',
+            }}>
+              {pillText}
+            </span>
+          </div>
+        )}
+        <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 240px 1fr', alignItems: 'center', padding: '12px 40px 36px' }}>
+          <PacTeamBlock entry={match.entry1} accent={pal.accentA} align="right" isDoubles={isDoubles}/>
+          <div style={{ display: 'grid', placeItems: 'center' }}>
+            <div style={{
+              fontSize: 200, fontWeight: 200, lineHeight: .85, letterSpacing: '-.05em',
+              background: GRAD_CYAN_CORAL,
+              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+              filter: 'drop-shadow(0 4px 10px rgba(0,0,0,.4))',
+            }}>vs</div>
+          </div>
+          <PacTeamBlock entry={match.entry2} accent={pal.accentB} align="left" isDoubles={isDoubles}/>
         </div>
-        <PacTeamBlock entry={match.entry2} accent={pal.accentB} align="left" isDoubles={isDoubles}/>
       </div>
     </div>
   )
@@ -729,10 +847,11 @@ function PacTeamBlock({ entry, accent, align, isDoubles }: { entry: any, accent:
           {players.map((p: any, i: number) => p?.photo_url && (
             <div key={i} style={{
               width: isDoubles ? 150 : 200, height: isDoubles ? 150 : 200,
-              borderRadius: '46% 54% 50% 50% / 50% 46% 54% 50%',
+              // FORMA ORGANICA real (no circulo, no cuadrado)
+              borderRadius: '52% 48% 42% 58% / 58% 44% 56% 42%',
               overflow: 'hidden',
               border: `2px solid ${hexAlpha(PAC.cyan, .55)}`,
-              boxShadow: `0 12px 30px ${hexAlpha(accent,.30)}`,
+              boxShadow: `0 16px 40px ${hexAlpha(accent,.40)}`,
             }}>
               <img src={p.photo_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
             </div>
@@ -745,11 +864,11 @@ function PacTeamBlock({ entry, accent, align, isDoubles }: { entry: any, accent:
             <img src={flagPath(p?.nationality)} alt="" style={{ flex: 'none', width: 60, height: 40, borderRadius: 5, objectFit: 'cover' }}/>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: align === 'right' ? 'flex-end' : 'flex-start', lineHeight: 1 }}>
               {p?.first_name && (
-                <span style={{ fontSize: players.length === 1 ? 26 : 20, fontWeight: 400, color: PAC.textMid, letterSpacing: '.02em', textTransform: 'uppercase' }}>
+                <span style={{ ...text(players.length === 1 ? 26 : 20, 400, COLORS.textMid), letterSpacing: '.02em', textTransform: 'uppercase' }}>
                   {p.first_name}
                 </span>
               )}
-              <span style={{ fontSize: players.length === 1 ? 70 : 50, fontWeight: 600, lineHeight: .95, textTransform: 'uppercase', whiteSpace: 'nowrap', color: PAC.textHi, letterSpacing: '-.01em' }}>
+              <span style={{ ...text(players.length === 1 ? 70 : 50, 600), lineHeight: .95, textTransform: 'uppercase', whiteSpace: 'nowrap', letterSpacing: '-.01em' }}>
                 {(p?.last_name ?? '').toUpperCase()}
               </span>
             </div>
@@ -761,7 +880,7 @@ function PacTeamBlock({ entry, accent, align, isDoubles }: { entry: any, accent:
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// 7) PLAYER BIO PACIFIC — 740 ancho lateral
+// 7) PLAYER BIO — capsule organica lateral
 // ════════════════════════════════════════════════════════════════════════════
 export function PlayerBioPacific({ visible, player, team, category, tournament }: {
   visible: boolean, player: Player | null, team: 1|2, category?: Category, tournament: Tournament | null,
@@ -791,112 +910,131 @@ export function PlayerBioPacific({ visible, player, team, category, tournament }
   if (side === 'left') pos.left = 60
   if (side === 'right') pos.right = 60
 
-  const sectionTitle: React.CSSProperties = { fontSize: 16, letterSpacing: '.34em', textTransform: 'uppercase', fontWeight: 600, color: PAC.coralLt }
-  const divider: React.CSSProperties = { height: 1, background: 'rgba(255,255,255,.10)', margin: '20px 0' }
+  const sectionTitle: React.CSSProperties = { ...kicker(PAC.coralLt, 16) }
+  const divider: React.CSSProperties = { height: 1, background: 'rgba(255,255,255,.14)', margin: '20px 0' }
+
+  // Border-radius asimetrico segun lado (entra desde el otro lado)
+  const cardRadius = side === 'left'
+    ? '52% 48% 38% 62% / 56% 44% 56% 44%'
+    : '48% 52% 62% 38% / 44% 56% 44% 56%'
 
   return (
-    <div style={{
-      ...pos,
-      ...pacCard({ intensity: 'medium' }),
-      borderRadius: 36,
-      padding: 0, fontFamily: PAC_FONT,
-      display: 'flex', flexDirection: 'column',
-      ...animStyle(visible, enter, exit, 700),
-    } as any}>
-      <div style={{ padding: '28px 36px 24px', display: 'flex', gap: 22, alignItems: 'center' }}>
-        {hasPhoto && (
-          <div style={{
-            flex: 'none', width: 220, height: 220,
-            borderRadius: '46% 54% 50% 50% / 50% 46% 54% 50%',
-            overflow: 'hidden', border: `2px solid ${hexAlpha(PAC.cyan, .55)}`,
-            boxShadow: `0 12px 30px ${hexAlpha(accent,.30)}`,
-          }}>
-            <img src={player.photo_url!} style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
-          </div>
-        )}
-        <div style={{ minWidth: 0, flex: 1, display: 'flex', alignItems: 'center', gap: 18 }}>
-          <img src={flagPath(player.nationality)} alt="" style={{ flex: 'none', width: 84, height: 56, borderRadius: 5, objectFit: 'cover' }}/>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 32, fontWeight: 400, color: PAC.textMid, lineHeight: 1, textTransform: 'uppercase', letterSpacing: '.02em' }}>
-              {player.first_name}
+    <div style={{ ...pos, fontFamily: PAC_FONT, ...animStyle(visible, enter, exit, 700) } as any}>
+      <div style={{
+        position: 'absolute', inset: 0,
+        background: GLASS_DARK,
+        border: GLASS_BORDER,
+        borderRadius: cardRadius,
+        backdropFilter: 'blur(28px) saturate(1.3)',
+        WebkitBackdropFilter: 'blur(28px) saturate(1.3)',
+        boxShadow: '0 24px 60px rgba(0,0,0,.42)',
+        overflow: 'hidden',
+      }}>
+        <Blob path={BLOB_PATHS[0]} fill={PAC.cyan} width={320} height={320} opacity={.32} blur={36}
+              style={{ top: -140, [side === 'left' ? 'right' : 'left']: -100 } as any}/>
+        <Blob path={BLOB_PATHS[2]} fill={PAC.coral} width={280} height={280} opacity={.32} blur={36}
+              style={{ bottom: -120, [side === 'left' ? 'left' : 'right']: -100 } as any}/>
+      </div>
+
+      <div style={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column', zIndex: 1 }}>
+        <div style={{ padding: '28px 36px 24px', display: 'flex', gap: 22, alignItems: 'center' }}>
+          {hasPhoto && (
+            <div style={{
+              flex: 'none', width: 220, height: 220,
+              borderRadius: '52% 48% 38% 62% / 56% 44% 56% 44%',
+              overflow: 'hidden',
+              border: `3px solid ${hexAlpha(PAC.cyan, .60)}`,
+              boxShadow: `0 16px 40px ${hexAlpha(accent,.40)}`,
+            }}>
+              <img src={player.photo_url!} style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
             </div>
-            <div style={{ fontSize: 70, fontWeight: 500, lineHeight: .92, textTransform: 'uppercase', color: PAC.textHi, letterSpacing: '-.01em' }}>
-              {player.last_name}
+          )}
+          <div style={{ minWidth: 0, flex: 1, display: 'flex', alignItems: 'center', gap: 18 }}>
+            <img src={flagPath(player.nationality)} alt="" style={{ flex: 'none', width: 84, height: 56, borderRadius: 5, objectFit: 'cover' }}/>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ ...text(32, 400, COLORS.textMid), lineHeight: 1, textTransform: 'uppercase', letterSpacing: '.02em' }}>
+                {player.first_name}
+              </div>
+              <div style={{ ...text(70, 500), lineHeight: .92, textTransform: 'uppercase', letterSpacing: '-.01em' }}>
+                {player.last_name}
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div style={{ padding: '0 36px 28px', display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
-        {ficha.length > 0 && (<>
-          <div style={divider}/>
-          <div style={sectionTitle}>FICHA</div>
-          <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 28px' }}>
-            {ficha.map(([k, v]) => (
-              <div key={k}>
-                <div style={pacKicker(PAC.textLo, 12)}>{k}</div>
-                <div style={{ fontSize: 28, fontWeight: 500, color: PAC.textHi, marginTop: 2 }}>{v}</div>
-              </div>
-            ))}
-          </div>
-        </>)}
+        <div style={{ padding: '0 36px 28px', display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+          {ficha.length > 0 && (<>
+            <div style={divider}/>
+            <div style={sectionTitle}>FICHA</div>
+            <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 28px' }}>
+              {ficha.map(([k, v]) => (
+                <div key={k}>
+                  <div style={kicker(COLORS.textLo, 12)}>{k}</div>
+                  <div style={{ ...text(28, 500), marginTop: 2 }}>{v}</div>
+                </div>
+              ))}
+            </div>
+          </>)}
 
-        {hasRanking && (<>
-          <div style={divider}/>
-          <div style={sectionTitle}>RANKING</div>
-          <div style={{ marginTop: 12, display: 'flex', gap: 18 }}>
-            {player.ranking_rfet && (
-              <div style={{
-                flex: 1, padding: '14px 22px', borderRadius: 16,
-                background: `linear-gradient(135deg, ${hexAlpha(PAC.cyan,.18)} 0%, ${hexAlpha(PAC.coral,.18)} 100%)`,
-                border: `1px solid ${hexAlpha(PAC.cyan, .35)}`,
-              }}>
-                <div style={pacKicker(PAC.cyanLt, 14)}>RFET</div>
-                <div style={{ fontSize: 64, fontWeight: 300, lineHeight: 1, color: PAC.textHi, fontVariantNumeric: 'tabular-nums' }}>#{player.ranking_rfet}</div>
-              </div>
-            )}
-            {player.ranking_itf && (
-              <div style={{
-                flex: 1, padding: '14px 22px', borderRadius: 16,
-                background: `linear-gradient(135deg, ${hexAlpha(PAC.cyan,.18)} 0%, ${hexAlpha(PAC.coral,.18)} 100%)`,
-                border: `1px solid ${hexAlpha(PAC.cyan, .35)}`,
-              }}>
-                <div style={pacKicker(PAC.cyanLt, 14)}>ITF</div>
-                <div style={{ fontSize: 64, fontWeight: 300, lineHeight: 1, color: PAC.textHi, fontVariantNumeric: 'tabular-nums' }}>#{player.ranking_itf}</div>
-              </div>
-            )}
-          </div>
-        </>)}
+          {hasRanking && (<>
+            <div style={divider}/>
+            <div style={sectionTitle}>RANKING</div>
+            <div style={{ marginTop: 12, display: 'flex', gap: 18 }}>
+              {player.ranking_rfet && (
+                <div style={{
+                  flex: 1, padding: '14px 22px',
+                  borderRadius: '40% 60% 38% 62% / 50% 56% 44% 50%',
+                  background: `linear-gradient(135deg, ${hexAlpha(PAC.cyan,.18)} 0%, ${hexAlpha(PAC.coral,.20)} 100%)`,
+                  border: `1px solid ${hexAlpha(PAC.cyan, .40)}`,
+                }}>
+                  <div style={kicker(PAC.cyanLt, 14)}>RFET</div>
+                  <div style={{ ...text(64, 300), lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>#{player.ranking_rfet}</div>
+                </div>
+              )}
+              {player.ranking_itf && (
+                <div style={{
+                  flex: 1, padding: '14px 22px',
+                  borderRadius: '60% 40% 62% 38% / 56% 44% 56% 44%',
+                  background: `linear-gradient(135deg, ${hexAlpha(PAC.cyan,.18)} 0%, ${hexAlpha(PAC.coral,.20)} 100%)`,
+                  border: `1px solid ${hexAlpha(PAC.cyan, .40)}`,
+                }}>
+                  <div style={kicker(PAC.cyanLt, 14)}>ITF</div>
+                  <div style={{ ...text(64, 300), lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>#{player.ranking_itf}</div>
+                </div>
+              )}
+            </div>
+          </>)}
 
-        {hasTitles && (<>
-          <div style={divider}/>
-          <div style={sectionTitle}>PALMARÉS</div>
-          <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {player.titles!.slice(0, 4).map((t: any, i: number) => (
-              <div key={i} style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: 16, alignItems: 'baseline' }}>
-                <span style={{ fontSize: 24, fontWeight: 600, color: PAC.coralLt, fontVariantNumeric: 'tabular-nums' }}>{t.year}</span>
-                <span style={{ fontSize: 22, fontWeight: 400, color: PAC.textHi, lineHeight: 1.2 }}>{t.name}</span>
-              </div>
-            ))}
-          </div>
-        </>)}
+          {hasTitles && (<>
+            <div style={divider}/>
+            <div style={sectionTitle}>PALMARÉS</div>
+            <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {player.titles!.slice(0, 4).map((t: any, i: number) => (
+                <div key={i} style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: 16, alignItems: 'baseline' }}>
+                  <span style={{ ...text(24, 600, PAC.coralLt), fontVariantNumeric: 'tabular-nums' }}>{t.year}</span>
+                  <span style={{ ...text(22, 400), lineHeight: 1.2 }}>{t.name}</span>
+                </div>
+              ))}
+            </div>
+          </>)}
 
-        {hasBio && (<>
-          <div style={divider}/>
-          <div style={sectionTitle}>BIO</div>
-          <div style={{ marginTop: 10, fontSize: 20, lineHeight: 1.45, color: PAC.textMid, overflow: 'hidden', flex: 1, fontWeight: 300 }}>
-            {player.bio}
-          </div>
-        </>)}
+          {hasBio && (<>
+            <div style={divider}/>
+            <div style={sectionTitle}>BIO</div>
+            <div style={{ ...text(20, 300, COLORS.textMid), marginTop: 10, lineHeight: 1.45, overflow: 'hidden', flex: 1 }}>
+              {player.bio}
+            </div>
+          </>)}
+        </div>
       </div>
     </div>
   )
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// 8) REFEREE LOWER THIRD PACIFIC — 1240x140 centrado bottom 100
+// 8) REFEREE LOWER THIRD
 // ════════════════════════════════════════════════════════════════════════════
-export function RefereeLowerThirdPacific({ visible, referee, tournament }: {
+export function RefereeLowerThirdPacific({ visible, referee }: {
   visible: boolean, referee: { full_name: string, federacion?: string|null } | null, tournament: Tournament | null,
 }) {
   if (!referee) return null
@@ -904,27 +1042,38 @@ export function RefereeLowerThirdPacific({ visible, referee, tournament }: {
     <div style={{
       position: 'absolute', left: '50%', bottom: 100, transform: 'translateX(-50%)',
       width: 1240, height: 140,
-      ...pacCard({ intensity: 'medium' }),
-      borderRadius: 36, padding: 0, fontFamily: PAC_FONT,
-      display: 'grid', gridTemplateColumns: '260px 1fr',
+      fontFamily: PAC_FONT,
       ...animStyle(visible, 'sgInClip', 'sgOutClip', 700),
     }}>
       <div style={{
-        background: GRAD_HORIZ,
-        display: 'grid', placeItems: 'center',
+        position: 'absolute', inset: 0,
+        background: GLASS_DARK,
+        border: GLASS_BORDER,
+        borderRadius: '60% 40% 50% 50% / 50% 60% 40% 50%',
+        backdropFilter: 'blur(28px) saturate(1.3)',
+        WebkitBackdropFilter: 'blur(28px) saturate(1.3)',
+        boxShadow: '0 18px 50px rgba(0,0,0,.42)',
+        overflow: 'hidden',
+        display: 'grid', gridTemplateColumns: '260px 1fr',
       }}>
-        <span style={{ fontSize: 24, fontWeight: 600, letterSpacing: '.3em', textTransform: 'uppercase', color: PAC.textHi }}>ÁRBITRO</span>
-      </div>
-      <div style={{ padding: '0 32px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 4 }}>
-        <span style={{ fontSize: 50, fontWeight: 500, lineHeight: .95, textTransform: 'uppercase', color: PAC.textHi, letterSpacing: '-.01em' }}>{referee.full_name}</span>
-        {referee.federacion && <span style={pacKicker(PAC.cyanLt, 18)}>{referee.federacion}</span>}
+        <div style={{ background: GRAD_HORIZ, display: 'grid', placeItems: 'center', position: 'relative' }}>
+          <Blob path={BLOB_PATHS[1]} fill={PAC.cyanLt} width={200} height={200} opacity={.30} blur={20}
+                style={{ top: -60, left: -40 }}/>
+          <span style={{ ...text(24, 600), letterSpacing: '.30em', textTransform: 'uppercase', position: 'relative', zIndex: 1 }}>ÁRBITRO</span>
+        </div>
+        <div style={{ padding: '0 32px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 4, position: 'relative' }}>
+          <Blob path={BLOB_PATHS[2]} fill={PAC.coral} width={240} height={240} opacity={.25} blur={28}
+                style={{ bottom: -100, right: -60 }}/>
+          <span style={{ ...text(50, 500), lineHeight: .95, textTransform: 'uppercase', letterSpacing: '-.01em', position: 'relative', zIndex: 1 }}>{referee.full_name}</span>
+          {referee.federacion && <span style={{ ...kicker(PAC.cyanLt, 18), position: 'relative', zIndex: 1 }}>{referee.federacion}</span>}
+        </div>
       </div>
     </div>
   )
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// 9) STATS PANEL PACIFIC — 1180 ancho centrado
+// 9) STATS PANEL
 // ════════════════════════════════════════════════════════════════════════════
 function autoScope(match: any): 'set_1'|'set_2'|'set_3'|'match' {
   const sets = match?.score?.sets?.length ?? 0
@@ -956,7 +1105,7 @@ export function StatsPanelPacific({ visible, match, tournament, scope }: {
   const breaksSavedB = s.t2.break_points_saved
   const breaksFacedB = s.t2.break_points_faced ?? 0
 
-  const rows: Array<{ label: string, a: number|string, b: number|string }> = [
+  const rows = [
     { label: 'Aces', a: s.t1.aces, b: s.t2.aces },
     { label: 'Dobles faltas', a: s.t1.double_faults, b: s.t2.double_faults },
     ...(advanced ? [
@@ -968,7 +1117,7 @@ export function StatsPanelPacific({ visible, match, tournament, scope }: {
     { label: 'Breaks ganados / total', a: `${breaksWonA}/${breaksWonTotA}`, b: `${breaksWonB}/${breaksWonTotB}` },
     { label: 'Breaks salvados / total', a: `${breaksSavedA}/${breaksFacedA}`, b: `${breaksSavedB}/${breaksFacedB}` },
     { label: 'Puntos totales', a: s.t1.total_points_won, b: s.t2.total_points_won },
-  ]
+  ] as Array<{ label: string, a: number|string, b: number|string }>
 
   const sets = match.score?.sets ?? []
   const currentSet = match.score?.current_set
@@ -984,36 +1133,53 @@ export function StatsPanelPacific({ visible, match, tournament, scope }: {
   return (
     <div style={{
       position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)',
-      width: 1180, ...pacCard({ intensity: 'medium' }),
-      borderRadius: 40, padding: '32px 48px', fontFamily: PAC_FONT,
+      width: 1180,
+      fontFamily: PAC_FONT,
       ...animStyle(visible, 'sgInZC', 'sgOutZC', 700),
     }}>
-      <div style={{ textAlign: 'center', marginBottom: 18 }}>
-        <div style={{ fontSize: 44, fontWeight: 300, color: PAC.textHi, letterSpacing: '-.01em' }}>Estadísticas</div>
-        <div style={pacKicker(PAC.coralLt, 16)}>{SCOPE_TITLE[resolvedScope] ?? ''}</div>
+      <div style={{
+        position: 'absolute', inset: 0,
+        background: GLASS_DARK, border: GLASS_BORDER,
+        borderRadius: '46% 54% 50% 50% / 50% 46% 54% 50%',
+        backdropFilter: 'blur(28px) saturate(1.3)',
+        WebkitBackdropFilter: 'blur(28px) saturate(1.3)',
+        boxShadow: '0 30px 80px rgba(0,0,0,.45)',
+        overflow: 'hidden',
+      }}>
+        <Blob path={BLOB_PATHS[0]} fill={PAC.cyan} width={400} height={400} opacity={.32} blur={40}
+              style={{ top: -180, left: -120 }}/>
+        <Blob path={BLOB_PATHS[3]} fill={PAC.coral} width={420} height={420} opacity={.32} blur={40}
+              style={{ bottom: -180, right: -120 }}/>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 28, alignItems: 'center', marginBottom: 22 }}>
-        <PacPlayerSmall entry={match.entry1} align="right" accent={pal.accentA} doubles={isDoubles}/>
-        <PacScoreMini visibleSets={visibleSets}/>
-        <PacPlayerSmall entry={match.entry2} align="left" accent={pal.accentB} doubles={isDoubles}/>
-      </div>
+      <div style={{ position: 'relative', padding: '32px 48px', zIndex: 1 }}>
+        <div style={{ textAlign: 'center', marginBottom: 18 }}>
+          <div style={{ ...text(44, 300), letterSpacing: '-.01em' }}>Estadísticas</div>
+          <div style={kicker(PAC.coralLt, 16)}>{SCOPE_TITLE[resolvedScope] ?? ''}</div>
+        </div>
 
-      <div>
-        <div style={{ height: 1, background: 'rgba(255,255,255,.10)' }}/>
-        {rows.map((r, i) => <PacStatRow key={i} label={r.label} a={r.a} b={r.b}/>)}
-      </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 28, alignItems: 'center', marginBottom: 22 }}>
+          <PacPlayerSmall entry={match.entry1} align="right" doubles={isDoubles}/>
+          <PacScoreMini visibleSets={visibleSets}/>
+          <PacPlayerSmall entry={match.entry2} align="left" doubles={isDoubles}/>
+        </div>
 
-      <div style={{ marginTop: 18, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,.10)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
-        <span style={pacKicker(PAC.coralLt, 16)}>{roundLabel(match.round)}</span>
-        <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'rgba(255,255,255,.3)' }}/>
-        <span style={pacKicker(PAC.textMid, 14)}>{CATEGORY_LABELS[match.category as Category] ?? match.category}</span>
+        <div>
+          <div style={{ height: 1, background: 'rgba(255,255,255,.14)' }}/>
+          {rows.map((r, i) => <PacStatRow key={i} label={r.label} a={r.a} b={r.b}/>)}
+        </div>
+
+        <div style={{ marginTop: 18, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,.14)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+          <span style={kicker(PAC.coralLt, 16)}>{roundLabel(match.round)}</span>
+          <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'rgba(255,255,255,.4)' }}/>
+          <span style={kicker(COLORS.textMid, 14)}>{CATEGORY_LABELS[match.category as Category] ?? match.category}</span>
+        </div>
       </div>
     </div>
   )
 }
 
-function PacPlayerSmall({ entry, align, doubles }: { entry: any, align: 'left'|'right', accent: string, doubles: boolean }) {
+function PacPlayerSmall({ entry, align, doubles }: { entry: any, align: 'left'|'right', doubles: boolean }) {
   const players = [entry?.player1, doubles ? entry?.player2 : null].filter(Boolean)
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: align === 'right' ? 'flex-end' : 'flex-start' }}>
@@ -1022,9 +1188,9 @@ function PacPlayerSmall({ entry, align, doubles }: { entry: any, align: 'left'|'
           <img src={flagPath(p?.nationality)} alt="" style={{ flex: 'none', width: 50, height: 34, borderRadius: 4, objectFit: 'cover' }}/>
           <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1, alignItems: align === 'right' ? 'flex-end' : 'flex-start' }}>
             {p?.first_name && (
-              <span style={{ fontSize: players.length === 1 ? 18 : 15, fontWeight: 400, color: PAC.textMid, letterSpacing: '.02em', textTransform: 'uppercase' }}>{p.first_name}</span>
+              <span style={{ ...text(players.length === 1 ? 18 : 15, 400, COLORS.textMid), letterSpacing: '.02em', textTransform: 'uppercase' }}>{p.first_name}</span>
             )}
-            <span style={{ fontSize: players.length === 1 ? 42 : 30, fontWeight: 500, lineHeight: .95, textTransform: 'uppercase', whiteSpace: 'nowrap', color: PAC.textHi, letterSpacing: '-.005em' }}>
+            <span style={{ ...text(players.length === 1 ? 42 : 30, 500), lineHeight: .95, textTransform: 'uppercase', whiteSpace: 'nowrap', letterSpacing: '-.005em' }}>
               {(p?.last_name ?? '').toUpperCase()}
             </span>
           </div>
@@ -1034,14 +1200,14 @@ function PacPlayerSmall({ entry, align, doubles }: { entry: any, align: 'left'|'
   )
 }
 function PacScoreMini({ visibleSets }: { visibleSets: Array<{ num: number, t1: number, t2: number, isCurrent: boolean }> }) {
-  if (visibleSets.length === 0) return <div style={{ opacity: .3, fontSize: 26, fontWeight: 400 }}>—</div>
+  if (visibleSets.length === 0) return <div style={{ ...text(26, 400, COLORS.textLo) }}>—</div>
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center', minWidth: 200 }}>
       {visibleSets.map(s => (
         <div key={s.num} style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
-          <span style={pacKicker(PAC.textLo, 14)}>SET {s.num}</span>
-          <span style={{ fontSize: 30, fontWeight: 500, color: PAC.textHi, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
-            {s.t1}<span style={{ opacity: .35, margin: '0 10px' }}>—</span>{s.t2}
+          <span style={kicker(COLORS.textLo, 14)}>SET {s.num}</span>
+          <span style={{ ...text(30, 500), fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
+            {s.t1}<span style={{ opacity: .4, margin: '0 10px' }}>—</span>{s.t2}
           </span>
         </div>
       ))}
@@ -1056,17 +1222,17 @@ function PacStatRow({ label, a, b }: { label: string, a: number|string, b: numbe
   return (
     <>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 1fr', alignItems: 'center', gap: 22, padding: '12px 4px' }}>
-        <span style={{ fontSize: 32, fontWeight: 600, textAlign: 'right', color: aWins ? PAC.cyanLt : PAC.textMid, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{a}</span>
-        <span style={pacKicker(PAC.textMid, 14)}>{label}</span>
-        <span style={{ fontSize: 32, fontWeight: 600, textAlign: 'left', color: bWins ? PAC.coralLt : PAC.textMid, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{b}</span>
+        <span style={{ ...text(32, 600, aWins ? PAC.cyanLt : COLORS.textMid), textAlign: 'right', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{a}</span>
+        <span style={kicker(COLORS.textMid, 14)}>{label}</span>
+        <span style={{ ...text(32, 600, bWins ? PAC.coralLt : COLORS.textMid), textAlign: 'left', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{b}</span>
       </div>
-      <div style={{ height: 1, background: 'rgba(255,255,255,.06)' }}/>
+      <div style={{ height: 1, background: 'rgba(255,255,255,.08)' }}/>
     </>
   )
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// 10) RESULTS GRID PACIFIC — solo fase en curso, 1680 ancho
+// 10) RESULTS GRID — fase actual
 // ════════════════════════════════════════════════════════════════════════════
 function fmtSchedule(iso: string | null | undefined, courtName?: string | null) {
   if (!iso && !courtName) return '— POR CONFIRMAR —'
@@ -1087,7 +1253,6 @@ export function ResultsGridPacific({ visible, matches, highlightMatchId, tournam
   const ROUND_ORDER = ['F','SF','QF','R16','R32','RR','GRP','CON','Q1','Q2']
   const cat = (category ?? matches[0]?.category) as Category | undefined
   const catMatches = cat ? matches.filter((m: any) => m.category === cat) : matches
-  // Solo la fase EN CURSO
   const liveMatch = catMatches.find((m: any) => m.status === 'in_progress')
   let activeRound: string | null = null
   if (liveMatch) activeRound = liveMatch.round
@@ -1105,24 +1270,40 @@ export function ResultsGridPacific({ visible, matches, highlightMatchId, tournam
     <div style={{
       position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)',
       width: 1680, maxHeight: 980,
-      ...pacCard({ intensity: 'medium' }),
-      borderRadius: 40, padding: 0, fontFamily: PAC_FONT,
+      fontFamily: PAC_FONT,
       ...animStyle(visible, 'sgInZC', 'sgOutZC', 700),
     }}>
-      <div style={{ padding: '24px 40px', borderBottom: '1px solid rgba(255,255,255,.10)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div>
-          <div style={pacKicker(PAC.coralLt, 14)}>Orden de juego · {ROUND_LABELS[activeRound ?? ''] ?? activeRound ?? ''}</div>
-          <div style={{ fontSize: 42, fontWeight: 300, color: PAC.textHi, lineHeight: .98, letterSpacing: '-.01em', marginTop: 6 }}>
-            {CATEGORY_LABELS[(category ?? matches[0]?.category) as Category] ?? tournament?.name}
-          </div>
-        </div>
-        {tournament?.logo_url && <img src={tournament.logo_url} alt="" style={{ height: 60 }}/>}
+      <div style={{
+        position: 'absolute', inset: 0,
+        background: GLASS_DARK, border: GLASS_BORDER,
+        borderRadius: '50% 50% 40% 60% / 40% 50% 60% 50%',
+        backdropFilter: 'blur(28px) saturate(1.3)',
+        WebkitBackdropFilter: 'blur(28px) saturate(1.3)',
+        boxShadow: '0 30px 80px rgba(0,0,0,.45)',
+        overflow: 'hidden',
+      }}>
+        <Blob path={BLOB_PATHS[0]} fill={PAC.cyan} width={520} height={520} opacity={.30} blur={42}
+              style={{ top: -240, left: -180 }}/>
+        <Blob path={BLOB_PATHS[2]} fill={PAC.coral} width={500} height={500} opacity={.30} blur={42}
+              style={{ bottom: -240, right: -180 }}/>
       </div>
 
-      <div style={{ padding: '20px 40px 30px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 28px', overflow: 'hidden' }}>
-        {filtered.map((m: any) => (
-          <PacResultRow key={m.id} m={m} highlight={m.id === highlightMatchId}/>
-        ))}
+      <div style={{ position: 'relative', zIndex: 1 }}>
+        <div style={{ padding: '24px 40px', borderBottom: '1px solid rgba(255,255,255,.14)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={kicker(PAC.coralLt, 14)}>Orden de juego · {ROUND_LABELS[activeRound ?? ''] ?? activeRound ?? ''}</div>
+            <div style={{ ...text(42, 300), lineHeight: .98, letterSpacing: '-.01em', marginTop: 6 }}>
+              {CATEGORY_LABELS[(category ?? matches[0]?.category) as Category] ?? tournament?.name}
+            </div>
+          </div>
+          {tournament?.logo_url && <img src={tournament.logo_url} alt="" style={{ height: 60, filter: 'drop-shadow(0 4px 12px rgba(0,0,0,.4))' }}/>}
+        </div>
+
+        <div style={{ padding: '20px 40px 30px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 28px' }}>
+          {filtered.map((m: any) => (
+            <PacResultRow key={m.id} m={m} highlight={m.id === highlightMatchId}/>
+          ))}
+        </div>
       </div>
     </div>
   )
@@ -1148,11 +1329,13 @@ function PacResultRow({ m, highlight }: { m: any, highlight: boolean }) {
   return (
     <div style={{
       display: 'grid', gridTemplateColumns: '1fr auto', gap: 12, alignItems: 'center',
-      padding: '10px 16px', borderRadius: 14,
+      padding: '12px 20px',
+      // Capsule organica
+      borderRadius: highlight ? '40% 60% 50% 50% / 50% 50% 50% 50%' : 999,
       background: highlight
-        ? `linear-gradient(135deg, ${hexAlpha(PAC.cyan,.18)} 0%, ${hexAlpha(PAC.coral,.18)} 100%)`
-        : 'rgba(255,255,255,.04)',
-      border: highlight ? `1px solid ${hexAlpha(PAC.cyan, .55)}` : '1px solid rgba(255,255,255,.10)',
+        ? `linear-gradient(135deg, ${hexAlpha(PAC.cyan,.20)} 0%, ${hexAlpha(PAC.coral,.20)} 100%)`
+        : 'rgba(255,255,255,.06)',
+      border: highlight ? `1px solid ${hexAlpha(PAC.cyan, .55)}` : '1px solid rgba(255,255,255,.14)',
     }}>
       <div>
         {[1, 2].map(tn => {
@@ -1161,10 +1344,10 @@ function PacResultRow({ m, highlight }: { m: any, highlight: boolean }) {
           const isWinner = finished && winnerTeam === team
           return (
             <div key={team} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'baseline', padding: '2px 0' }}>
-              <span style={{ fontSize: 22, fontWeight: isWinner ? 600 : 400, color: isWinner ? PAC.textHi : PAC.textMid, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <span style={{ ...text(22, isWinner ? 600 : 400, isWinner ? COLORS.white : COLORS.textMid), whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {teamLabel(entry)}
               </span>
-              <span style={{ fontSize: 22, fontWeight: 600, color: isWinner ? PAC.cyanLt : PAC.textLo, fontVariantNumeric: 'tabular-nums', letterSpacing: '.04em' }}>
+              <span style={{ ...text(22, 600, isWinner ? PAC.cyanLt : COLORS.textLo), fontVariantNumeric: 'tabular-nums', letterSpacing: '.04em' }}>
                 {setsLine(team)}
               </span>
             </div>
@@ -1173,10 +1356,10 @@ function PacResultRow({ m, highlight }: { m: any, highlight: boolean }) {
       </div>
       <div style={{ textAlign: 'right' }}>
         {finished
-          ? <span style={pacKicker(PAC.textLo, 12)}>FINAL</span>
+          ? <span style={kicker(COLORS.textLo, 12)}>FINAL</span>
           : inProgress
-          ? <span style={pacKicker(PAC.coralLt, 12)}>EN JUEGO</span>
-          : <span style={pacKicker(PAC.textLo, 12)}>{fmtSchedule(m.scheduled_at, m.court?.name)}</span>
+          ? <span style={kicker(PAC.coralLt, 12)}>EN JUEGO</span>
+          : <span style={kicker(COLORS.textLo, 12)}>{fmtSchedule(m.scheduled_at, m.court?.name)}</span>
         }
       </div>
     </div>
@@ -1184,7 +1367,7 @@ function PacResultRow({ m, highlight }: { m: any, highlight: boolean }) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// 11) BRACKET VIEW PACIFIC — solo QF/SF/F (mismas dimensiones)
+// 11) BRACKET — QF/SF/F
 // ════════════════════════════════════════════════════════════════════════════
 const PAC_KO = ['QF', 'SF', 'F'] as const
 type PacKoRound = typeof PAC_KO[number]
@@ -1194,7 +1377,7 @@ const PAC_KO_SLOTS: Record<PacKoRound, number> = { QF: 4, SF: 2, F: 1 }
 export function BracketViewPacific({ visible, matches, highlightMatchId, tournament, category }: {
   visible: boolean, matches: any[], highlightMatchId?: string|null, tournament: Tournament | null, category?: string,
 }) {
-  const LC = 'rgba(255,255,255,.22)'
+  const LC = 'rgba(255,255,255,.30)'
   const cat = (category ?? matches[0]?.category) as Category | undefined
   const catMatches = cat ? matches.filter((m: any) => m.category === cat) : matches
 
@@ -1212,7 +1395,7 @@ export function BracketViewPacific({ visible, matches, highlightMatchId, tournam
     return { round: r, slots }
   })
 
-  const totalRows = PAC_KO_SLOTS.QF * 2  // 8 filas
+  const totalRows = PAC_KO_SLOTS.QF * 2
   const colTracks: string[] = []
   for (let i = 0; i < visibleRounds.length; i++) {
     if (i > 0) colTracks.push('60px')
@@ -1224,66 +1407,82 @@ export function BracketViewPacific({ visible, matches, highlightMatchId, tournam
     <div style={{
       position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)',
       width: 1760, height: 960,
-      ...pacCard({ intensity: 'medium' }),
-      borderRadius: 44, padding: 0, fontFamily: PAC_FONT,
+      fontFamily: PAC_FONT,
       ...animStyle(visible, 'sgInZC', 'sgOutZC', 700),
     }}>
-      <div style={{ padding: '22px 40px', borderBottom: '1px solid rgba(255,255,255,.10)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <div style={pacKicker(PAC.coralLt, 16)}>CUADRO</div>
-          <div style={{ fontSize: 38, fontWeight: 300, color: PAC.textHi, letterSpacing: '-.01em', marginTop: 4 }}>
-            {CATEGORY_LABELS[(category ?? matches[0]?.category) as Category] ?? ''}
+      <div style={{
+        position: 'absolute', inset: 0,
+        background: GLASS_DARK, border: GLASS_BORDER,
+        borderRadius: '50% 50% 38% 62% / 40% 50% 50% 60%',
+        backdropFilter: 'blur(28px) saturate(1.3)',
+        WebkitBackdropFilter: 'blur(28px) saturate(1.3)',
+        boxShadow: '0 30px 80px rgba(0,0,0,.45)',
+        overflow: 'hidden',
+      }}>
+        <Blob path={BLOB_PATHS[1]} fill={PAC.cyan} width={520} height={520} opacity={.28} blur={42}
+              style={{ top: -240, left: -180 }}/>
+        <Blob path={BLOB_PATHS[3]} fill={PAC.coral} width={500} height={500} opacity={.28} blur={42}
+              style={{ bottom: -240, right: -180 }}/>
+      </div>
+
+      <div style={{ position: 'relative', zIndex: 1 }}>
+        <div style={{ padding: '22px 40px', borderBottom: '1px solid rgba(255,255,255,.14)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <div style={kicker(PAC.coralLt, 16)}>CUADRO</div>
+            <div style={{ ...text(38, 300), letterSpacing: '-.01em', marginTop: 4 }}>
+              {CATEGORY_LABELS[(category ?? matches[0]?.category) as Category] ?? ''}
+            </div>
           </div>
+          {tournament?.logo_url && <img src={tournament.logo_url} alt="" style={{ height: 60, filter: 'drop-shadow(0 4px 12px rgba(0,0,0,.4))' }}/>}
         </div>
-        {tournament?.logo_url && <img src={tournament.logo_url} alt="" style={{ height: 60 }}/>}
-      </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: gridCols, padding: '14px 40px 0', gap: 0 }}>
-        {visibleRounds.map((r, i) => (
-          <React.Fragment key={r}>
-            {i > 0 && <div/>}
-            <div style={{ textAlign: 'center', ...pacKicker(PAC.coralLt, 16) }}>{PAC_KO_LBL[r]}</div>
-          </React.Fragment>
-        ))}
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: gridCols, gridTemplateRows: `repeat(${totalRows}, 1fr)`, height: 760, padding: '14px 40px 24px' }}>
-        {roundsData.map(({ round, slots }, colIdx) => {
-          const slotsCount = slots.length
-          const span = totalRows / slotsCount
-          const gridColumn = colIdx === 0 ? 1 : colIdx * 2 + 1
-          return (
-            <React.Fragment key={round}>
-              {slots.map((m, i) => {
-                const startRow = i * span + 1
-                const endRow = startRow + span
-                return (
-                  <div key={`${round}-${i}`} style={{ gridColumn, gridRow: `${startRow}/${endRow}`, display: 'flex', alignItems: 'center', padding: '6px 0' }}>
-                    <PacBracketSlot m={m} hot={m?.id === highlightMatchId} isFinal={round === 'F'}/>
-                  </div>
-                )
-              })}
-              {colIdx < roundsData.length - 1 && (
-                <div style={{ gridColumn: colIdx*2 + 2, gridRow: `1/${totalRows+1}`, position: 'relative' }}>
-                  {Array.from({ length: slotsCount / 2 }).map((_, p) => {
-                    const i1 = p*2, i2 = p*2 + 1
-                    const c1 = ((i1 + 0.5) / slotsCount) * 100
-                    const c2 = ((i2 + 0.5) / slotsCount) * 100
-                    const cMid = (c1 + c2) / 2
-                    return (
-                      <React.Fragment key={p}>
-                        <div style={{ position: 'absolute', left: 0, width: '50%', top: `calc(${c1}% - 1px)`, height: 2, background: LC }}/>
-                        <div style={{ position: 'absolute', left: 0, width: '50%', top: `calc(${c2}% - 1px)`, height: 2, background: LC }}/>
-                        <div style={{ position: 'absolute', left: 'calc(50% - 1px)', top: `${c1}%`, height: `${c2-c1}%`, width: 2, background: LC }}/>
-                        <div style={{ position: 'absolute', left: '50%', right: 0, top: `calc(${cMid}% - 1px)`, height: 2, background: LC }}/>
-                      </React.Fragment>
-                    )
-                  })}
-                </div>
-              )}
+        <div style={{ display: 'grid', gridTemplateColumns: gridCols, padding: '14px 40px 0' }}>
+          {visibleRounds.map((r, i) => (
+            <React.Fragment key={r}>
+              {i > 0 && <div/>}
+              <div style={{ textAlign: 'center', ...kicker(PAC.coralLt, 16) }}>{PAC_KO_LBL[r]}</div>
             </React.Fragment>
-          )
-        })}
+          ))}
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: gridCols, gridTemplateRows: `repeat(${totalRows}, 1fr)`, height: 760, padding: '14px 40px 24px' }}>
+          {roundsData.map(({ round, slots }, colIdx) => {
+            const slotsCount = slots.length
+            const span = totalRows / slotsCount
+            const gridColumn = colIdx === 0 ? 1 : colIdx * 2 + 1
+            return (
+              <React.Fragment key={round}>
+                {slots.map((m, i) => {
+                  const startRow = i * span + 1
+                  const endRow = startRow + span
+                  return (
+                    <div key={`${round}-${i}`} style={{ gridColumn, gridRow: `${startRow}/${endRow}`, display: 'flex', alignItems: 'center', padding: '6px 0' }}>
+                      <PacBracketSlot m={m} hot={m?.id === highlightMatchId} isFinal={round === 'F'}/>
+                    </div>
+                  )
+                })}
+                {colIdx < roundsData.length - 1 && (
+                  <div style={{ gridColumn: colIdx*2 + 2, gridRow: `1/${totalRows+1}`, position: 'relative' }}>
+                    {Array.from({ length: slotsCount / 2 }).map((_, p) => {
+                      const i1 = p*2, i2 = p*2 + 1
+                      const c1 = ((i1 + 0.5) / slotsCount) * 100
+                      const c2 = ((i2 + 0.5) / slotsCount) * 100
+                      const cMid = (c1 + c2) / 2
+                      return (
+                        <React.Fragment key={p}>
+                          <div style={{ position: 'absolute', left: 0, width: '50%', top: `calc(${c1}% - 1px)`, height: 2, background: LC }}/>
+                          <div style={{ position: 'absolute', left: 0, width: '50%', top: `calc(${c2}% - 1px)`, height: 2, background: LC }}/>
+                          <div style={{ position: 'absolute', left: 'calc(50% - 1px)', top: `${c1}%`, height: `${c2-c1}%`, width: 2, background: LC }}/>
+                          <div style={{ position: 'absolute', left: '50%', right: 0, top: `calc(${cMid}% - 1px)`, height: 2, background: LC }}/>
+                        </React.Fragment>
+                      )
+                    })}
+                  </div>
+                )}
+              </React.Fragment>
+            )
+          })}
+        </div>
       </div>
     </div>
   )
@@ -1293,12 +1492,13 @@ function PacBracketSlot({ m, hot, isFinal = false }: { m: any, hot: boolean, isF
   if (!m) {
     return (
       <div style={{
-        flex: 1, padding: '14px 14px', borderRadius: 14,
-        background: 'rgba(255,255,255,.03)',
-        border: '1px dashed rgba(255,255,255,.18)',
+        flex: 1, padding: '14px 14px',
+        borderRadius: '40% 60% 50% 50% / 50% 50% 50% 50%',
+        background: 'rgba(255,255,255,.04)',
+        border: '1px dashed rgba(255,255,255,.22)',
         textAlign: 'center',
       }}>
-        <span style={pacKicker(PAC.textLo, 14)}>Por determinar</span>
+        <span style={kicker(COLORS.textLo, 14)}>Por determinar</span>
       </div>
     )
   }
@@ -1306,22 +1506,24 @@ function PacBracketSlot({ m, hot, isFinal = false }: { m: any, hot: boolean, isF
   const isDoubles = m.match_type === 'doubles'
   return (
     <div style={{
-      flex: 1, padding: '10px 14px', borderRadius: 14,
+      flex: 1, padding: '10px 14px',
+      // Cada slot es una capsule fluida (no rectangulo)
+      borderRadius: '40% 60% 38% 62% / 50% 56% 44% 50%',
       background: hot
-        ? `linear-gradient(135deg, ${hexAlpha(PAC.cyan,.22)} 0%, ${hexAlpha(PAC.coral,.22)} 100%)`
-        : isFinal ? hexAlpha(PAC.coral, .12) : 'rgba(255,255,255,.04)',
+        ? `linear-gradient(135deg, ${hexAlpha(PAC.cyan,.28)} 0%, ${hexAlpha(PAC.coral,.28)} 100%)`
+        : isFinal ? hexAlpha(PAC.coral, .14) : 'rgba(255,255,255,.06)',
       border: hot
         ? `1.5px solid ${hexAlpha(PAC.cyan, .60)}`
-        : isFinal ? `1px solid ${hexAlpha(PAC.coral, .50)}` : '1px solid rgba(255,255,255,.10)',
+        : isFinal ? `1px solid ${hexAlpha(PAC.coral, .55)}` : '1px solid rgba(255,255,255,.14)',
     }}>
       <PacBracketLine entry={m.entry1} score={score} team={1} isDoubles={isDoubles}/>
-      <div style={{ height: 1, background: 'rgba(255,255,255,.10)', margin: '4px 0' }}/>
+      <div style={{ height: 1, background: 'rgba(255,255,255,.14)', margin: '4px 0' }}/>
       <PacBracketLine entry={m.entry2} score={score} team={2} isDoubles={isDoubles}/>
     </div>
   )
 }
 function PacBracketLine({ entry, score, team, isDoubles }: { entry: any, score: Score|null, team: 1|2, isDoubles: boolean }) {
-  if (!entry) return <div style={{ padding: '4px 0', fontSize: 18, color: PAC.textLo }}>—</div>
+  if (!entry) return <div style={{ ...text(18, 400, COLORS.textLo), padding: '4px 0' }}>—</div>
   const players = [entry?.player1, isDoubles ? entry?.player2 : null].filter(Boolean)
   const sets = threeSetsFor(score, team)
   const winner = (score?.winner_team ?? null) === team
@@ -1331,15 +1533,18 @@ function PacBracketLine({ entry, score, team, isDoubles }: { entry: any, score: 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto auto', alignItems: 'center', gap: 8 }}>
       <span style={{
-        fontSize: 18, fontWeight: winner ? 600 : 400,
-        color: winner ? PAC.textHi : PAC.textMid,
+        ...text(18, winner ? 600 : 400, winner ? COLORS.white : COLORS.textMid),
         textTransform: 'uppercase', letterSpacing: '-.005em',
         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
       }}>
         {nameStr.toUpperCase()}
       </span>
       {sets.map((v, i) => (
-        <span key={i} style={{ minWidth: 18, textAlign: 'center', fontSize: 18, fontWeight: 600, color: winner ? PAC.cyanLt : PAC.textLo, fontVariantNumeric: 'tabular-nums' }}>
+        <span key={i} style={{
+          minWidth: 18, textAlign: 'center',
+          ...text(18, 600, winner ? PAC.cyanLt : COLORS.textLo),
+          fontVariantNumeric: 'tabular-nums',
+        }}>
           {v == null ? '' : v}
         </span>
       ))}
@@ -1348,9 +1553,9 @@ function PacBracketLine({ entry, score, team, isDoubles }: { entry: any, score: 
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// 12) COIN TOSS PACIFIC
+// 12) COIN TOSS
 // ════════════════════════════════════════════════════════════════════════════
-export function CoinTossPacific({ visible, match, tournament }: { visible: boolean, match: any, tournament: Tournament | null }) {
+export function CoinTossPacific({ visible, match }: { visible: boolean, match: any, tournament: Tournament | null }) {
   if (!match) return null
   const winnerTeam = match.toss_winner_team as 1|2|null
   const choice = match.toss_choice as 'serve'|'receive'|'side'|null
@@ -1362,37 +1567,54 @@ export function CoinTossPacific({ visible, match, tournament }: { visible: boole
     <div style={{
       position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)',
       width: 'fit-content', minWidth: 800,
-      ...pacCard({ intensity: 'medium' }),
-      borderRadius: 44, padding: '50px 64px', fontFamily: PAC_FONT,
-      textAlign: 'center',
+      fontFamily: PAC_FONT,
       ...animStyle(visible, 'sgInZC', 'sgOutZC', 700),
     }}>
-      <div style={{ ...pacKicker(PAC.coralLt, 18), marginBottom: 20 }}>SORTEO</div>
-      <div style={{ fontSize: 36, fontWeight: 300, color: PAC.textMid, marginBottom: 14 }}>Gana el sorteo</div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 28 }}>
-        {players.map((p: any, i: number) => (
-          <div key={i} style={{ fontSize: 56, fontWeight: 500, lineHeight: 1, color: PAC.textHi, textTransform: 'uppercase', whiteSpace: 'nowrap', letterSpacing: '-.01em' }}>
-            <span style={{ fontWeight: 300, color: PAC.textMid }}>{(p?.first_name ?? '')} </span>
-            {(p?.last_name ?? '').toUpperCase()}
+      <div style={{
+        position: 'relative',
+        background: GLASS_DARK, border: GLASS_BORDER,
+        borderRadius: '52% 48% 38% 62% / 56% 44% 56% 44%',
+        backdropFilter: 'blur(28px) saturate(1.3)',
+        WebkitBackdropFilter: 'blur(28px) saturate(1.3)',
+        boxShadow: '0 30px 80px rgba(0,0,0,.45)',
+        overflow: 'hidden',
+        padding: '60px 80px',
+        textAlign: 'center',
+      }}>
+        <Blob path={BLOB_PATHS[0]} fill={PAC.cyan} width={420} height={420} opacity={.32} blur={40}
+              style={{ top: -200, left: -160 }}/>
+        <Blob path={BLOB_PATHS[2]} fill={PAC.coral} width={400} height={400} opacity={.32} blur={40}
+              style={{ bottom: -200, right: -140 }}/>
+
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <div style={{ ...kicker(PAC.coralLt, 18), marginBottom: 20 }}>SORTEO</div>
+          <div style={{ ...text(36, 300, COLORS.textMid), marginBottom: 14 }}>Gana el sorteo</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 28 }}>
+            {players.map((p: any, i: number) => (
+              <div key={i} style={{ ...text(56, 500), lineHeight: 1, textTransform: 'uppercase', whiteSpace: 'nowrap', letterSpacing: '-.01em' }}>
+                <span style={{ fontWeight: 300, color: COLORS.textMid, textShadow: TEXT_SHADOW }}>{(p?.first_name ?? '')} </span>
+                {(p?.last_name ?? '').toUpperCase()}
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
-      {choiceText && (<>
-        <div style={{ ...pacKicker(PAC.coralLt, 16), marginBottom: 12 }}>Y ELIGE</div>
-        <div style={{
-          ...pacPill(),
-          display: 'inline-block', padding: '14px 40px',
-          fontSize: 50, fontWeight: 600, letterSpacing: '.16em', textTransform: 'uppercase', color: PAC.textHi,
-        }}>
-          {choiceText}
+          {choiceText && (<>
+            <div style={{ ...kicker(PAC.coralLt, 16), marginBottom: 12 }}>Y ELIGE</div>
+            <div style={{
+              ...pacPillStyle(),
+              display: 'inline-block', padding: '14px 40px',
+              ...text(50, 600), letterSpacing: '.16em', textTransform: 'uppercase',
+            }}>
+              {choiceText}
+            </div>
+          </>)}
         </div>
-      </>)}
+      </div>
     </div>
   )
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// 13) AWARDS PODIUM PACIFIC — 1400x720 centrado
+// 13) AWARDS PODIUM
 // ════════════════════════════════════════════════════════════════════════════
 export function AwardsPodiumPacific({ visible, data, tournament }: {
   visible: boolean, data: any, tournament: Tournament | null,
@@ -1404,45 +1626,61 @@ export function AwardsPodiumPacific({ visible, data, tournament }: {
     <div style={{
       position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)',
       width: 1400, height: 720,
-      ...pacCard({ intensity: 'medium' }),
-      borderRadius: 48, padding: '50px 60px', fontFamily: PAC_FONT,
-      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 32, textAlign: 'center',
+      fontFamily: PAC_FONT,
       ...animStyle(visible, 'sgInZC', 'sgOutZC', 750),
     }}>
-      <div style={pacKicker(PAC.coralLt, 18)}>PODIO</div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 60, alignItems: 'end', width: '100%' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ ...pacKicker(PAC.textLo, 14), marginBottom: 10 }}>FINALISTA</div>
-          {finalist?.photo_url && (
-            <div style={{
-              width: 200, height: 200, margin: '0 auto 16px',
-              borderRadius: '46% 54% 50% 50% / 50% 46% 54% 50%',
-              overflow: 'hidden', border: `2px solid ${hexAlpha(PAC.cyan, .55)}`,
-            }}>
-              <img src={finalist.photo_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
-            </div>
-          )}
-          <div style={{ fontSize: 44, fontWeight: 400, lineHeight: .98, textTransform: 'uppercase', color: PAC.textHi, letterSpacing: '-.01em' }}>{finalist?.name}</div>
-        </div>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ ...pacKicker(PAC.coralLt, 18), marginBottom: 10 }}>🏆 CAMPEÓN</div>
-          {champion?.photo_url && (
-            <div style={{
-              width: 240, height: 240, margin: '0 auto 16px',
-              borderRadius: '46% 54% 50% 50% / 50% 46% 54% 50%',
-              overflow: 'hidden',
-              border: `3px solid ${PAC.coralLt}`,
-              boxShadow: `0 0 50px ${hexAlpha(PAC.coral, .55)}`,
-            }}>
-              <img src={champion.photo_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
-            </div>
-          )}
-          <div style={{ fontSize: 56, fontWeight: 500, lineHeight: .98, textTransform: 'uppercase', color: PAC.textHi, letterSpacing: '-.015em' }}>{champion?.name}</div>
-        </div>
+      <div style={{
+        position: 'absolute', inset: 0,
+        background: GLASS_DARK, border: GLASS_BORDER,
+        borderRadius: '46% 54% 50% 50% / 50% 46% 54% 50%',
+        backdropFilter: 'blur(28px) saturate(1.3)',
+        WebkitBackdropFilter: 'blur(28px) saturate(1.3)',
+        boxShadow: '0 30px 80px rgba(0,0,0,.45)',
+        overflow: 'hidden',
+      }}>
+        <Blob path={BLOB_PATHS[0]} fill={PAC.cyan} width={500} height={500} opacity={.32} blur={42}
+              style={{ top: -200, left: -160 }}/>
+        <Blob path={BLOB_PATHS[2]} fill={PAC.coral} width={520} height={520} opacity={.36} blur={42}
+              style={{ bottom: -220, right: -160 }}/>
       </div>
 
-      <div style={pacKicker(PAC.textLo, 16)}>{tournament?.name}</div>
+      <div style={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 32, padding: '50px 60px', textAlign: 'center', zIndex: 1 }}>
+        <div style={kicker(PAC.coralLt, 18)}>PODIO</div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 60, alignItems: 'end', width: '100%' }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ ...kicker(COLORS.textLo, 14), marginBottom: 10 }}>FINALISTA</div>
+            {finalist?.photo_url && (
+              <div style={{
+                width: 200, height: 200, margin: '0 auto 16px',
+                borderRadius: '52% 48% 42% 58% / 58% 44% 56% 42%',
+                overflow: 'hidden', border: `3px solid ${hexAlpha(PAC.cyan, .60)}`,
+                boxShadow: `0 16px 40px ${hexAlpha(PAC.cyan, .35)}`,
+              }}>
+                <img src={finalist.photo_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
+              </div>
+            )}
+            <div style={{ ...text(44, 400), lineHeight: .98, textTransform: 'uppercase', letterSpacing: '-.01em' }}>{finalist?.name}</div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ ...kicker(PAC.coralLt, 18), marginBottom: 10 }}>🏆 CAMPEÓN</div>
+            {champion?.photo_url && (
+              <div style={{
+                width: 240, height: 240, margin: '0 auto 16px',
+                borderRadius: '46% 54% 38% 62% / 50% 56% 44% 50%',
+                overflow: 'hidden',
+                border: `4px solid ${PAC.coralLt}`,
+                boxShadow: `0 0 60px ${hexAlpha(PAC.coral, .60)}`,
+              }}>
+                <img src={champion.photo_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
+              </div>
+            )}
+            <div style={{ ...text(56, 500), lineHeight: .98, textTransform: 'uppercase', letterSpacing: '-.015em' }}>{champion?.name}</div>
+          </div>
+        </div>
+
+        <div style={kicker(COLORS.textLo, 16)}>{tournament?.name}</div>
+      </div>
     </div>
   )
 }
