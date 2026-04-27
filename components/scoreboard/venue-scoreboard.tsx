@@ -187,22 +187,42 @@ export function VenueScoreboard({ initialMatch, config, tournamentName, sponsors
           <div style={{ position:'absolute', top:20, right:20, zIndex:100, width:14, height:14, borderRadius:'50%', background: rtStatus==='live'?'#34d399':rtStatus==='error'?'#f87171':'#fbbf24', boxShadow:`0 0 10px ${rtStatus==='live'?'#34d399':rtStatus==='error'?'#f87171':'#fbbf24'}`, opacity:.9 }} />
 
           {/* ── HEADER (all screens) ──────────────────────────── */}
-          <div className="absolute top-0 left-0 right-0 z-10" style={{ height:160, padding:'0 64px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:56, background:'linear-gradient(180deg,rgba(0,0,0,.55) 0%,rgba(0,0,0,0) 100%)' }}>
-            <div style={{ display:'flex', alignItems:'center', gap:26 }}>
+          <div className="absolute top-0 left-0 right-0 z-10" style={{ height:160, padding:'0 56px', display:'grid', gridTemplateColumns:'minmax(0,1.4fr) auto minmax(0,1fr)', alignItems:'center', gap:32, background:'linear-gradient(180deg,rgba(0,0,0,.55) 0%,rgba(0,0,0,0) 100%)' }}>
+            {/* IZQ — logo + nombre torneo (auto-escalable, 2 lineas max) */}
+            <div style={{ display:'flex', alignItems:'center', gap:22, minWidth:0 }}>
               {cfg.logos?.tournament_logo_url
-                ? <img src={cfg.logos.tournament_logo_url} alt={tournamentName} style={{ width:78, height:78, borderRadius:14, objectFit:'contain' }} />
-                : <div style={{ width:78, height:78, borderRadius:14, background:'radial-gradient(circle at 30% 30%,#f3e4c7 0 20px,transparent 20.5px),linear-gradient(135deg,#ef6a4c 0%,#d94a2e 100%)', boxShadow:'0 10px 32px rgba(239,106,76,.55)' }} />
+                ? <img src={cfg.logos.tournament_logo_url} alt={tournamentName} style={{ flex:'none', width:78, height:78, borderRadius:14, objectFit:'contain' }} />
+                : <div style={{ flex:'none', width:78, height:78, borderRadius:14, background:'radial-gradient(circle at 30% 30%,#f3e4c7 0 20px,transparent 20.5px),linear-gradient(135deg,#ef6a4c 0%,#d94a2e 100%)', boxShadow:'0 10px 32px rgba(239,106,76,.55)' }} />
               }
-              <div style={{ display:'flex', flexDirection:'column', lineHeight:1.08, maxWidth:560 }}>
-                <span style={{ fontWeight:900, fontSize:56, letterSpacing:'.06em', textTransform:'uppercase', overflow:'hidden', maxHeight:'2.17em', display:'block' }}>{(tournamentName||'TENIS PLAYA').toUpperCase()}</span>
+              <div style={{ minWidth:0, lineHeight:1.05 }}>
+                <span style={{ fontWeight:900, fontSize:(tournamentName?.length ?? 0) > 24 ? 40 : 50, letterSpacing:'.04em', textTransform:'uppercase', display:'block' }}>
+                  {(tournamentName||'TENIS PLAYA').toUpperCase()}
+                </span>
               </div>
             </div>
-            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:0, lineHeight:1 }}>
-              {showRound && <span style={{ padding:'18px 46px', background:srvColor, color:'#fff', borderRadius:999, fontWeight:900, fontSize:46, letterSpacing:'.18em', textTransform:'uppercase', textAlign:'center', boxShadow:`0 8px 24px ${hexAlpha(srvColor,.45)}` }}>{roundLabel}</span>}
+            {/* CENTRO — pill de la fase */}
+            <div style={{ display:'flex', justifyContent:'center', alignItems:'center', whiteSpace:'nowrap' }}>
+              {showRound && <span style={{ padding:'14px 38px', background:srvColor, color:'#fff', borderRadius:999, fontWeight:900, fontSize:38, letterSpacing:'.18em', textTransform:'uppercase', textAlign:'center', boxShadow:`0 8px 24px ${hexAlpha(srvColor,.45)}` }}>{roundLabel}</span>}
             </div>
-            <div style={{ display:'flex', alignItems:'center', gap:18, fontFamily:"'JetBrains Mono',monospace", letterSpacing:'.1em', opacity:.95 }}>
-              <span style={{ fontSize:54 }}>{clock}</span>
-              {(isLive || isFinished) && <span style={{ fontSize:48, opacity:.65, marginLeft:2 }}>{matchTime}</span>}
+            {/* DCHA — solo duracion del partido con icono de cronometro */}
+            <div style={{ display:'flex', alignItems:'center', gap:14, justifyContent:'flex-end', whiteSpace:'nowrap' }}>
+              {(isLive || isFinished) ? (
+                <>
+                  {/* Icono cron\u00f3metro SVG */}
+                  <svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity:.85 }}>
+                    <circle cx="12" cy="13" r="8"/>
+                    <path d="M12 9v4l2.5 2.5"/>
+                    <path d="M9 2h6"/>
+                    <path d="M12 2v3"/>
+                  </svg>
+                  <div style={{ display:'flex', flexDirection:'column', lineHeight:1, alignItems:'flex-start' }}>
+                    <span style={{ fontSize:14, letterSpacing:'.32em', fontWeight:800, opacity:.55, textTransform:'uppercase' }}>Tiempo</span>
+                    <span style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:54, letterSpacing:'.05em', fontWeight:800, marginTop:4 }}>{matchTime}</span>
+                  </div>
+                </>
+              ) : (
+                <span style={{ fontSize:18, letterSpacing:'.32em', textTransform:'uppercase', opacity:.55, fontWeight:800 }}>—</span>
+              )}
             </div>
           </div>
 
