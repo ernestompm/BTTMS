@@ -229,32 +229,35 @@ export function VenueScoreboard({ initialMatch, config, tournamentName, sponsors
           {/* ── PRE-MATCH ────────────────────────────────────── */}
           {(() => {
             if (!isPreMatch) return null
-            // Tama\u00f1o de fuente UNIFICADO entre ambos equipos para mantener
-            // simetr\u00eda visual: usamos el apellido m\u00e1s largo de los dos.
+            // Tamaño de fuente UNIFICADO entre ambos equipos para mantener
+            // simetría visual: usamos el apellido más largo de los dos.
+            // Bajado targetChars de 11 -> 9 y minimo 56 -> 44 — apellidos
+            // compuestos espanoles (GARCIA MARTINEZ, CASTANO PARRA, etc.)
+            // se salian del card a tamano 73 con el algoritmo anterior.
             const allLast = [...teamA.players, ...teamB.players].map((p:any) => (p?.last_name ?? p?.name ?? '').length)
             const longest = Math.max(...allLast, 1)
             const isDoubles = teamA.players.length > 1
-            const baseFs = isDoubles ? 100 : 140
-            const targetChars = 11
-            const sharedFs = longest > targetChars ? Math.max(56, Math.round(baseFs * targetChars / longest)) : baseFs
+            const baseFs = isDoubles ? 96 : 132
+            const targetChars = 9
+            const sharedFs = longest > targetChars ? Math.max(44, Math.round(baseFs * targetChars / longest)) : baseFs
             return (
-            <div className="absolute z-10" style={{ left:64, right:64, top:172, bottom: showSponsors&&sponsorList.length>0?252:60, display:'grid', gridTemplateColumns:'1fr auto 1fr', gap:40, alignItems:'stretch', animation:'phaseIn .75s cubic-bezier(.2,.9,.25,1) both' }}>
+            <div className="absolute z-10" style={{ left:64, right:64, top:172, bottom: showSponsors&&sponsorList.length>0?252:60, display:'grid', gridTemplateColumns:'1fr 220px 1fr', gap:32, alignItems:'stretch', animation:'phaseIn .75s cubic-bezier(.2,.9,.25,1) both' }}>
 
               {/* Team A card */}
               <PreMatchTeamCard team={teamA} accent={accentA} isRight={false} showFlags={showFlags} showSeed={showSeed} nameFs={sharedFs} />
 
-              {/* VS column */}
-              <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', animation:'vsIn .9s cubic-bezier(.2,.9,.25,1) .15s both', minWidth:320 }}>
-                <div style={{ fontSize:34, letterSpacing:'.48em', opacity:.72, textTransform:'uppercase', fontWeight:800, marginBottom:24, textAlign:'center', lineHeight:1.2 }}>
+              {/* VS column — minWidth 320 -> 220 da mas espacio horizontal a los cards */}
+              <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', animation:'vsIn .9s cubic-bezier(.2,.9,.25,1) .15s both' }}>
+                <div style={{ fontSize:30, letterSpacing:'.36em', opacity:.72, textTransform:'uppercase', fontWeight:800, marginBottom:18, textAlign:'center', lineHeight:1.2, whiteSpace:'nowrap' }}>
                   {STATUS_LABELS[status] ?? 'PRÓXIMO PARTIDO'}
                 </div>
-                <div style={{ fontSize:300, fontWeight:900, lineHeight:.82, color:accentA, letterSpacing:'-.04em', textShadow:`0 20px 80px ${hexAlpha(accentA,.5)}` }}>
+                <div style={{ fontSize:260, fontWeight:900, lineHeight:.82, color:accentA, letterSpacing:'-.04em', textShadow:`0 20px 80px ${hexAlpha(accentA,.5)}` }}>
                   VS
                 </div>
-                <div style={{ marginTop:28, textAlign:'center' }}>
+                <div style={{ marginTop:22, textAlign:'center' }}>
                   {status==='warmup' && countdown!=null
-                    ? <span style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:120, letterSpacing:'.04em', fontWeight:900, color: countdown.startsWith('+')?'#f87171':accentA, animation:'cntPulse 1s ease infinite', display:'block', lineHeight:1, textShadow:`0 0 60px ${hexAlpha(accentA,.45)}` }}>{countdown}</span>
-                    : <span style={{ fontSize:34, letterSpacing:'.22em', opacity:.88, textTransform:'uppercase', fontWeight:800, lineHeight:1.3, display:'block' }}>
+                    ? <span style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:112, letterSpacing:'.04em', fontWeight:900, color: countdown.startsWith('+')?'#f87171':accentA, animation:'cntPulse 1s ease infinite', display:'block', lineHeight:1, textShadow:`0 0 60px ${hexAlpha(accentA,.45)}` }}>{countdown}</span>
+                    : <span style={{ fontSize:30, letterSpacing:'.22em', opacity:.88, textTransform:'uppercase', fontWeight:800, lineHeight:1.3, display:'block', whiteSpace:'nowrap' }}>
                         {match.scheduled_at
                           ? `A LAS ${new Date(match.scheduled_at).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}`
                           : match.court?.name ?? ''}
@@ -428,45 +431,55 @@ interface PreMatchTeamCardProps {
 }
 function PreMatchTeamCard({ team, accent, isRight, showFlags, showSeed, nameFs }: PreMatchTeamCardProps) {
   const isDoubles = team.players.length > 1
-  const fs = nameFs ?? (isDoubles ? 100 : 140)
+  const fs = nameFs ?? (isDoubles ? 96 : 132)
   return (
     <div style={{
       display:'flex', flexDirection:'column', justifyContent:'center',
-      gap:24, padding:'48px 52px', borderRadius:14,
+      gap:18, padding:'32px 36px', borderRadius:14,
       background:'linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.02))',
       border:'1px solid rgba(255,255,255,.09)',
       borderTop:`8px solid ${accent}`,
       alignItems: isRight ? 'flex-end' : 'flex-start',
       animation:`cardIn .75s cubic-bezier(.2,.9,.25,1) ${isRight?'.2s':'0s'} both`,
       overflow:'hidden',
+      minWidth: 0,
     }}>
       {/* Seed */}
       {showSeed && team.seed && (
-        <div style={{ fontWeight:900, fontSize:52, letterSpacing:'.24em', color:`${hexAlpha(accent,.75)}`, lineHeight:1 }}>
+        <div style={{ fontWeight:900, fontSize:48, letterSpacing:'.24em', color:`${hexAlpha(accent,.75)}`, lineHeight:1 }}>
           ({team.seed})
         </div>
       )}
 
       {/* Nombres + bandera (sin portraits/placeholders) */}
-      <div style={{ display:'flex', flexDirection:'column', gap:18, alignItems: isRight?'flex-end':'flex-start', width:'100%' }}>
+      <div style={{ display:'flex', flexDirection:'column', gap:14, alignItems: isRight?'flex-end':'flex-start', width:'100%' }}>
         {team.players.map((p:any, i:number) => {
           const nat = (p?.nationality ?? 'ESP').toUpperCase()
           const last = (p?.last_name ?? p?.name ?? '').toUpperCase()
           const first = (p?.first_name ?? '').toUpperCase()
           return (
-            <div key={p?.id??i} style={{ display:'flex', alignItems:'center', gap:20, flexDirection: isRight?'row-reverse':'row', maxWidth:'100%' }}>
+            // Row con minWidth:0 + flex:1 en el bloque de nombre — permite que
+            // el apellido use TODO el ancho disponible y, si aun asi no entra,
+            // que se rompa en lugar de salirse del card.
+            <div key={p?.id??i} style={{ display:'flex', alignItems:'center', gap:18, flexDirection: isRight?'row-reverse':'row', width:'100%', minWidth:0 }}>
               {showFlags && (
-                <span style={{ flex:'none', width:78, height:54, borderRadius:6, overflow:'hidden', boxShadow:'0 2px 8px rgba(0,0,0,.4),inset 0 0 0 1px rgba(0,0,0,.25)' }}>
+                <span style={{ flex:'none', width:64, height:44, borderRadius:5, overflow:'hidden', boxShadow:'0 2px 8px rgba(0,0,0,.4),inset 0 0 0 1px rgba(0,0,0,.25)' }}>
                   <img src={`/Flags/${nat}.jpg`} alt={nat} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
                 </span>
               )}
-              <div style={{ display:'flex', flexDirection:'column', alignItems: isRight?'flex-end':'flex-start', minWidth:0 }}>
+              <div style={{ display:'flex', flexDirection:'column', alignItems: isRight?'flex-end':'flex-start', minWidth:0, flex:1 }}>
                 {first && (
-                  <span style={{ fontWeight:700, fontSize:Math.round(fs*0.32), lineHeight:1, letterSpacing:'.04em', textTransform:'uppercase', opacity:.85 }}>
+                  <span style={{ fontWeight:700, fontSize:Math.round(fs*0.30), lineHeight:1, letterSpacing:'.04em', textTransform:'uppercase', opacity:.85 }}>
                     {first}
                   </span>
                 )}
-                <span style={{ fontWeight:900, fontSize:fs, lineHeight:.95, textTransform:'uppercase', letterSpacing:'.005em', whiteSpace:'nowrap' }}>
+                <span style={{
+                  fontWeight:900, fontSize:fs, lineHeight:.95, textTransform:'uppercase', letterSpacing:'-.01em',
+                  // Permitir wrap como ultimo recurso si el algoritmo no logra
+                  // encogerlo lo suficiente. overflowWrap evita que palabras
+                  // largas se salgan del contenedor.
+                  overflowWrap:'anywhere', wordBreak:'normal', maxWidth:'100%',
+                }}>
                   {last}
                 </span>
               </div>
