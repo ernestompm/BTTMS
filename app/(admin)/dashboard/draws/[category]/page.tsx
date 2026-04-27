@@ -1,6 +1,7 @@
 import { createServiceSupabase } from '@/lib/supabase-server'
 import Link from 'next/link'
 import { EmptyDrawCTA } from './empty-cta'
+import { BracketTree } from '@/components/admin/bracket-tree'
 import { Badge } from '@/components/ui/badge'
 import { CATEGORY_LABELS } from '@/types'
 
@@ -182,22 +183,32 @@ export default async function DrawDetailPage({ params }: { params: Promise<{ cat
         )}
       </div>
 
-      {/* Bracket */}
+      {/* Bracket — vista en arbol (R32 -> R16 -> QF -> SF -> F) con conectores */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-white font-semibold">Cuadro ({matches?.length ?? 0} partidos)</h2>
+          <h2 className="text-white font-semibold">
+            Cuadro de eliminación
+            <span className="text-gray-500 text-sm font-normal ml-2">({matches?.length ?? 0} partidos · click para abrir cada partido)</span>
+          </h2>
         </div>
 
         {!hasMatches ? (
-          <div className="bg-gray-900 rounded-2xl p-8 border border-gray-800 text-center text-gray-500">
-            <p>No hay partidos en esta categoría</p>
-            <Link href="/dashboard/matches/new" className="text-brand-red text-sm mt-2 inline-block">
-              Añadir primer partido →
-            </Link>
+          <div className="bg-gray-900 rounded-2xl p-8 border border-gray-800 text-center text-gray-500 space-y-3">
+            <p>No hay partidos en esta categoría todavía.</p>
+            <p className="text-xs">Si acabas de crear el cuadro vacío y no se generaron partidos automáticamente, sembrá los datos completos:</p>
+            <div className="pt-2"><EmptyDrawCTA /></div>
           </div>
         ) : (
+          <BracketTree matches={matches as any[]} isDoubles={matchType !== 'singles'}/>
+        )}
+      </div>
+
+      {/* Lista plana por ronda (para no-KO o referencia rápida) — solo si hay rondas no-KO */}
+      {hasMatches && unknownRounds.length > 0 && (
+        <div>
+          <h2 className="text-white font-semibold mb-3">Otras rondas (fase de grupos / consolación)</h2>
           <div className="space-y-6">
-            {[...orderedRounds, ...unknownRounds].map((round) => (
+            {unknownRounds.map((round) => (
               <div key={round}>
                 <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
                   <span className="w-6 h-px bg-gray-700 inline-block" />
@@ -214,44 +225,29 @@ export default async function DrawDetailPage({ params }: { params: Promise<{ cat
                     const sl = STATUS_MAP[m.status] ?? { label: m.status, variant: 'default' }
                     return (
                       <Link key={m.id} href={`/dashboard/matches/${m.id}`}
-                        className="bg-gray-900 border border-gray-800 hover:border-gray-600 rounded-2xl overflow-hidden transition-colors group">
-                        {/* Team 1 row */}
+                        className="bg-gray-900 border border-gray-800 hover:border-gray-600 rounded-2xl overflow-hidden transition-colors">
                         <div className={`flex items-center gap-3 px-4 py-3 ${w1 ? 'bg-green-900/20' : ''}`}>
-                          {w1 && <span className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0" />}
-                          {!w1 && <span className="w-1.5 h-1.5 flex-shrink-0" />}
-                          <span className={`text-sm flex-1 min-w-0 truncate ${w1 ? 'text-white font-medium' : 'text-gray-300'}`}>
-                            {entryName(m.entry1)}
-                          </span>
+                          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${w1 ? 'bg-green-400' : 'bg-transparent'}`} />
+                          <span className={`text-sm flex-1 min-w-0 truncate ${w1 ? 'text-white font-medium' : 'text-gray-300'}`}>{entryName(m.entry1)}</span>
                           <div className="flex gap-2 ml-2 font-score font-bold text-sm flex-shrink-0">
-                            {sets1.map((s: number, i: number) => (
+                            {sets1.length === 0 ? <span className="text-gray-700 text-xs">—</span> : sets1.map((s: number, i: number) => (
                               <span key={i} className={`w-5 text-center ${w1 ? 'text-white' : 'text-gray-500'}`}>{s}</span>
                             ))}
-                            {sets1.length === 0 && <span className="text-gray-700 text-xs">—</span>}
                           </div>
                         </div>
-                        {/* Divider */}
                         <div className="border-t border-gray-800 mx-4" />
-                        {/* Team 2 row */}
                         <div className={`flex items-center gap-3 px-4 py-3 ${w2 ? 'bg-green-900/20' : ''}`}>
-                          {w2 && <span className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0" />}
-                          {!w2 && <span className="w-1.5 h-1.5 flex-shrink-0" />}
-                          <span className={`text-sm flex-1 min-w-0 truncate ${w2 ? 'text-white font-medium' : 'text-gray-300'}`}>
-                            {entryName(m.entry2)}
-                          </span>
+                          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${w2 ? 'bg-green-400' : 'bg-transparent'}`} />
+                          <span className={`text-sm flex-1 min-w-0 truncate ${w2 ? 'text-white font-medium' : 'text-gray-300'}`}>{entryName(m.entry2)}</span>
                           <div className="flex gap-2 ml-2 font-score font-bold text-sm flex-shrink-0">
-                            {sets2.map((s: number, i: number) => (
+                            {sets2.length === 0 ? <span className="text-gray-700 text-xs">—</span> : sets2.map((s: number, i: number) => (
                               <span key={i} className={`w-5 text-center ${w2 ? 'text-white' : 'text-gray-500'}`}>{s}</span>
                             ))}
-                            {sets2.length === 0 && <span className="text-gray-700 text-xs">—</span>}
                           </div>
                         </div>
-                        {/* Footer */}
                         <div className="px-4 py-2 border-t border-gray-800 bg-gray-950/40 flex items-center justify-between">
                           <Badge variant={sl.variant}>{sl.label}</Badge>
-                          <span className="text-xs text-gray-600">
-                            {m.court ? m.court.name : ''}
-                            {m.scheduled_at ? ` · ${new Date(m.scheduled_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}` : ''}
-                          </span>
+                          <span className="text-xs text-gray-600">{m.court ? m.court.name : ''}</span>
                         </div>
                       </Link>
                     )
@@ -260,8 +256,8 @@ export default async function DrawDetailPage({ params }: { params: Promise<{ cat
               </div>
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* JSON Export */}
       <div className="bg-gray-900 rounded-2xl p-5 border border-gray-800">
