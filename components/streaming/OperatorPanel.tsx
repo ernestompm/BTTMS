@@ -259,13 +259,23 @@ export function OperatorPanel({ session, initialMatch, tournament, rules, allMat
           <div style={{ fontSize:16, fontWeight:900, letterSpacing:'.06em', display:'flex', alignItems:'center', gap:8 }}>
             STREAMING · OPERADOR
             {/* Skin badge — para que el operador sepa qué estilo está aplicado */}
-            <span style={{
-              fontSize:9, fontWeight:900, letterSpacing:'.14em', padding:'2px 7px', borderRadius:5,
-              background: ((tournament as any)?.scoreboard_config?.graphics_style ?? 'classic') === 'tour' ? '#10b981' : '#ef4444',
-              color: '#fff',
-            }}>
-              SKIN · {((tournament as any)?.scoreboard_config?.graphics_style ?? 'classic') === 'tour' ? 'TOUR' : 'CLÁSICO'}
-            </span>
+            {(() => {
+              const skin = ((tournament as any)?.scoreboard_config?.graphics_style ?? 'classic') as 'classic'|'tour'|'pacific'
+              const styles = {
+                classic: { bg: '#ef4444', label: 'CLÁSICO' },
+                tour:    { bg: '#10b981', label: 'TOUR' },
+                pacific: { bg: '#5fc4cc', label: 'PACIFIC' },
+              }
+              const s = styles[skin] ?? styles.classic
+              return (
+                <span style={{
+                  fontSize:9, fontWeight:900, letterSpacing:'.14em', padding:'2px 7px', borderRadius:5,
+                  background: s.bg, color: '#fff',
+                }}>
+                  SKIN · {s.label}
+                </span>
+              )
+            })()}
           </div>
           <div style={{ fontSize:11, opacity:.6 }}>{tournament?.name} · {roundLabel(match.round)} · {categoryLabel(match.category)}</div>
         </div>

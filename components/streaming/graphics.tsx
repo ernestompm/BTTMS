@@ -735,75 +735,114 @@ export function BigScoreboard({ visible, match, tournament, sponsor, opts }: { v
   const isDoubles = match.match_type === 'doubles'
   const totalSecs = useTicker(match.started_at, match.finished_at)
   const showSponsor = opts?.show_sponsor !== false && !!sponsor
-  const setCount = Math.max(1, Math.min(3, (score?.sets?.length ?? 0) + (score?.match_status==='in_progress' ? 1 : 0)))
-  const setColW = 100
-  const cardMaxW = showSponsor ? 1420 : 1060   // cap superior; el card se encoge al contenido
   const serving = match.serving_team as 1|2|null
 
+  // ── SETS A MOSTRAR ───────────────────────────────────────────────────────
+  // No queremos ver nunca un set 0-0. Asi que el set en curso solo se muestra
+  // si al menos uno de los equipos ha anotado.
+  const finishedSetCount = score?.sets?.length ?? 0
+  const inProgress = score?.match_status === 'in_progress'
+  const cs = score?.current_set ?? { t1: 0, t2: 0 }
+  const tb = score?.tiebreak_score ?? { t1: 0, t2: 0 }
+  const tbActive = !!(score?.tiebreak_active || score?.super_tiebreak_active)
+  const currentT1 = tbActive ? (tb.t1 ?? 0) : (cs.t1 ?? 0)
+  const currentT2 = tbActive ? (tb.t2 ?? 0) : (cs.t2 ?? 0)
+  const currentHasScore = inProgress && (currentT1 > 0 || currentT2 > 0)
+  const setCount = Math.min(3, finishedSetCount + (currentHasScore ? 1 : 0))
+
+  // ── ORIGINAL ORDER (set 1, 2, 3) — para set winner detection
+  const setIdx = Array.from({ length: setCount }, (_, i) => i)  // [0,1,2]
+  // En el render visual, los sets se completan de DERECHA a IZQUIERDA: el
+  // set 1 (mas antiguo) queda anclado al borde derecho del bloque de sets,
+  // y los siguientes se anaden a la izquierda. Para conseguirlo invertimos
+  // el indice de columna: setIdx i -> gridColumn 3 + (setCount-1-i).
+  const colForSet = (i: number) => 3 + (setCount - 1 - i)
+
+  const setColW = 92
+  const sponsorColW = 230
+  const cardMaxW = showSponsor ? 1420 : 1100
+  const serveColor = pal.serve
+
   return (
-    // Wrapper centrado por flex. El card usa width:fit-content para hug al
-    // contenido y evitar el hueco vac\u00edo a la derecha cuando no hay sponsor.
     <div style={{ position:'absolute', left:0, right:0, bottom:50, display:'flex', justifyContent:'center', pointerEvents:'none' }}>
       <div style={{ width:'fit-content', maxWidth:cardMaxW, ...CARD, padding:0, overflow:'hidden', pointerEvents:'auto',
-        borderTop:`8px solid ${pal.accentA}`,
+        borderTop:`6px solid ${pal.accentA}`,
         ...animStyle(visible, 'sgInU', 'sgOutU', 700) }}>
 
-        {/* HEADER */}
-        <div style={{ display:'grid', gridTemplateColumns:'auto 1fr auto', alignItems:'center', padding:'14px 26px', borderBottom:'1px solid rgba(255,255,255,.07)', gap:20 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:14 }}>
-            {tournament?.logo_url && <img src={tournament.logo_url} alt="" style={{ height:52, objectFit:'contain' }}/>}
+        {/* HEADER — compacto */}
+        <div style={{ display:'grid', gridTemplateColumns:'auto 1fr auto', alignItems:'center', padding:'10px 22px', borderBottom:'1px solid rgba(255,255,255,.07)', gap:18 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+            {tournament?.logo_url && <img src={tournament.logo_url} alt="" style={{ height:42, objectFit:'contain' }}/>}
             <div style={{ display:'flex', flexDirection:'column', lineHeight:1 }}>
-              <span style={{ fontSize:26, fontWeight:900, letterSpacing:'.02em', textTransform:'uppercase', whiteSpace:'nowrap' }}>{tournament?.name}</span>
-              <span style={{ fontSize:24, letterSpacing:'.24em', textTransform:'uppercase', opacity:.7, fontWeight:800, marginTop:4 }}>
+              <span style={{ fontSize:22, fontWeight:900, letterSpacing:'.02em', textTransform:'uppercase', whiteSpace:'nowrap' }}>{tournament?.name}</span>
+              <span style={{ fontSize:18, letterSpacing:'.22em', textTransform:'uppercase', opacity:.7, fontWeight:800, marginTop:3 }}>
                 {CATEGORY_LABELS[match.category as Category] ?? match.category}
               </span>
             </div>
           </div>
           <div style={{ textAlign:'center' }}>
-            <span style={{ padding:'6px 20px', borderRadius:999, background:hexAlpha(pal.accentA,.18), border:`1.5px solid ${hexAlpha(pal.accentA,.55)}`,
-              fontSize:24, fontWeight:900, letterSpacing:'.2em', textTransform:'uppercase', color:pal.accentA, whiteSpace:'nowrap' }}>
+            <span style={{ padding:'5px 18px', borderRadius:999, background:hexAlpha(pal.accentA,.18), border:`1.5px solid ${hexAlpha(pal.accentA,.55)}`,
+              fontSize:20, fontWeight:900, letterSpacing:'.2em', textTransform:'uppercase', color:pal.accentA, whiteSpace:'nowrap' }}>
               {roundLabel(match.round) || '—'}
             </span>
           </div>
-          <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:0 }}>
-            <span style={{ ...KICKER, fontSize:24 }}>TIEMPO TOTAL</span>
-            <span style={{ fontFamily:"'JetBrains Mono', monospace", fontSize:30, fontWeight:800, letterSpacing:'.02em' }}>{fmtHHmm(totalSecs)}</span>
+          <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', lineHeight:1 }}>
+            <span style={{ ...KICKER, fontSize:13 }}>TIEMPO TOTAL</span>
+            <span style={{ fontFamily:"'JetBrains Mono', monospace", fontSize:24, fontWeight:800, letterSpacing:'.02em', marginTop:3 }}>{fmtHHmm(totalSecs)}</span>
           </div>
         </div>
 
-        {/* BODY — grid unificado: name col auto se encoge al contenido */}
+        {/* BODY */}
         <div style={{ display:'grid',
-          gridTemplateColumns: showSponsor
-            ? `12px minmax(360px, max-content) repeat(${setCount}, ${setColW}px) 260px`
-            : `12px minmax(360px, max-content) repeat(${setCount}, ${setColW}px)`,
-          gridTemplateRows: '34px 1fr 1fr' }}>
+          gridTemplateColumns: setCount > 0
+            ? (showSponsor
+                ? `8px minmax(380px, max-content) repeat(${setCount}, ${setColW}px) ${sponsorColW}px`
+                : `8px minmax(380px, max-content) repeat(${setCount}, ${setColW}px)`)
+            : (showSponsor
+                ? `8px minmax(380px, max-content) ${sponsorColW}px`
+                : `8px minmax(380px, max-content)`),
+          gridTemplateRows: setCount > 0 ? '28px 1fr 1fr' : '1fr 1fr',
+        }}>
 
-          {/* Set-time row */}
-          <div style={{ gridColumn:`1 / span 2`, gridRow:1, borderBottom:'1px solid rgba(255,255,255,.05)' }}/>
-          {Array.from({ length: setCount }).map((_, i) => {
-            const dur = opts?.set_durations?.[i]
-            return (
-              <div key={`st${i}`} style={{ gridColumn: 3+i, gridRow:1, display:'grid', placeItems:'center', fontSize:24, letterSpacing:'.22em', fontWeight:800, opacity:.65, textTransform:'uppercase', borderLeft:'1px solid rgba(255,255,255,.05)', borderBottom:'1px solid rgba(255,255,255,.05)' }}>
-                SET {i+1}{dur ? ` · ${fmtClock(dur)}` : ''}
-              </div>
-            )
-          })}
+          {/* Set headers — solo si hay sets a mostrar */}
+          {setCount > 0 && (
+            <>
+              <div style={{ gridColumn:`1 / span 2`, gridRow:1, borderBottom:'1px solid rgba(255,255,255,.05)' }}/>
+              {setIdx.map(i => {
+                const dur = opts?.set_durations?.[i]
+                return (
+                  <div key={`st${i}`} style={{
+                    gridColumn: colForSet(i), gridRow:1,
+                    display:'grid', placeItems:'center',
+                    fontSize:14, letterSpacing:'.22em', fontWeight:800, opacity:.65, textTransform:'uppercase',
+                    borderLeft:'1px solid rgba(255,255,255,.05)', borderBottom:'1px solid rgba(255,255,255,.05)',
+                  }}>
+                    SET {i+1}{dur ? ` · ${fmtClock(dur)}` : ''}
+                  </div>
+                )
+              })}
+            </>
+          )}
 
           {/* TEAM ROWS */}
           {[1,2].map(tn => {
             const team = tn as 1|2
+            const opTeam = (team === 1 ? 2 : 1) as 1|2
             const entry = team===1 ? match.entry1 : match.entry2
             const accent = team===1 ? pal.accentA : pal.accentB
-            const sets = threeSetsFor(score, team).slice(0, setCount)
-            const won = match.status==='finished' && score?.winner_team===team
+            const setsT = threeSetsFor(score, team).slice(0, setCount)
+            const setsOp = threeSetsFor(score, opTeam).slice(0, setCount)
+            const matchWon = match.status==='finished' && score?.winner_team===team
             const players = [entry?.player1, isDoubles?entry?.player2:null].filter(Boolean)
-            const row = 1 + team
+            const row = setCount > 0 ? 1 + team : team
             const isServingTeam = serving === team
-            const rowBg = won ? hexAlpha(accent,.12) : isServingTeam ? hexAlpha(accent,.08) : 'transparent'
+            const rowBg = matchWon ? hexAlpha(accent,.14) : isServingTeam ? hexAlpha(accent,.07) : 'transparent'
             return (
               <div key={team} style={{ display:'contents' }}>
+                {/* Accent bar */}
                 <div style={{ gridColumn:1, gridRow:row, background:accent }}/>
-                <div style={{ gridColumn:2, gridRow:row, display:'flex', flexDirection:'column', justifyContent:'center', gap: isDoubles ? 6 : 4, padding:'14px 24px', background: rowBg, borderTop: team===2 ? '1px solid rgba(255,255,255,.05)' : 'none' }}>
+                {/* Names */}
+                <div style={{ gridColumn:2, gridRow:row, display:'flex', flexDirection:'column', justifyContent:'center', gap: isDoubles ? 4 : 0, padding:'10px 22px', background: rowBg, borderTop: team===2 ? '1px solid rgba(255,255,255,.05)' : 'none' }}>
                   {players.map((p:any,i:number) => {
                     const isServer = isServingTeam && (!isDoubles || p.id === match.current_server_id)
                     return (
@@ -812,36 +851,61 @@ export function BigScoreboard({ visible, match, tournament, sponsor, opts }: { v
                         accent={accent}
                         isDoubles={isDoubles}
                         isServer={isServer}
-                        servingColor={pal.serve}
+                        servingColor={serveColor}
                       />
                     )
                   })}
                 </div>
-                {sets.map((v,i) => (
-                  <div key={i} style={{ gridColumn: 3+i, gridRow:row, display:'grid', placeItems:'center', fontSize:64, fontWeight:900, borderLeft:'1px solid rgba(255,255,255,.05)', borderTop: team===2 ? '1px solid rgba(255,255,255,.05)' : 'none',
-                    background: (score?.sets?.length ?? 0) === i ? hexAlpha(accent, .14) : isServingTeam ? hexAlpha(accent,.05) : 'rgba(0,0,0,.2)',
-                    color: v===null ? 'rgba(255,255,255,.35)' : (won ? accent : '#fff'), fontVariantNumeric:'tabular-nums' }}>
-                    {v===null ? '–' : v}
-                  </div>
-                ))}
+                {/* Set scores */}
+                {setIdx.map(i => {
+                  const v = setsT[i]
+                  const opV = setsOp[i]
+                  const isFinishedSet = i < finishedSetCount
+                  const isCurrent = isFinishedSet === false && currentHasScore
+                  const isSetWon = isFinishedSet && v != null && opV != null && v > opV
+                  return (
+                    <div key={i} style={{
+                      gridColumn: colForSet(i), gridRow:row,
+                      display:'grid', placeItems:'center',
+                      fontSize:52, fontWeight:900,
+                      borderLeft:'1px solid rgba(255,255,255,.05)',
+                      borderTop: team===2 ? '1px solid rgba(255,255,255,.05)' : 'none',
+                      // Set ganado: fondo solido accent + texto negro bold (alto contraste)
+                      // Set en curso: fondo accent muy suave
+                      // Set perdido o sin terminar: fondo neutro
+                      background: isSetWon
+                        ? accent
+                        : isCurrent
+                          ? hexAlpha(accent, .18)
+                          : 'rgba(0,0,0,.22)',
+                      color: isSetWon
+                        ? '#0a0a14'
+                        : v === null ? 'rgba(255,255,255,.35)' : '#fff',
+                      fontVariantNumeric:'tabular-nums',
+                      textShadow: isSetWon ? '0 1px 0 rgba(255,255,255,.25)' : 'none',
+                    }}>
+                      {v === null ? '–' : v}
+                    </div>
+                  )
+                })}
               </div>
             )
           })}
 
-          {/* SPONSOR — span las 3 filas del body */}
+          {/* SPONSOR — anclado al borde derecho del card, span de todas las filas */}
           {showSponsor && (
             <div style={{
-              gridColumn: 3 + setCount,
-              gridRow: '1 / 4',
+              gridColumn: setCount > 0 ? `${3 + setCount} / ${4 + setCount}` : '3 / 4',
+              gridRow: setCount > 0 ? '1 / 4' : '1 / 3',
               borderLeft: '1px solid rgba(255,255,255,.08)',
               background: 'rgba(255,255,255,.02)',
-              display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'16px',
+              display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'12px',
             }}>
-              <div style={{ fontSize:24, letterSpacing:'.3em', fontWeight:900, opacity:.6, textTransform:'uppercase', marginBottom:10 }}>Patrocinador oficial</div>
+              <div style={{ fontSize:11, letterSpacing:'.3em', fontWeight:900, opacity:.5, textTransform:'uppercase', marginBottom:6 }}>Patrocinador oficial</div>
               <div style={{ flex:1, display:'grid', placeItems:'center', width:'100%' }}>
                 {sponsor?.logo_url
-                  ? <img src={sponsor.logo_url} alt={sponsor.name} style={{ maxWidth:220, maxHeight:130, objectFit:'contain' }}/>
-                  : <span style={{ fontSize:24, fontWeight:900, letterSpacing:'.08em', textAlign:'center', opacity:.85, textTransform:'uppercase' }}>{sponsor?.name ?? ''}</span>}
+                  ? <img src={sponsor.logo_url} alt={sponsor.name} style={{ maxWidth:200, maxHeight:90, objectFit:'contain' }}/>
+                  : <span style={{ fontSize:18, fontWeight:900, letterSpacing:'.06em', textAlign:'center', opacity:.85, textTransform:'uppercase' }}>{sponsor?.name ?? ''}</span>}
               </div>
             </div>
           )}
@@ -855,32 +919,44 @@ function BigScoreboardPlayer({ player, accent, isDoubles, isServer, servingColor
   player: any, accent: string, isDoubles: boolean, isServer: boolean, servingColor: string,
 }) {
   if (!player) return null
-  const lastFs  = isDoubles ? 38 : 50
-  const firstFs = isDoubles ? 22 : 28
-  const flagSz  = isDoubles ? { w: 42, h: 28 } : { w: 54, h: 36 }
+  // Mismas dimensiones para singles/doubles (la diferencia ahora es solo el
+  // numero de filas dentro del card). Tamanos reducidos vs version anterior
+  // para que el card sea mas compacto.
+  const lastFs  = isDoubles ? 30 : 42
+  const firstFs = isDoubles ? 18 : 24
+  const flagSz  = isDoubles ? { w: 38, h: 26 } : { w: 50, h: 34 }
   return (
-    <div style={{ display:'flex', alignItems:'center', gap:16, minWidth:0, whiteSpace:'nowrap' }}>
-      <img src={flagPath(player.nationality)} alt="" style={{ flex:'none', width:flagSz.w, height:flagSz.h, borderRadius:4, objectFit:'cover' }}/>
-      {/* Nombre apilado (first sobre last) */}
-      <div style={{ display:'flex', flexDirection:'column', lineHeight:1 }}>
-        {player.first_name && (
-          <span style={{ fontSize:firstFs, fontWeight:700, letterSpacing:'.02em', textTransform:'uppercase', color:'#ffffff', opacity:.92 }}>
-            {player.first_name.toUpperCase()}
-          </span>
-        )}
-        <span style={{ fontSize:lastFs, fontWeight:900, textTransform:'uppercase', letterSpacing:'-.005em', color:accent, marginTop: player.first_name ? 2 : 0 }}>
-          {(player.last_name ?? '').toUpperCase()}
+    <div style={{ display:'flex', alignItems:'baseline', gap:14, minWidth:0, whiteSpace:'nowrap' }}>
+      <img src={flagPath(player.nationality)} alt="" style={{ flex:'none', width:flagSz.w, height:flagSz.h, borderRadius:3, objectFit:'cover', alignSelf:'center' }}/>
+      {/* Nombre y apellido en la MISMA linea (first nombre mas pequenno + bold less) */}
+      {player.first_name && (
+        <span style={{ fontSize:firstFs, fontWeight:600, letterSpacing:'.02em', textTransform:'uppercase', color:'#ffffff', opacity:.78 }}>
+          {player.first_name.toUpperCase()}
         </span>
-      </div>
-      {/* Serve indicator AL FINAL: dot grande + pulse + glow fuerte. Muy visible. */}
+      )}
+      <span style={{ fontSize:lastFs, fontWeight:900, textTransform:'uppercase', letterSpacing:'-.005em', color:accent, lineHeight:.95 }}>
+        {(player.last_name ?? '').toUpperCase()}
+      </span>
+      {/* Serve indicator: pelota de tenis con glow + label PROXIMO SAQUE
+          asi se ve mucho mejor "quien va a sacar el siguiente juego". */}
       {isServer && (
-        <span title="Saca" aria-label="saca" style={{
-          flex:'none',
-          width:28, height:28, borderRadius:'50%', background:servingColor,
-          boxShadow:`0 0 24px ${servingColor}, 0 0 0 5px ${hexAlpha(servingColor,.32)}`,
-          animation:'sgSrvPulse 1.3s infinite',
-          marginLeft:8,
-        }}/>
+        <span aria-label="saca" style={{
+          flex:'none', display:'inline-flex', alignItems:'center', gap:8,
+          marginLeft:6, padding:'3px 10px 3px 6px', borderRadius:999,
+          background: hexAlpha(servingColor, .18),
+          border: `1px solid ${hexAlpha(servingColor, .6)}`,
+          alignSelf:'center',
+        }}>
+          <span style={{
+            width:14, height:14, borderRadius:'50%', background:servingColor,
+            boxShadow:`0 0 12px ${servingColor}`,
+            animation:'sgSrvPulse 1.3s infinite',
+            display:'inline-block',
+          }}/>
+          <span style={{ fontSize:11, fontWeight:900, letterSpacing:'.22em', textTransform:'uppercase', color: servingColor }}>
+            SAQUE
+          </span>
+        </span>
       )}
     </div>
   )
@@ -909,8 +985,25 @@ export function ResultsGrid({ visible, matches, highlightMatchId, tournament, ca
   const ROUND_ORDER = ['F','SF','QF','R16','R32','RR','GRP','CON','Q1','Q2']
   const cat = (category ?? matches[0]?.category) as Category | undefined
   const catMatches = cat ? matches.filter((m:any) => m.category === cat) : matches
+  // Mostrar SOLO la fase en curso. Heuristica:
+  //   1. Si hay un partido en juego (in_progress), su ronda es la actual
+  //   2. Si no, la primera ronda con partidos NO terminados (scheduled/etc)
+  //   3. Si todos terminados, la ultima ronda (la final)
+  const liveMatch = catMatches.find((m:any) => m.status === 'in_progress')
+  let activeRound: string | null = null
+  if (liveMatch) activeRound = liveMatch.round
+  else {
+    const pending = ROUND_ORDER.find(r => catMatches.some((m:any) => m.round === r && m.status !== 'finished'))
+    if (pending) activeRound = pending
+    else {
+      const lastFinished = [...ROUND_ORDER].reverse().find(r => catMatches.some((m:any) => m.round === r))
+      activeRound = lastFinished ?? null
+    }
+  }
   const groups: Record<string, any[]> = {}
-  catMatches.forEach((m:any) => { const r = m.round ?? 'OTHER'; (groups[r] ??= []).push(m) })
+  catMatches
+    .filter((m:any) => activeRound === null || m.round === activeRound)
+    .forEach((m:any) => { const r = m.round ?? 'OTHER'; (groups[r] ??= []).push(m) })
   const rounds = Object.keys(groups).sort((a,b) => (ROUND_ORDER.indexOf(a)+1 || 99) - (ROUND_ORDER.indexOf(b)+1 || 99))
 
   return (
@@ -1124,18 +1217,20 @@ function WxMetric({ icon, value, unit, extra }: { icon:string, value:string, uni
 }
 
 // ╔══════════════════════════════════════════════════════════════════════════╗
-// ║ 12) BRACKET — dinámico desde la primera ronda con datos hasta la FINAL   ║
+// ║ 12) BRACKET — desde CUARTOS hasta FINAL (R32/R16 fuera por decision UX)  ║
+// ║                                                                          ║
+// ║ El cuadro en pantalla siempre arranca en QF: en R16 (8 partidos) la      ║
+// ║ vista es demasiado densa y poco legible, asi que en R16 mostramos        ║
+// ║ ResultsGrid en su lugar. A partir de cuartos el cuadro entra en escena.  ║
 // ╚══════════════════════════════════════════════════════════════════════════╝
-const BRACKET_KO_ROUNDS = ['R32','R16','QF','SF','F'] as const
+const BRACKET_KO_ROUNDS = ['QF','SF','F'] as const
 type KoRound = typeof BRACKET_KO_ROUNDS[number]
 const BRACKET_HEADER_LBL: Record<KoRound,string> = {
-  R32: '1/16',
-  R16: 'OCTAVOS',
   QF:  'CUARTOS',
   SF:  'SEMIFINALES',
   F:   'FINAL',
 }
-const BRACKET_SLOTS: Record<KoRound, number> = { R32:16, R16:8, QF:4, SF:2, F:1 }
+const BRACKET_SLOTS: Record<KoRound, number> = { QF:4, SF:2, F:1 }
 
 export function BracketView({ visible, matches, highlightMatchId, tournament, category }:
   { visible:boolean, matches:any[], highlightMatchId?:string|null, tournament: Tournament | null, category?: string }) {
@@ -1147,14 +1242,14 @@ export function BracketView({ visible, matches, highlightMatchId, tournament, ca
   const cat = (category ?? matches[0]?.category) as Category | undefined
   const catMatches = cat ? matches.filter((m:any) => m.category === cat) : matches
 
-  // Agrupar por ronda y ordenar
-  const byRound: Record<string, any[]> = { R32:[], R16:[], QF:[], SF:[], F:[] }
+  // Agrupar por ronda y ordenar — solo contemplamos QF/SF/F en pantalla
+  const byRound: Record<string, any[]> = { QF:[], SF:[], F:[] }
   catMatches.forEach((m:any) => { if (byRound[m.round]) byRound[m.round].push(m) })
   BRACKET_KO_ROUNDS.forEach(r => byRound[r].sort((a,b) => (a.match_number||0) - (b.match_number||0)))
 
-  // Detectar primera ronda con partidos. Si no hay nada, arrancar en QF.
-  const present = BRACKET_KO_ROUNDS.filter(r => byRound[r].length > 0)
-  const firstRound: KoRound = (present[0] ?? 'QF') as KoRound
+  // Empezamos siempre en QF — si todavia no hay datos en QF, los slots seran
+  // "Por determinar" hasta que octavos vaya cerrando partidos
+  const firstRound: KoRound = 'QF'
   const firstIdx = BRACKET_KO_ROUNDS.indexOf(firstRound)
   const visibleRounds = BRACKET_KO_ROUNDS.slice(firstIdx) as KoRound[]
 

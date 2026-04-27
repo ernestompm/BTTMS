@@ -928,8 +928,22 @@ export function ResultsGridTour({ visible, matches, highlightMatchId, tournament
   const ROUND_ORDER = ['F','SF','QF','R16','R32','RR','GRP','CON','Q1','Q2']
   const cat = (category ?? matches[0]?.category) as Category | undefined
   const catMatches = cat ? matches.filter((m: any) => m.category === cat) : matches
+  // Solo la fase EN CURSO (mismo criterio que el ResultsGrid clasico)
+  const liveMatch = catMatches.find((m: any) => m.status === 'in_progress')
+  let activeRound: string | null = null
+  if (liveMatch) activeRound = liveMatch.round
+  else {
+    const pending = ROUND_ORDER.find(r => catMatches.some((m: any) => m.round === r && m.status !== 'finished'))
+    if (pending) activeRound = pending
+    else {
+      const lastFinished = [...ROUND_ORDER].reverse().find(r => catMatches.some((m: any) => m.round === r))
+      activeRound = lastFinished ?? null
+    }
+  }
   const groups: Record<string, any[]> = {}
-  catMatches.forEach((m: any) => { const r = m.round ?? 'OTHER'; (groups[r] ??= []).push(m) })
+  catMatches
+    .filter((m: any) => activeRound === null || m.round === activeRound)
+    .forEach((m: any) => { const r = m.round ?? 'OTHER'; (groups[r] ??= []).push(m) })
   const rounds = Object.keys(groups).sort((a, b) => (ROUND_ORDER.indexOf(a)+1 || 99) - (ROUND_ORDER.indexOf(b)+1 || 99))
 
   return (
@@ -1024,10 +1038,13 @@ function TourResultRow({ m, highlight, accent }: { m: any, highlight: boolean, a
 // ════════════════════════════════════════════════════════════════════════════
 // 11) BRACKET VIEW TOUR — 1760x960 centrado, mismas dimensiones que classic
 // ════════════════════════════════════════════════════════════════════════════
-const BRACKET_KO_ROUNDS = ['R32', 'R16', 'QF', 'SF', 'F'] as const
+// El cuadro en pantalla arranca SIEMPRE en CUARTOS (decision UX: en R16
+// la malla es demasiado densa para TV). En octavos / 16avos se usa el
+// gráfico ResultsGrid en su lugar.
+const BRACKET_KO_ROUNDS = ['QF', 'SF', 'F'] as const
 type KoRound = typeof BRACKET_KO_ROUNDS[number]
-const BRACKET_HEADER_LBL: Record<KoRound, string> = { R32: '1/16', R16: 'OCTAVOS', QF: 'CUARTOS', SF: 'SEMIFINALES', F: 'FINAL' }
-const BRACKET_SLOTS: Record<KoRound, number> = { R32: 16, R16: 8, QF: 4, SF: 2, F: 1 }
+const BRACKET_HEADER_LBL: Record<KoRound, string> = { QF: 'CUARTOS', SF: 'SEMIFINALES', F: 'FINAL' }
+const BRACKET_SLOTS: Record<KoRound, number> = { QF: 4, SF: 2, F: 1 }
 
 export function BracketViewTour({ visible, matches, highlightMatchId, tournament, category }: {
   visible: boolean, matches: any[], highlightMatchId?: string|null, tournament: Tournament | null, category?: string,
@@ -1037,12 +1054,12 @@ export function BracketViewTour({ visible, matches, highlightMatchId, tournament
   const cat = (category ?? matches[0]?.category) as Category | undefined
   const catMatches = cat ? matches.filter((m: any) => m.category === cat) : matches
 
-  const byRound: Record<string, any[]> = { R32: [], R16: [], QF: [], SF: [], F: [] }
+  const byRound: Record<string, any[]> = { QF: [], SF: [], F: [] }
   catMatches.forEach((m: any) => { if (byRound[m.round]) byRound[m.round].push(m) })
   BRACKET_KO_ROUNDS.forEach(r => byRound[r].sort((a, b) => (a.match_number||0) - (b.match_number||0)))
 
-  const present = BRACKET_KO_ROUNDS.filter(r => byRound[r].length > 0)
-  const firstRound: KoRound = (present[0] ?? 'QF') as KoRound
+  // Empezamos siempre en QF
+  const firstRound: KoRound = 'QF'
   const firstIdx = BRACKET_KO_ROUNDS.indexOf(firstRound)
   const visibleRounds = BRACKET_KO_ROUNDS.slice(firstIdx) as KoRound[]
 

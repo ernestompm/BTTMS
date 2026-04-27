@@ -34,10 +34,12 @@ export interface Sponsor {
 export interface ScoreboardConfig {
   layout: 'horizontal_full' | 'vertical' | 'minimal' | 'stats_panel'
   /** Skin de los gráficos de overlay para vMix.
-   *  - 'classic' : estilo BTTMS / Vinteon (rojo, sombras, navy graduado)
-   *  - 'tour'    : estilo WTA broadcast (compacto, navy plano, tabs verdes)
-   *  Afecta a: Scorebug, BigScoreboard y WeatherCard. El resto comparte estilo. */
-  graphics_style?: 'classic' | 'tour'
+   *  - 'classic' : BTTMS / Vinteon (rojo, glassy, sombras fuertes)
+   *  - 'tour'    : WTA broadcast (compacto, navy plano, tabs accent)
+   *  - 'pacific' : Sunset beach (gradientes turquesa/coral, formas organicas,
+   *               tipografia ligera, transparencias suaves, premium minimalista)
+   *  Afecta a TODOS los gráficos del overlay. */
+  graphics_style?: 'classic' | 'tour' | 'pacific'
   colors: {
     background: string[]
     team1_accent: string

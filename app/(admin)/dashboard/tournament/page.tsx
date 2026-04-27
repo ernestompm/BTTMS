@@ -265,28 +265,33 @@ export default function TournamentPage() {
             Estilo gráfico TV
             <span className="ml-2 inline-block px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider align-middle"
                   style={{
-                    background: ((cfg as any).graphics_style ?? 'classic') === 'tour' ? '#10b981' : '#ef4444',
+                    background:
+                      ((cfg as any).graphics_style ?? 'classic') === 'pacific' ? '#5fc4cc'
+                      : ((cfg as any).graphics_style ?? 'classic') === 'tour' ? '#10b981'
+                      : '#ef4444',
                     color: '#fff',
                   }}>
-              {((cfg as any).graphics_style ?? 'classic') === 'tour' ? 'TOUR' : 'CLÁSICO'}
+              {((cfg as any).graphics_style ?? 'classic') === 'pacific' ? 'PACIFIC'
+                : ((cfg as any).graphics_style ?? 'classic') === 'tour' ? 'TOUR'
+                : 'CLÁSICO'}
             </span>
           </label>
           <select value={(cfg as any).graphics_style ?? 'classic'}
             onChange={async (e) => {
-              const newStyle = e.target.value as 'classic' | 'tour'
+              const newStyle = e.target.value as 'classic' | 'tour' | 'pacific'
               const newCfg = { ...cfg, graphics_style: newStyle }
               setTournament((t) => t ? { ...t, scoreboard_config: newCfg } : t)
-              // Auto-save: el cambio de skin debe aplicarse YA, sin obligar a
-              // pulsar "Guardar". Asi el operador refresca overlay y ve el cambio.
+              // Auto-save: el cambio de skin debe aplicarse YA
               await supabase.from('tournaments').update({ scoreboard_config: newCfg }).eq('id', TOURNAMENT_ID)
               setSuccess(true); setTimeout(() => setSuccess(false), 2000)
             }}
             className="bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-brand-red">
-            <option value="classic">Clásico (BTTMS / Vinteon)</option>
-            <option value="tour">Tour (estilo WTA broadcast)</option>
+            <option value="classic">Clásico (BTTMS / Vinteon — rojo, glassy)</option>
+            <option value="tour">Tour (WTA broadcast — navy compacto)</option>
+            <option value="pacific">Pacific (sunset beach — turquesa/coral, premium minimalista)</option>
           </select>
           <p className="text-gray-500 text-xs mt-1">
-            Afecta scorebug, marcador grande y weather. <strong className="text-yellow-300">Tras cambiar, refresca el panel operador y la fuente del navegador en vMix</strong> para ver el nuevo estilo.
+            Afecta a TODOS los gráficos del overlay vMix. <strong className="text-yellow-300">Tras cambiar, refresca panel operador y fuente del navegador en vMix.</strong>
           </p>
         </div>
       </div>
