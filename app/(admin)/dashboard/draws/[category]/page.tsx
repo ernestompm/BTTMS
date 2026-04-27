@@ -1,5 +1,4 @@
 import { createServiceSupabase } from '@/lib/supabase-server'
-import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { CATEGORY_LABELS } from '@/types'
@@ -41,9 +40,38 @@ export default async function DrawDetailPage({ params }: { params: Promise<{ cat
     .select('*')
     .eq('tournament_id', TOURNAMENT_ID)
     .eq('category', category)
-    .single()
+    .maybeSingle()
 
-  if (!draw) notFound()
+  // En lugar de 404, mostrar una pantalla con CTA para crear o seedear el cuadro
+  // — pasa cuando la URL apunta a una categoria sin cuadro creado todavia.
+  if (!draw) {
+    const friendlyCat = (CATEGORY_LABELS as Record<string, string>)[category] ?? category
+    return (
+      <div className="space-y-6 fade-in">
+        <div className="flex items-center gap-3">
+          <Link href="/dashboard/draws" className="text-gray-400 hover:text-white text-sm">← Cuadros</Link>
+        </div>
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8 text-center space-y-3">
+          <div className="text-6xl">🏆</div>
+          <h1 className="text-xl font-bold text-white">No hay cuadro para «{friendlyCat}»</h1>
+          <p className="text-gray-400 text-sm max-w-md mx-auto">
+            La categoría <code className="text-gray-300">{category}</code> aún no tiene un cuadro creado en este torneo.
+            Puedes crear uno desde cero o generar datos de prueba para empezar a probar el flujo completo.
+          </p>
+          <div className="flex items-center justify-center gap-3 flex-wrap pt-2">
+            <Link href="/dashboard/draws/new"
+              className="bg-brand-red hover:bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">
+              + Crear cuadro
+            </Link>
+            <Link href="/dashboard/tournament"
+              className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">
+              ⚙️ Ir a Configuración para sembrar datos de prueba
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   const { data: entries } = await service.from('draw_entries')
     .select('*, player1:players!player1_id(first_name,last_name,nationality,ranking_rfet), player2:players!player2_id(first_name,last_name,nationality,ranking_rfet)')

@@ -21,7 +21,12 @@ import {
   ResultsGrid, CoinToss, WeatherCard, BracketView,
   AwardsPodium, StatsTicker,
 } from './graphics'
-import { ScorebugTour, BigScoreboardTour, WeatherBarTour } from './graphics-tour'
+import {
+  ScorebugTour, BigScoreboardTour, WeatherBarTour,
+  TournamentIntroTour, VenueCardTour, MatchPresentationTour, PlayerBioTour,
+  RefereeLowerThirdTour, StatsPanelTour, ResultsGridTour, BracketViewTour,
+  CoinTossTour, AwardsPodiumTour,
+} from './graphics-tour'
 import { deriveLiveFlag } from '@/lib/streaming/flags'
 
 // ─── StageCanvas ────────────────────────────────────────────────────────────
@@ -69,27 +74,48 @@ export function StageCanvas({ match, tournament, allMatches, referee, mainSponso
   // Skin selector — tournament.scoreboard_config.graphics_style ('classic' | 'tour')
   const skin: 'classic' | 'tour' = (tournament?.scoreboard_config?.graphics_style ?? 'classic')
 
+  const isTour = skin === 'tour'
   return (
     <>
-      <Presence show={v('tournament_intro')}    exitMs={700}>{(vis) => <TournamentIntro    visible={vis} tournament={tournament}/>}</Presence>
-      <Presence show={v('venue_card')}          exitMs={650}>{(vis) => <VenueCard          visible={vis} tournament={tournament}/>}</Presence>
-      <Presence show={v('match_presentation')}  exitMs={750}>{(vis) => <MatchPresentation  visible={vis} match={match} tournament={tournament}/>}</Presence>
-      <Presence show={v('results_grid')}        exitMs={700}>{(vis) => <ResultsGrid        visible={vis} matches={allMatches} highlightMatchId={match.id} tournament={tournament} category={resultsCat}/>}</Presence>
-      <Presence show={v('bracket')}             exitMs={700}>{(vis) => <BracketView        visible={vis} matches={allMatches} highlightMatchId={match.id} tournament={tournament} category={bracketCat}/>}</Presence>
-      <Presence show={v('coin_toss')}           exitMs={700}>{(vis) => <CoinToss           visible={vis} match={match} tournament={tournament}/>}</Presence>
-      <Presence show={v('stats_panel')}         exitMs={700}>{(vis) => <StatsPanel         visible={vis} match={match} tournament={tournament} scope={statsScope}/>}</Presence>
-      <Presence show={v('player_bio') && !!bioPlayer} exitMs={700}>{(vis) => <PlayerBio    visible={vis} player={bioPlayer!} team={bioTeam} category={match.category} tournament={tournament}/>}</Presence>
-      <Presence show={v('weather')}             exitMs={650}>{(vis) => skin === 'tour'
+      <Presence show={v('tournament_intro')}    exitMs={700}>{(vis) => isTour
+        ? <TournamentIntroTour visible={vis} tournament={tournament}/>
+        : <TournamentIntro     visible={vis} tournament={tournament}/> }</Presence>
+      <Presence show={v('venue_card')}          exitMs={650}>{(vis) => isTour
+        ? <VenueCardTour visible={vis} tournament={tournament}/>
+        : <VenueCard     visible={vis} tournament={tournament}/> }</Presence>
+      <Presence show={v('match_presentation')}  exitMs={750}>{(vis) => isTour
+        ? <MatchPresentationTour visible={vis} match={match} tournament={tournament}/>
+        : <MatchPresentation     visible={vis} match={match} tournament={tournament}/> }</Presence>
+      <Presence show={v('results_grid')}        exitMs={700}>{(vis) => isTour
+        ? <ResultsGridTour visible={vis} matches={allMatches} highlightMatchId={match.id} tournament={tournament} category={resultsCat}/>
+        : <ResultsGrid     visible={vis} matches={allMatches} highlightMatchId={match.id} tournament={tournament} category={resultsCat}/> }</Presence>
+      <Presence show={v('bracket')}             exitMs={700}>{(vis) => isTour
+        ? <BracketViewTour visible={vis} matches={allMatches} highlightMatchId={match.id} tournament={tournament} category={bracketCat}/>
+        : <BracketView     visible={vis} matches={allMatches} highlightMatchId={match.id} tournament={tournament} category={bracketCat}/> }</Presence>
+      <Presence show={v('coin_toss')}           exitMs={700}>{(vis) => isTour
+        ? <CoinTossTour visible={vis} match={match} tournament={tournament}/>
+        : <CoinToss     visible={vis} match={match} tournament={tournament}/> }</Presence>
+      <Presence show={v('stats_panel')}         exitMs={700}>{(vis) => isTour
+        ? <StatsPanelTour visible={vis} match={match} tournament={tournament} scope={statsScope}/>
+        : <StatsPanel     visible={vis} match={match} tournament={tournament} scope={statsScope}/> }</Presence>
+      <Presence show={v('player_bio') && !!bioPlayer} exitMs={700}>{(vis) => isTour
+        ? <PlayerBioTour visible={vis} player={bioPlayer!} team={bioTeam} category={match.category} tournament={tournament}/>
+        : <PlayerBio     visible={vis} player={bioPlayer!} team={bioTeam} category={match.category} tournament={tournament}/> }</Presence>
+      <Presence show={v('weather')}             exitMs={650}>{(vis) => isTour
         ? <WeatherBarTour visible={vis} weather={weather} tournament={tournament}/>
         : <WeatherCard    visible={vis} weather={weather} tournament={tournament}/> }</Presence>
-      <Presence show={v('big_scoreboard')}      exitMs={700}>{(vis) => skin === 'tour'
-        ? <BigScoreboardTour visible={vis} match={match} tournament={tournament}/>
+      <Presence show={v('big_scoreboard')}      exitMs={700}>{(vis) => isTour
+        ? <BigScoreboardTour visible={vis} match={match} tournament={tournament} sponsor={mainSponsor} opts={bigScoreOpts}/>
         : <BigScoreboard     visible={vis} match={match} tournament={tournament} sponsor={mainSponsor} opts={bigScoreOpts}/> }</Presence>
-      <Presence show={v('awards_podium') && !!awardsData} exitMs={750}>{(vis) => <AwardsPodium visible={vis} data={awardsData} tournament={tournament}/>}</Presence>
+      <Presence show={v('awards_podium') && !!awardsData} exitMs={750}>{(vis) => isTour
+        ? <AwardsPodiumTour visible={vis} data={awardsData} tournament={tournament}/>
+        : <AwardsPodium     visible={vis} data={awardsData} tournament={tournament}/> }</Presence>
       {/* stats_ticker se integra en el Scorebug. */}
-      <Presence show={v('referee_lower_third')} exitMs={700}>{(vis) => <RefereeLowerThird visible={vis} referee={referee} tournament={tournament}/>}</Presence>
-      <Presence show={v('scorebug')}            exitMs={500}>{(vis) => skin === 'tour'
-        ? <ScorebugTour visible={vis} match={match} tickerStat={tickerStat}/>
+      <Presence show={v('referee_lower_third')} exitMs={700}>{(vis) => isTour
+        ? <RefereeLowerThirdTour visible={vis} referee={referee} tournament={tournament}/>
+        : <RefereeLowerThird     visible={vis} referee={referee} tournament={tournament}/> }</Presence>
+      <Presence show={v('scorebug')}            exitMs={500}>{(vis) => isTour
+        ? <ScorebugTour visible={vis} match={match} tournament={tournament} tickerStat={tickerStat}/>
         : <Scorebug     visible={vis} match={match} tournament={tournament} flag={flag} tickerStat={tickerStat}/> }</Presence>
     </>
   )
