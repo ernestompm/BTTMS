@@ -907,8 +907,10 @@ export function ResultsGrid({ visible, matches, highlightMatchId, tournament, ca
   const pal = palette(tournament?.scoreboard_config)
 
   const ROUND_ORDER = ['F','SF','QF','R16','R32','RR','GRP','CON','Q1','Q2']
+  const cat = (category ?? matches[0]?.category) as Category | undefined
+  const catMatches = cat ? matches.filter((m:any) => m.category === cat) : matches
   const groups: Record<string, any[]> = {}
-  matches.forEach(m => { const r = m.round ?? 'OTHER'; (groups[r] ??= []).push(m) })
+  catMatches.forEach((m:any) => { const r = m.round ?? 'OTHER'; (groups[r] ??= []).push(m) })
   const rounds = Object.keys(groups).sort((a,b) => (ROUND_ORDER.indexOf(a)+1 || 99) - (ROUND_ORDER.indexOf(b)+1 || 99))
 
   return (
@@ -1140,9 +1142,14 @@ export function BracketView({ visible, matches, highlightMatchId, tournament, ca
   const pal = palette(tournament?.scoreboard_config)
   const LC = 'rgba(255,255,255,.3)'
 
+  // Filtrar por categoria — si no, los partidos de otras categorias colisionan
+  // en el mismo bucket por compartir match_number/round y el cuadro se rompe.
+  const cat = (category ?? matches[0]?.category) as Category | undefined
+  const catMatches = cat ? matches.filter((m:any) => m.category === cat) : matches
+
   // Agrupar por ronda y ordenar
   const byRound: Record<string, any[]> = { R32:[], R16:[], QF:[], SF:[], F:[] }
-  matches.forEach(m => { if (byRound[m.round]) byRound[m.round].push(m) })
+  catMatches.forEach((m:any) => { if (byRound[m.round]) byRound[m.round].push(m) })
   BRACKET_KO_ROUNDS.forEach(r => byRound[r].sort((a,b) => (a.match_number||0) - (b.match_number||0)))
 
   // Detectar primera ronda con partidos. Si no hay nada, arrancar en QF.
