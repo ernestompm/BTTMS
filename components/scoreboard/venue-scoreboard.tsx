@@ -393,11 +393,16 @@ interface PreMatchTeamCardProps {
 }
 function PreMatchTeamCard({ team, accent, isRight, showFlags, showSeed }: PreMatchTeamCardProps) {
   const isDoubles = team.players.length > 1
-  const portraitSize = isDoubles ? 158 : 196
+  // Tama\u00f1o adaptativo: con apellidos largos no debe truncar. Reducimos
+  // ligeramente en singles si el apellido es muy largo, y damos 1.5x m\u00e1s
+  // en dobles ya que cada l\u00ednea es independiente.
+  const longest = team.players.reduce((m:number, p:any) => Math.max(m, (p?.last_name ?? p?.name ?? '').length), 0)
+  const baseFs = isDoubles ? 84 : 110
+  const fs = longest > 14 ? Math.max(56, Math.round(baseFs * (12 / longest))) : baseFs
   return (
     <div style={{
       display:'flex', flexDirection:'column', justifyContent:'center',
-      gap:22, padding:'40px 52px', borderRadius:14,
+      gap:24, padding:'48px 52px', borderRadius:14,
       background:'linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.02))',
       border:'1px solid rgba(255,255,255,.09)',
       borderTop:`8px solid ${accent}`,
@@ -405,29 +410,6 @@ function PreMatchTeamCard({ team, accent, isRight, showFlags, showSeed }: PreMat
       animation:`cardIn .75s cubic-bezier(.2,.9,.25,1) ${isRight?'.2s':'0s'} both`,
       overflow:'hidden',
     }}>
-      {/* Portrait placeholders / photos */}
-      <div style={{ display:'flex', gap:22, alignItems:'center', flexDirection: isRight?'row-reverse':'row' }}>
-        {team.players.map((p:any, i:number) => {
-          const initial = (p?.last_name ?? p?.name ?? '?').charAt(0).toUpperCase()
-          return (
-            <div key={p?.id??i} style={{
-              flex:'none', width:portraitSize, height:portraitSize, borderRadius:16,
-              background:`linear-gradient(135deg,${hexAlpha(accent,.32)},${hexAlpha(accent,.06)})`,
-              border:`1px solid ${hexAlpha(accent,.3)}`,
-              display:'grid', placeItems:'center', overflow:'hidden',
-              fontWeight:900, fontSize:Math.round(portraitSize*.43),
-              color:'rgba(255,255,255,.9)',
-              boxShadow:`0 18px 40px rgba(0,0,0,.35), inset 0 1px 0 ${hexAlpha(accent,.2)}`,
-            }}>
-              {p?.photo_url
-                ? <img src={p.photo_url} alt={initial} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
-                : <span style={{ lineHeight:1, textTransform:'uppercase' }}>{initial}</span>
-              }
-            </div>
-          )
-        })}
-      </div>
-
       {/* Seed */}
       {showSeed && team.seed && (
         <div style={{ fontWeight:900, fontSize:52, letterSpacing:'.24em', color:`${hexAlpha(accent,.75)}`, lineHeight:1 }}>
@@ -435,20 +417,29 @@ function PreMatchTeamCard({ team, accent, isRight, showFlags, showSeed }: PreMat
         </div>
       )}
 
-      {/* Player names with flags */}
-      <div style={{ display:'flex', flexDirection:'column', gap:14, alignItems: isRight?'flex-end':'flex-start' }}>
+      {/* Nombres + bandera (sin portraits/placeholders) */}
+      <div style={{ display:'flex', flexDirection:'column', gap:18, alignItems: isRight?'flex-end':'flex-start', width:'100%' }}>
         {team.players.map((p:any, i:number) => {
           const nat = (p?.nationality ?? 'ESP').toUpperCase()
+          const last = (p?.last_name ?? p?.name ?? '').toUpperCase()
+          const first = (p?.first_name ?? '').toUpperCase()
           return (
-            <div key={p?.id??i} style={{ display:'flex', alignItems:'center', gap:18, flexDirection: isRight?'row-reverse':'row' }}>
+            <div key={p?.id??i} style={{ display:'flex', alignItems:'center', gap:20, flexDirection: isRight?'row-reverse':'row', maxWidth:'100%' }}>
               {showFlags && (
                 <span style={{ flex:'none', width:78, height:54, borderRadius:6, overflow:'hidden', boxShadow:'0 2px 8px rgba(0,0,0,.4),inset 0 0 0 1px rgba(0,0,0,.25)' }}>
                   <img src={`/Flags/${nat}.jpg`} alt={nat} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
                 </span>
               )}
-              <span style={{ fontWeight:900, fontSize:96, lineHeight:.9, textTransform:'uppercase', letterSpacing:'.01em', whiteSpace:'nowrap' }}>
-                {(p?.last_name ?? p?.name ?? '').toUpperCase()}
-              </span>
+              <div style={{ display:'flex', flexDirection:'column', alignItems: isRight?'flex-end':'flex-start', minWidth:0 }}>
+                {first && (
+                  <span style={{ fontWeight:700, fontSize:Math.round(fs*0.32), lineHeight:1, letterSpacing:'.04em', textTransform:'uppercase', opacity:.85 }}>
+                    {first}
+                  </span>
+                )}
+                <span style={{ fontWeight:900, fontSize:fs, lineHeight:.95, textTransform:'uppercase', letterSpacing:'.005em' }}>
+                  {last}
+                </span>
+              </div>
             </div>
           )
         })}
