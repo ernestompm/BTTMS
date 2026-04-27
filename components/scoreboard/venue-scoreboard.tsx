@@ -171,6 +171,8 @@ export function VenueScoreboard({ initialMatch, config, tournamentName, sponsors
         html, body { margin:0; padding:0; background:#000; color:#fff; font-family:'Barlow Condensed',system-ui,sans-serif; overflow:hidden; height:100%; }
         @keyframes vsbBlink    { 0%,100%{opacity:1} 50%{opacity:.2} }
         @keyframes vsbSrvPulse { 0%,100%{box-shadow:0 0 0 0 rgba(239,106,76,.7)} 50%{box-shadow:0 0 0 18px rgba(239,106,76,0)} }
+        @keyframes vsbSrvBadgePulse { 0%,100%{transform:scale(1);filter:brightness(1)} 50%{transform:scale(1.04);filter:brightness(1.18)} }
+        @keyframes vsbSrvBallSpin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
         @keyframes cardIn      { from{opacity:0;transform:translateY(40px) scale(.97);filter:blur(10px)} to{opacity:1;transform:none;filter:blur(0)} }
         @keyframes vsIn        { from{opacity:0;transform:scale(.5) rotate(-8deg);filter:blur(10px)} to{opacity:1;transform:none;filter:blur(0)} }
         @keyframes phaseIn     { from{opacity:0;transform:translateY(26px) scale(.985);filter:blur(12px)} to{opacity:1;transform:none;filter:blur(0)} }
@@ -514,12 +516,66 @@ interface TeamRowProps {
 }
 
 function TeamRowLED({ team, serving, setCols, teamKey, isDoubles, servingPlayerId, gridCols, accentColor, servingColor, showSeed, showFlags, showServeIndicator }: TeamRowProps) {
+  // Background MUCHO mas evidente cuando saca el equipo: gradiente con
+  // mas saturacion + un "wash" del color de saque encima del accent
   const bg = serving
-    ? `linear-gradient(90deg,${hexAlpha(accentColor,.18)} 0%,${hexAlpha(accentColor,.04)} 100%)`
+    ? `linear-gradient(90deg, ${hexAlpha(servingColor,.32)} 0%, ${hexAlpha(accentColor,.20)} 35%, rgba(0,0,0,.10) 100%)`
     : `linear-gradient(90deg,rgba(255,255,255,.04) 0%,rgba(255,255,255,.02) 100%)`
 
+  // Per-player serving check para dobles. Si current_server_id no esta
+  // seteado pero el equipo SI esta sacando (caso "boundary": justo cambio
+  // de servicio o data corrupta), marcamos al primer jugador como fallback
+  // — asi nunca tenemos un equipo en saque sin indicador visible.
+  const teamHasMatchingServer = isDoubles && serving && team.players.some((p:any) => p.id === servingPlayerId)
+  const isPlayerServing = (p: any, idx: number) => {
+    if (!serving) return false
+    if (!isDoubles) return true  // singles: el unico jugador es el que saca
+    if (teamHasMatchingServer) return p.id === servingPlayerId
+    // Fallback: si nadie matchea, marcamos al primero del equipo
+    return idx === 0
+  }
+
   return (
-    <div style={{ position:'relative', display:'grid', gridTemplateColumns:gridCols, alignItems:'stretch', background:bg, borderLeft:`12px solid ${accentColor}`, borderRadius:10, overflow:'hidden' }}>
+    <div style={{
+      position:'relative', display:'grid', gridTemplateColumns:gridCols, alignItems:'stretch',
+      background:bg,
+      // En vez de un border-left fino, hacemos un edge gordo con efecto glow
+      // cuando el equipo esta al saque — bandera visual fuerte.
+      borderLeft: serving ? `16px solid ${servingColor}` : `12px solid ${accentColor}`,
+      borderRadius:10, overflow:'hidden',
+      boxShadow: serving ? `inset 0 0 0 2px ${hexAlpha(servingColor,.45)}, 0 0 32px ${hexAlpha(servingColor,.30)}` : 'none',
+      transition: 'all 300ms ease',
+    }}>
+      {/* PILL "AL SAQUE" — flotante en el borde superior izquierdo, solo
+          visible cuando el equipo esta sacando. Banderazo grande con icono
+          de pelota animado y label legible desde la grada. */}
+      {serving && showServeIndicator && (
+        <div style={{
+          position: 'absolute',
+          top: -2, left: -16,  // alineado con el borde gordo del row
+          padding: '8px 22px 8px 16px',
+          background: servingColor,
+          color: '#fff',
+          fontSize: 28,
+          fontWeight: 900,
+          letterSpacing: '.32em',
+          textTransform: 'uppercase',
+          borderBottomRightRadius: 16,
+          boxShadow: `0 8px 24px ${hexAlpha(servingColor,.55)}, inset 0 1px 0 rgba(255,255,255,.30)`,
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 10,
+          zIndex: 5,
+          animation: 'vsbSrvBadgePulse 1.6s ease-in-out infinite',
+        }}>
+          <span aria-hidden style={{
+            display: 'inline-block',
+            fontSize: 28,
+            animation: 'vsbSrvBallSpin 2.2s linear infinite',
+          }}>🎾</span>
+          <span>AL SAQUE</span>
+        </div>
+      )}
       {showSeed && (
         <div style={{ display:'grid', placeItems:'center', fontWeight:800, fontSize:52, color:'rgba(255,255,255,.55)', fontVariantNumeric:'tabular-nums', borderRight:'1px solid rgba(255,255,255,.06)' }}>
           {team.seed??''}
@@ -527,7 +583,7 @@ function TeamRowLED({ team, serving, setCols, teamKey, isDoubles, servingPlayerI
       )}
       <div style={{ display:'flex', flexDirection:'column', justifyContent:'center', padding:'0 22px 0 32px', minWidth:0, gap:10, overflow:'hidden', borderRight:'1px solid rgba(255,255,255,.06)' }}>
         {team.players.map((p:any, i:number) => {
-          const active = isDoubles && serving && p.id === servingPlayerId
+          const playerServes = isPlayerServing(p, i)
           const nat = (p.nationality??'ESP').toUpperCase()
           return (
             <div key={p.id??i} style={{ display:'flex', alignItems:'center', gap:22, minWidth:0 }}>
@@ -537,8 +593,13 @@ function TeamRowLED({ team, serving, setCols, teamKey, isDoubles, servingPlayerI
                 </span>
               )}
               <span style={{ fontWeight:800, fontSize: team.players.length===1 ? 118 : 86, lineHeight:.9, letterSpacing:'.015em', textTransform:'uppercase', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', display:'flex', alignItems:'center', gap:18, flex:1 }}>
-                {showServeIndicator && ((!isDoubles&&serving)||active) && (
-                  <span style={{ flex:'none', width:26, height:26, borderRadius:'50%', background:servingColor, animation:'vsbSrvPulse 1.4s infinite' }} />
+                {showServeIndicator && playerServes && (
+                  <span style={{
+                    flex:'none', width:32, height:32, borderRadius:'50%',
+                    background:servingColor,
+                    boxShadow: `0 0 0 4px ${hexAlpha(servingColor,.30)}, 0 0 24px ${servingColor}`,
+                    animation:'vsbSrvPulse 1.4s infinite',
+                  }} />
                 )}
                 {(p.last_name??p.name??'').toUpperCase()}
               </span>
