@@ -103,6 +103,8 @@ export function MatchResultEditor({ match }: Props) {
         }
         const { error: e } = await supabase.from('matches').update(patch).eq('id', match.id)
         if (e) throw e
+        // Auto-advance al siguiente partido del cuadro
+        try { await fetch(`/api/matches/${match.id}/advance`, { method: 'POST' }) } catch {}
       } else {
         if (finishMatch && winner === null) {
           throw new Error('No se puede finalizar: aún no hay un ganador claro con los sets introducidos.')
@@ -125,6 +127,10 @@ export function MatchResultEditor({ match }: Props) {
         }
         const { error: e } = await supabase.from('matches').update(patch).eq('id', match.id)
         if (e) throw e
+        // Si el partido se ha cerrado, avanzar el ganador
+        if (finishMatch && winner) {
+          try { await fetch(`/api/matches/${match.id}/advance`, { method: 'POST' }) } catch {}
+        }
       }
       setSaved('Guardado correctamente')
       router.refresh()

@@ -3,6 +3,7 @@ import { createServerSupabase, createServiceSupabase } from '@/lib/supabase-serv
 import { applyPoint, INITIAL_SCORE, isBreakPoint, isSetPoint, isMatchPoint, isTBSideChange, isSuperTBSideChange } from '@/lib/score-engine'
 import { applyPointToStats, applyBreakPointStats, emptyStats } from '@/lib/stats-engine'
 import { pushBroadcastEvent } from '@/lib/broadcast-push'
+import { advanceWinnerToNextRound } from '@/lib/bracket-advance'
 import type { Score, PointType, ShotDirection, ScoringSystem } from '@/types'
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -154,6 +155,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (match.broadcast_active && updatedMatch) {
     const eventName = matchFinished ? 'match_finished' : 'point_scored'
     pushBroadcastEvent(updatedMatch.tournament_id, matchId, eventName, _context)
+  }
+
+  // Auto-advance del ganador al siguiente partido del cuadro cuando este
+  // punto cierra el match (independiente del trigger SQL 018).
+  if (matchFinished && updatedMatch) {
+    try { await advanceWinnerToNextRound(service, matchId) } catch (e) { console.error('advance failed', e) }
   }
 
   return NextResponse.json({ ...updatedMatch, _context })

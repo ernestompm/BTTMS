@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabase, createServiceSupabase } from '@/lib/supabase-server'
 import { pushBroadcastEvent } from '@/lib/broadcast-push'
+import { advanceWinnerToNextRound } from '@/lib/bracket-advance'
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: matchId } = await params
@@ -37,6 +38,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   if (updated) {
     pushBroadcastEvent(updated.tournament_id, matchId, 'match_retired', { retired_team: team, reason })
+    try { await advanceWinnerToNextRound(service, matchId) } catch (e) { console.error('advance failed', e) }
   }
 
   return NextResponse.json(updated)

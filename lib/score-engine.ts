@@ -74,7 +74,12 @@ export function applyPoint(prev: Score, winnerTeam: 1 | 2): Score {
     const wPts = s.tiebreak_score[wKey]
     const lPts = s.tiebreak_score[lKey]
     if (wPts >= 10 && wPts - lPts >= 2) {
+      // Empujar el super TB como un set más para que las vistas que iteran
+      // por score.sets (marcador de pista, scorebug, big scoreboard...) lo
+      // vean como tercer set con resultado tipo 10-7.
+      s.sets.push({ t1: s.tiebreak_score.t1, t2: s.tiebreak_score.t2 })
       s.sets_won[wKey]++
+      s.super_tiebreak_active = false
       s.match_status = 'finished'
       s.winner_team = winnerTeam
     }
@@ -217,7 +222,10 @@ export function awardCurrentGame(prev: Score, winnerTeam: 1 | 2): Score {
     // Super TB: forfeited = opponent wins the match at min 10 pts margin 2
     const wKey = `t${winnerTeam}` as 't1' | 't2'
     s.tiebreak_score[wKey] = Math.max(10, s.tiebreak_score[wKey] + 1)
+    // Empujar como set para que las vistas lo muestren correctamente
+    s.sets.push({ t1: s.tiebreak_score.t1, t2: s.tiebreak_score.t2 })
     s.sets_won[wKey]++
+    s.super_tiebreak_active = false
     s.match_status = 'finished'
     s.winner_team = winnerTeam
     return s

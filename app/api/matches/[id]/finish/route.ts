@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabase, createServiceSupabase } from '@/lib/supabase-server'
 import { pushBroadcastEvent } from '@/lib/broadcast-push'
+import { advanceWinnerToNextRound } from '@/lib/bracket-advance'
 
 const MAX_SIGNATURE_BYTES = 200_000  // ~150 KB of base64 → plenty for a PNG signature
 const MAX_NOTES_LENGTH = 2000
@@ -58,6 +59,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   if (updatedMatch) {
     pushBroadcastEvent(updatedMatch.tournament_id, matchId, 'match_finished')
+    // Auto-advance JS — independiente del trigger SQL 018. Coloca al ganador
+    // en el slot correspondiente del siguiente partido del cuadro.
+    try { await advanceWinnerToNextRound(service, matchId) } catch (e) { console.error('advance failed', e) }
   }
 
   return NextResponse.json(updatedMatch)
