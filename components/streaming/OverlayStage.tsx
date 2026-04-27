@@ -21,6 +21,7 @@ import {
   ResultsGrid, CoinToss, WeatherCard, BracketView,
   AwardsPodium, StatsTicker,
 } from './graphics'
+import { ScorebugTour, BigScoreboardTour, WeatherBarTour } from './graphics-tour'
 import { deriveLiveFlag } from '@/lib/streaming/flags'
 
 // ─── StageCanvas ────────────────────────────────────────────────────────────
@@ -65,6 +66,8 @@ export function StageCanvas({ match, tournament, allMatches, referee, mainSponso
   const awardsData = (d('awards_podium') as any) ?? null
   const tickerActive = v('stats_ticker')
   const tickerStat = tickerActive ? ((d('stats_ticker') as any)?.stat ?? 'aces') : null
+  // Skin selector — tournament.scoreboard_config.graphics_style ('classic' | 'tour')
+  const skin: 'classic' | 'tour' = ((tournament as any)?.scoreboard_config?.graphics_style ?? 'classic')
 
   return (
     <>
@@ -76,13 +79,18 @@ export function StageCanvas({ match, tournament, allMatches, referee, mainSponso
       <Presence show={v('coin_toss')}           exitMs={700}>{(vis) => <CoinToss           visible={vis} match={match} tournament={tournament}/>}</Presence>
       <Presence show={v('stats_panel')}         exitMs={700}>{(vis) => <StatsPanel         visible={vis} match={match} tournament={tournament} scope={statsScope}/>}</Presence>
       <Presence show={v('player_bio') && !!bioPlayer} exitMs={700}>{(vis) => <PlayerBio    visible={vis} player={bioPlayer!} team={bioTeam} category={match.category} tournament={tournament}/>}</Presence>
-      <Presence show={v('weather')}             exitMs={650}>{(vis) => <WeatherCard       visible={vis} weather={weather} tournament={tournament}/>}</Presence>
-      <Presence show={v('big_scoreboard')}      exitMs={700}>{(vis) => <BigScoreboard     visible={vis} match={match} tournament={tournament} sponsor={mainSponsor} opts={bigScoreOpts}/>}</Presence>
+      <Presence show={v('weather')}             exitMs={650}>{(vis) => skin === 'tour'
+        ? <WeatherBarTour visible={vis} weather={weather} tournament={tournament}/>
+        : <WeatherCard    visible={vis} weather={weather} tournament={tournament}/> }</Presence>
+      <Presence show={v('big_scoreboard')}      exitMs={700}>{(vis) => skin === 'tour'
+        ? <BigScoreboardTour visible={vis} match={match} tournament={tournament}/>
+        : <BigScoreboard     visible={vis} match={match} tournament={tournament} sponsor={mainSponsor} opts={bigScoreOpts}/> }</Presence>
       <Presence show={v('awards_podium') && !!awardsData} exitMs={750}>{(vis) => <AwardsPodium visible={vis} data={awardsData} tournament={tournament}/>}</Presence>
-      {/* stats_ticker no se renderiza como un gráfico aparte: se integra
-          en el Scorebug como columna extra via la prop tickerStat. */}
+      {/* stats_ticker se integra en el Scorebug. */}
       <Presence show={v('referee_lower_third')} exitMs={700}>{(vis) => <RefereeLowerThird visible={vis} referee={referee} tournament={tournament}/>}</Presence>
-      <Presence show={v('scorebug')}            exitMs={500}>{(vis) => <Scorebug          visible={vis} match={match} tournament={tournament} flag={flag} tickerStat={tickerStat}/>}</Presence>
+      <Presence show={v('scorebug')}            exitMs={500}>{(vis) => skin === 'tour'
+        ? <ScorebugTour visible={vis} match={match} tickerStat={tickerStat}/>
+        : <Scorebug     visible={vis} match={match} tournament={tournament} flag={flag} tickerStat={tickerStat}/> }</Presence>
     </>
   )
 }

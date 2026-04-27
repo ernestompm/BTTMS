@@ -257,6 +257,16 @@ export default function TournamentPage() {
             <option value="stats_panel">Con Panel de Stats</option>
           </select>
         </div>
+        <div>
+          <label className="block text-sm text-gray-400 mb-1">Estilo gráfico TV</label>
+          <select value={(cfg as any).graphics_style ?? 'classic'}
+            onChange={(e) => setTournament((t) => t ? { ...t, scoreboard_config: { ...cfg, graphics_style: e.target.value as any } } : t)}
+            className="bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-brand-red">
+            <option value="classic">Clásico (BTTMS / Vinteon)</option>
+            <option value="tour">Tour (estilo WTA broadcast)</option>
+          </select>
+          <p className="text-gray-500 text-xs mt-1">Cambia el aspecto del scorebug, marcador grande y weather del overlay vMix.</p>
+        </div>
       </div>
 
       <div className="flex items-center gap-4">
