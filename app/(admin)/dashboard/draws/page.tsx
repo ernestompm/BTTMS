@@ -2,6 +2,7 @@ import { createServiceSupabase } from '@/lib/supabase-server'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { CATEGORY_LABELS } from '@/types'
+import { EmptyDrawCTA } from './[category]/empty-cta'
 
 const TOURNAMENT_ID = '00000000-0000-0000-0000-000000000001'
 
@@ -44,11 +45,14 @@ export default async function DrawsPage() {
         ))}
 
         {(!draws || draws.length === 0) && (
-          <div className="col-span-2 bg-gray-900 rounded-2xl p-8 border border-gray-800 text-center">
-            <p className="text-gray-500">No hay cuadros creados</p>
-            <Link href="/dashboard/draws/new" className="text-brand-red text-sm mt-2 inline-block">
-              Crear el primer cuadro →
-            </Link>
+          <div className="col-span-2 bg-gray-900 rounded-2xl p-8 border border-gray-800 text-center space-y-4">
+            <div className="text-6xl">🏆</div>
+            <p className="text-white font-semibold">No hay cuadros creados</p>
+            <p className="text-gray-400 text-sm max-w-md mx-auto">
+              Sembrá un cuadro completo en un click — incluye 32 jugadores, 16 parejas y los 15 partidos
+              del cuadro (R16 + QF + SF + F).
+            </p>
+            <EmptyDrawCTA />
           </div>
         )}
       </div>

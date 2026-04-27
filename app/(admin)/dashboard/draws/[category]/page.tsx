@@ -1,5 +1,6 @@
 import { createServiceSupabase } from '@/lib/supabase-server'
 import Link from 'next/link'
+import { EmptyDrawCTA } from './empty-cta'
 import { Badge } from '@/components/ui/badge'
 import { CATEGORY_LABELS } from '@/types'
 
@@ -42,8 +43,11 @@ export default async function DrawDetailPage({ params }: { params: Promise<{ cat
     .eq('category', category)
     .maybeSingle()
 
-  // En lugar de 404, mostrar una pantalla con CTA para crear o seedear el cuadro
-  // — pasa cuando la URL apunta a una categoria sin cuadro creado todavia.
+  // En lugar de 404, mostrar una pantalla con CTA reales — el primario hace
+  // el seed completo (jugadores + cuadro + 15 partidos) en un click. Asi se
+  // rompe el bucle "no hay cuadro -> crear cuadro -> no hay cuadro" que se
+  // producia cuando el formulario manual fallaba o el usuario no entendia
+  // el flujo.
   if (!draw) {
     const friendlyCat = (CATEGORY_LABELS as Record<string, string>)[category] ?? category
     return (
@@ -51,23 +55,15 @@ export default async function DrawDetailPage({ params }: { params: Promise<{ cat
         <div className="flex items-center gap-3">
           <Link href="/dashboard/draws" className="text-gray-400 hover:text-white text-sm">← Cuadros</Link>
         </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8 text-center space-y-3">
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8 text-center space-y-4">
           <div className="text-6xl">🏆</div>
           <h1 className="text-xl font-bold text-white">No hay cuadro para «{friendlyCat}»</h1>
           <p className="text-gray-400 text-sm max-w-md mx-auto">
-            La categoría <code className="text-gray-300">{category}</code> aún no tiene un cuadro creado en este torneo.
-            Puedes crear uno desde cero o generar datos de prueba para empezar a probar el flujo completo.
+            La forma más rápida de tener un cuadro funcional es <strong className="text-gray-200">sembrar datos de prueba</strong>:
+            crea 32 jugadores españoles, las 16 parejas y los 15 partidos del cuadro completo (R16 + QF + SF + F)
+            en un solo paso.
           </p>
-          <div className="flex items-center justify-center gap-3 flex-wrap pt-2">
-            <Link href="/dashboard/draws/new"
-              className="bg-brand-red hover:bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">
-              + Crear cuadro
-            </Link>
-            <Link href="/dashboard/tournament"
-              className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">
-              ⚙️ Ir a Configuración para sembrar datos de prueba
-            </Link>
-          </div>
+          <EmptyDrawCTA />
         </div>
       </div>
     )
