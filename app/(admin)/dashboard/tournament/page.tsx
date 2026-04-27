@@ -84,11 +84,14 @@ export default function TournamentPage() {
     if (data.needs_sql_fix) setShowFixSql(true)
   }
 
-  async function handleSeed() {
-    if (!confirm('Esto BORRARÁ los datos actuales y creará 32 jugadores + cuadro de octavos (16 equipos, 8 partidos). ¿Continuar?')) return
+  async function handleSeed(mode: 'skeleton' | 'simulated' = 'skeleton') {
+    const msg = mode === 'simulated'
+      ? 'Esto BORRARÁ los datos actuales y creará 32 jugadores + cuadro completo (R16+QF+SF+F = 15 partidos), simulando R16, QF y SF como TERMINADOS para que el cuadro se vea avanzado hasta la final. ¿Continuar?'
+      : 'Esto BORRARÁ los datos actuales y creará 32 jugadores + cuadro completo de 15 partidos (R16 listos para jugar, QF/SF/F vacíos). ¿Continuar?'
+    if (!confirm(msg)) return
     setSeeding(true)
     setSeedMsg('')
-    const res = await fetch('/api/admin/seed', { method: 'POST' })
+    const res = await fetch(`/api/admin/seed?mode=${mode}`, { method: 'POST' })
     const data = await res.json()
     if (res.ok) {
       setSeedMsg(`✓ ${data.message} — recargando...`)
@@ -300,16 +303,23 @@ export default function TournamentPage() {
       <div className="bg-gray-900 rounded-2xl p-6 border border-blue-900/50 space-y-4">
         <h2 className="text-blue-300 font-semibold">🧪 Datos de prueba</h2>
         <p className="text-gray-400 text-sm">
-          Genera 32 jugadores españoles, un cuadro absoluto masculino (dobles, 16 equipos) y 8 partidos de octavos listos para jugar.
-          Reemplaza los datos existentes.
+          Genera 32 jugadores españoles, un cuadro absoluto masculino de dobles (16 equipos) y los <strong className="text-blue-200">15 partidos del cuadro completo (R16 + QF + SF + F)</strong>. Reemplaza los datos existentes.
         </p>
-        <div className="flex items-center gap-4 flex-wrap">
-          <button onClick={handleSeed} disabled={seeding}
+        <div className="flex items-center gap-3 flex-wrap">
+          <button onClick={() => handleSeed('skeleton')} disabled={seeding}
             className="bg-blue-900/40 hover:bg-blue-800 border border-blue-700 disabled:opacity-50 text-blue-200 font-semibold px-6 py-2.5 rounded-xl transition-colors">
-            {seeding ? 'Generando...' : '🎾 Generar octavos de dobles'}
+            {seeding ? 'Generando...' : '🎾 Cuadro vacío (R16 listos para jugar)'}
+          </button>
+          <button onClick={() => handleSeed('simulated')} disabled={seeding}
+            className="bg-purple-900/40 hover:bg-purple-800 border border-purple-700 disabled:opacity-50 text-purple-200 font-semibold px-6 py-2.5 rounded-xl transition-colors">
+            {seeding ? 'Generando...' : '🏆 Cuadro avanzado (R16+QF+SF terminados)'}
           </button>
           {seedMsg && <span className={`text-sm ${seedMsg.startsWith('✓') ? 'text-green-400' : 'text-red-400'}`}>{seedMsg}</span>}
         </div>
+        <p className="text-gray-500 text-xs">
+          <strong className="text-gray-400">Cuadro vacío</strong>: ideal para testear el flujo completo de partido (octavos en vivo).
+          <strong className="text-gray-400"> Cuadro avanzado</strong>: simula 14 partidos terminados — la final queda pendiente para verla en directo.
+        </p>
 
         {showFixSql && (
           <div className="bg-yellow-900/20 border border-yellow-700/50 rounded-xl p-4 mt-2">

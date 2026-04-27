@@ -41,7 +41,35 @@ const PLAYERS = [
 // Standard R16 bracket seeding (1v16, 8v9, 5v12, 4v13, 3v14, 6v11, 7v10, 2v15)
 const R16_PAIRS: [number, number][] = [[1,16],[8,9],[5,12],[4,13],[3,14],[6,11],[7,10],[2,15]]
 
-export async function POST() {
+// Simula un score "best of 2 + super TB" en 2 sets para un ganador concreto.
+// Devuelve un objeto Score válido para la columna jsonb.
+function fakeScore(winnerTeam: 1 | 2) {
+  const w = winnerTeam
+  const set = (a: number, b: number) => ({
+    t1: w === 1 ? a : b,
+    t2: w === 1 ? b : a,
+  })
+  return {
+    sets: [set(6, 3), set(6, 4)],
+    current_set: { t1: 0, t2: 0 },
+    current_game: { t1: 0, t2: 0 },
+    tiebreak_active: false,
+    tiebreak_score: { t1: 0, t2: 0 },
+    super_tiebreak_active: false,
+    deuce: false,
+    advantage_team: null,
+    winner_team: w,
+    match_status: 'finished' as const,
+    loser_team: winnerTeam === 1 ? 2 : 1,
+  }
+}
+
+export async function POST(req: Request) {
+  // Modo del seed: 'skeleton' (default) crea R16 listos para jugar + huecos
+  // QF/SF/F. 'simulated' simula R16+QF+SF finalizados para ver bracket lleno.
+  const url = new URL(req.url)
+  const mode = (url.searchParams.get('mode') ?? 'skeleton') as 'skeleton' | 'simulated'
+
   const supabase = await createServerSupabase()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -107,21 +135,51 @@ export async function POST() {
   const entryBySeed: Record<number, string> = {}
   for (const e of entries) entryBySeed[e.seed!] = e.id
 
-  // 5. Create 8 R16 matches, inheriting scoring_system from draw.structure
+  // 5. Create FULL BRACKET SKELETON — R16 (8) + QF (4) + SF (2) + F (1)
+  // Asi el cuadro siempre se ve entero desde el principio aunque las rondas
+  // siguientes esten vacias (slots = "Por determinar").
   const drawScoring = (draw as any).structure?.scoring_system ?? 'best_of_2_sets_super_tb'
-  const matchInserts = R16_PAIRS.map(([s1, s2], idx) => ({
+  const baseFields = {
     tournament_id: TOURNAMENT_ID,
     draw_id: draw.id,
     category: 'absolute_m',
+    match_type: 'doubles',
+    scoring_system: drawScoring,
+  }
+  const r16Matches = R16_PAIRS.map(([s1, s2], idx) => ({
+    ...baseFields,
     round: 'R16',
     match_number: idx + 1,
-    match_type: 'doubles',
     entry1_id: entryBySeed[s1],
     entry2_id: entryBySeed[s2],
     status: 'scheduled',
-    scoring_system: drawScoring,
   }))
-  const { error: mErr } = await service.from('matches').insert(matchInserts)
+  const qfMatches = Array.from({ length: 4 }, (_, i) => ({
+    ...baseFields,
+    round: 'QF',
+    match_number: i + 1,
+    entry1_id: null,
+    entry2_id: null,
+    status: 'scheduled',
+  }))
+  const sfMatches = Array.from({ length: 2 }, (_, i) => ({
+    ...baseFields,
+    round: 'SF',
+    match_number: i + 1,
+    entry1_id: null,
+    entry2_id: null,
+    status: 'scheduled',
+  }))
+  const fMatches = [{
+    ...baseFields,
+    round: 'F',
+    match_number: 1,
+    entry1_id: null,
+    entry2_id: null,
+    status: 'scheduled',
+  }]
+
+  const { error: mErr } = await service.from('matches').insert([...r16Matches, ...qfMatches, ...sfMatches, ...fMatches])
   if (mErr) {
     return NextResponse.json({
       error: 'Partidos: ' + mErr.message,
@@ -129,11 +187,81 @@ export async function POST() {
     }, { status: 500 })
   }
 
+  // 6. Si modo === 'simulated', cerramos R16 + QF + SF con marcadores ficticios
+  // para que el cuadro se vea propagado hasta la final. La final queda
+  // pendiente para verla "en vivo" si se quiere.
+  //
+  // No dependemos del trigger de migracion 018: aunque exista, ademas
+  // hacemos el avance manualmente para garantizar que funciona aunque la
+  // migracion no este aplicada todavia.
+  let simulated = 0
+  if (mode === 'simulated') {
+    // Helper: cierra un partido y devuelve el entry ganador (entry1)
+    const finishAndGetWinner = async (matchId: string, entry1: string | null) => {
+      await service.from('matches').update({
+        status: 'finished',
+        score: fakeScore(1),  // siempre gana entry1 (el seed mas alto)
+        finished_at: new Date().toISOString(),
+      }).eq('id', matchId)
+      simulated++
+      return entry1
+    }
+    // Helper: rellena el slot del siguiente partido. Pairing standard:
+    //   match N -> match CEIL(N/2). Impar -> entry1, Par -> entry2.
+    const advanceWinner = async (round: 'QF' | 'SF' | 'F', fromNumber: number, winner: string | null) => {
+      if (!winner) return
+      const nextNum = Math.ceil(fromNumber / 2)
+      const slot = fromNumber % 2 === 1 ? 'entry1_id' : 'entry2_id'
+      // COALESCE: solo rellenar si esta vacio (no machacar lo que ya pueda
+      // haber colocado el trigger 018 si esta activo)
+      const { data: existing } = await service.from('matches')
+        .select(`id, ${slot}`)
+        .eq('tournament_id', TOURNAMENT_ID).eq('round', round).eq('match_number', nextNum)
+        .single()
+      if (existing && !(existing as any)[slot]) {
+        await service.from('matches').update({ [slot]: winner }).eq('id', (existing as any).id)
+      }
+    }
+
+    // R16 -> QF
+    const { data: r16Rows } = await service.from('matches')
+      .select('id, match_number, entry1_id')
+      .eq('tournament_id', TOURNAMENT_ID).eq('round', 'R16').order('match_number')
+    for (const m of r16Rows ?? []) {
+      const w = await finishAndGetWinner(m.id, m.entry1_id)
+      await advanceWinner('QF', m.match_number, w)
+    }
+
+    // QF -> SF
+    const { data: qfRows } = await service.from('matches')
+      .select('id, match_number, entry1_id, entry2_id')
+      .eq('tournament_id', TOURNAMENT_ID).eq('round', 'QF').order('match_number')
+    for (const m of qfRows ?? []) {
+      if (!m.entry1_id || !m.entry2_id) continue
+      const w = await finishAndGetWinner(m.id, m.entry1_id)
+      await advanceWinner('SF', m.match_number, w)
+    }
+
+    // SF -> F
+    const { data: sfRows } = await service.from('matches')
+      .select('id, match_number, entry1_id, entry2_id')
+      .eq('tournament_id', TOURNAMENT_ID).eq('round', 'SF').order('match_number')
+    for (const m of sfRows ?? []) {
+      if (!m.entry1_id || !m.entry2_id) continue
+      const w = await finishAndGetWinner(m.id, m.entry1_id)
+      await advanceWinner('F', m.match_number, w)
+    }
+  }
+
+  const totalMatches = r16Matches.length + qfMatches.length + sfMatches.length + fMatches.length
   return NextResponse.json({
     success: true,
     players: PLAYERS.length,
     teams: 16,
-    matches: 8,
-    message: '32 jugadores · 16 equipos · 8 partidos de octavos',
+    matches: totalMatches,
+    simulated,
+    message: mode === 'simulated'
+      ? `32 jugadores · 16 equipos · ${totalMatches} partidos (R16+QF+SF+F) · ${simulated} simulados como terminados`
+      : `32 jugadores · 16 equipos · ${totalMatches} partidos (R16+QF+SF+F, R16 listos para jugar)`,
   })
 }
