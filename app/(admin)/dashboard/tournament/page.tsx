@@ -258,14 +258,33 @@ export default function TournamentPage() {
           </select>
         </div>
         <div>
-          <label className="block text-sm text-gray-400 mb-1">Estilo gráfico TV</label>
+          <label className="block text-sm text-gray-400 mb-1">
+            Estilo gráfico TV
+            <span className="ml-2 inline-block px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider align-middle"
+                  style={{
+                    background: ((cfg as any).graphics_style ?? 'classic') === 'tour' ? '#10b981' : '#ef4444',
+                    color: '#fff',
+                  }}>
+              {((cfg as any).graphics_style ?? 'classic') === 'tour' ? 'TOUR' : 'CLÁSICO'}
+            </span>
+          </label>
           <select value={(cfg as any).graphics_style ?? 'classic'}
-            onChange={(e) => setTournament((t) => t ? { ...t, scoreboard_config: { ...cfg, graphics_style: e.target.value as any } } : t)}
+            onChange={async (e) => {
+              const newStyle = e.target.value as 'classic' | 'tour'
+              const newCfg = { ...cfg, graphics_style: newStyle }
+              setTournament((t) => t ? { ...t, scoreboard_config: newCfg } : t)
+              // Auto-save: el cambio de skin debe aplicarse YA, sin obligar a
+              // pulsar "Guardar". Asi el operador refresca overlay y ve el cambio.
+              await supabase.from('tournaments').update({ scoreboard_config: newCfg }).eq('id', TOURNAMENT_ID)
+              setSuccess(true); setTimeout(() => setSuccess(false), 2000)
+            }}
             className="bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-brand-red">
             <option value="classic">Clásico (BTTMS / Vinteon)</option>
             <option value="tour">Tour (estilo WTA broadcast)</option>
           </select>
-          <p className="text-gray-500 text-xs mt-1">Cambia el aspecto del scorebug, marcador grande y weather del overlay vMix.</p>
+          <p className="text-gray-500 text-xs mt-1">
+            Afecta scorebug, marcador grande y weather. <strong className="text-yellow-300">Tras cambiar, refresca el panel operador y la fuente del navegador en vMix</strong> para ver el nuevo estilo.
+          </p>
         </div>
       </div>
 

@@ -67,7 +67,7 @@ export function StageCanvas({ match, tournament, allMatches, referee, mainSponso
   const tickerActive = v('stats_ticker')
   const tickerStat = tickerActive ? ((d('stats_ticker') as any)?.stat ?? 'aces') : null
   // Skin selector — tournament.scoreboard_config.graphics_style ('classic' | 'tour')
-  const skin: 'classic' | 'tour' = ((tournament as any)?.scoreboard_config?.graphics_style ?? 'classic')
+  const skin: 'classic' | 'tour' = (tournament?.scoreboard_config?.graphics_style ?? 'classic')
 
   return (
     <>

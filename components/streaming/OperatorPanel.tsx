@@ -256,7 +256,17 @@ export function OperatorPanel({ session, initialMatch, tournament, rules, allMat
       {/* TOP BAR — span full width */}
       <div style={{ gridColumn:'1 / 3', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 20px', borderBottom:'1px solid #141a2a', background:'#070b16', gap:20 }}>
         <div>
-          <div style={{ fontSize:16, fontWeight:900, letterSpacing:'.06em' }}>STREAMING · OPERADOR</div>
+          <div style={{ fontSize:16, fontWeight:900, letterSpacing:'.06em', display:'flex', alignItems:'center', gap:8 }}>
+            STREAMING · OPERADOR
+            {/* Skin badge — para que el operador sepa qué estilo está aplicado */}
+            <span style={{
+              fontSize:9, fontWeight:900, letterSpacing:'.14em', padding:'2px 7px', borderRadius:5,
+              background: ((tournament as any)?.scoreboard_config?.graphics_style ?? 'classic') === 'tour' ? '#10b981' : '#ef4444',
+              color: '#fff',
+            }}>
+              SKIN · {((tournament as any)?.scoreboard_config?.graphics_style ?? 'classic') === 'tour' ? 'TOUR' : 'CLÁSICO'}
+            </span>
+          </div>
           <div style={{ fontSize:11, opacity:.6 }}>{tournament?.name} · {roundLabel(match.round)} · {categoryLabel(match.category)}</div>
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
