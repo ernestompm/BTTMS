@@ -227,11 +227,21 @@ export function VenueScoreboard({ initialMatch, config, tournamentName, sponsors
           </div>
 
           {/* ── PRE-MATCH ────────────────────────────────────── */}
-          {isPreMatch && (
+          {(() => {
+            if (!isPreMatch) return null
+            // Tama\u00f1o de fuente UNIFICADO entre ambos equipos para mantener
+            // simetr\u00eda visual: usamos el apellido m\u00e1s largo de los dos.
+            const allLast = [...teamA.players, ...teamB.players].map((p:any) => (p?.last_name ?? p?.name ?? '').length)
+            const longest = Math.max(...allLast, 1)
+            const isDoubles = teamA.players.length > 1
+            const baseFs = isDoubles ? 100 : 140
+            const targetChars = 11
+            const sharedFs = longest > targetChars ? Math.max(56, Math.round(baseFs * targetChars / longest)) : baseFs
+            return (
             <div className="absolute z-10" style={{ left:64, right:64, top:172, bottom: showSponsors&&sponsorList.length>0?252:60, display:'grid', gridTemplateColumns:'1fr auto 1fr', gap:40, alignItems:'stretch', animation:'phaseIn .75s cubic-bezier(.2,.9,.25,1) both' }}>
 
               {/* Team A card */}
-              <PreMatchTeamCard team={teamA} accent={accentA} isRight={false} showFlags={showFlags} showSeed={showSeed} />
+              <PreMatchTeamCard team={teamA} accent={accentA} isRight={false} showFlags={showFlags} showSeed={showSeed} nameFs={sharedFs} />
 
               {/* VS column */}
               <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', animation:'vsIn .9s cubic-bezier(.2,.9,.25,1) .15s both', minWidth:320 }}>
@@ -241,20 +251,23 @@ export function VenueScoreboard({ initialMatch, config, tournamentName, sponsors
                 <div style={{ fontSize:300, fontWeight:900, lineHeight:.82, color:accentA, letterSpacing:'-.04em', textShadow:`0 20px 80px ${hexAlpha(accentA,.5)}` }}>
                   VS
                 </div>
-                <div style={{ marginTop:28, fontSize:34, letterSpacing:'.22em', opacity:.88, textTransform:'uppercase', fontWeight:800, textAlign:'center', lineHeight:1.3 }}>
+                <div style={{ marginTop:28, textAlign:'center' }}>
                   {status==='warmup' && countdown!=null
-                    ? <span style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:58, letterSpacing:'.06em', color: countdown.startsWith('+')?'#f87171':accentA, animation:'cntPulse 1s ease infinite', display:'block' }}>{countdown}</span>
-                    : match.scheduled_at
-                      ? `A LAS ${new Date(match.scheduled_at).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}`
-                      : match.court?.name ?? ''
+                    ? <span style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:120, letterSpacing:'.04em', fontWeight:900, color: countdown.startsWith('+')?'#f87171':accentA, animation:'cntPulse 1s ease infinite', display:'block', lineHeight:1, textShadow:`0 0 60px ${hexAlpha(accentA,.45)}` }}>{countdown}</span>
+                    : <span style={{ fontSize:34, letterSpacing:'.22em', opacity:.88, textTransform:'uppercase', fontWeight:800, lineHeight:1.3, display:'block' }}>
+                        {match.scheduled_at
+                          ? `A LAS ${new Date(match.scheduled_at).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}`
+                          : match.court?.name ?? ''}
+                      </span>
                   }
                 </div>
               </div>
 
               {/* Team B card */}
-              <PreMatchTeamCard team={teamB} accent={accentB} isRight={true} showFlags={showFlags} showSeed={showSeed} />
+              <PreMatchTeamCard team={teamB} accent={accentB} isRight={true} showFlags={showFlags} showSeed={showSeed} nameFs={sharedFs} />
             </div>
-          )}
+            )
+          })()}
 
           {/* ── LIVE SCOREBOARD ──────────────────────────────── */}
           {isLive && (
@@ -410,15 +423,12 @@ interface PreMatchTeamCardProps {
   isRight: boolean
   showFlags: boolean
   showSeed: boolean
+  /** tamaño compartido entre ambos equipos (para simetría) */
+  nameFs?: number
 }
-function PreMatchTeamCard({ team, accent, isRight, showFlags, showSeed }: PreMatchTeamCardProps) {
+function PreMatchTeamCard({ team, accent, isRight, showFlags, showSeed, nameFs }: PreMatchTeamCardProps) {
   const isDoubles = team.players.length > 1
-  // Tama\u00f1o adaptativo: con apellidos largos no debe truncar. Reducimos
-  // ligeramente en singles si el apellido es muy largo, y damos 1.5x m\u00e1s
-  // en dobles ya que cada l\u00ednea es independiente.
-  const longest = team.players.reduce((m:number, p:any) => Math.max(m, (p?.last_name ?? p?.name ?? '').length), 0)
-  const baseFs = isDoubles ? 84 : 110
-  const fs = longest > 14 ? Math.max(56, Math.round(baseFs * (12 / longest))) : baseFs
+  const fs = nameFs ?? (isDoubles ? 100 : 140)
   return (
     <div style={{
       display:'flex', flexDirection:'column', justifyContent:'center',
@@ -456,7 +466,7 @@ function PreMatchTeamCard({ team, accent, isRight, showFlags, showSeed }: PreMat
                     {first}
                   </span>
                 )}
-                <span style={{ fontWeight:900, fontSize:fs, lineHeight:.95, textTransform:'uppercase', letterSpacing:'.005em' }}>
+                <span style={{ fontWeight:900, fontSize:fs, lineHeight:.95, textTransform:'uppercase', letterSpacing:'.005em', whiteSpace:'nowrap' }}>
                   {last}
                 </span>
               </div>
