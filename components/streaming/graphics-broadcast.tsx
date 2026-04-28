@@ -80,6 +80,15 @@ function lateralityShortEs(laterality: string|null|undefined) {
 }
 
 // ─── ESTILOS BASE REUTILIZABLES ────────────────────────────────────────────
+// IMPORTANTE: NO incluyo `position` aquí — cada componente lo define como
+// `absolute` con su anchor (top/left/bottom/right). Si pongo `position:
+// relative` aquí y luego hago spread con `...cardStyle()` DESPUES de
+// `position:absolute`, el spread sobrescribe el absolute, todas las cards
+// se vuelven relative y se apilan arriba-izquierda. Bug encontrado.
+//
+// Los hijos absolutos (Sheen, Accents, SpeedLines) funcionan igual con
+// padre `position: absolute` que con `position: relative` — ambos crean
+// un containing block.
 const cardStyle = (radius: number = 30): React.CSSProperties => ({
   background: 'linear-gradient(135deg, rgba(12,24,32,.72) 0%, rgba(12,24,32,.42) 100%)',
   border: `1px solid ${BC.stroke}`,
@@ -88,7 +97,6 @@ const cardStyle = (radius: number = 30): React.CSSProperties => ({
   WebkitBackdropFilter: 'blur(24px) saturate(1.16)',
   boxShadow: '0 28px 90px rgba(0,0,0,.40)',
   overflow: 'hidden',
-  position: 'relative',
 })
 
 // Sheen brillante que barre el card cada 5.2s
