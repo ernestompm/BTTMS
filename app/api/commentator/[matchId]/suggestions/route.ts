@@ -27,14 +27,18 @@ const TONE_INSTRUCTIONS: Record<string, string> = {
   tactical: 'Tono TÁCTICO: estrategia, lectura del juego, fortalezas/debilidades observadas en los puntos.',
 }
 
-// Detectar proveedor disponible (en orden de preferencia: gratis primero)
-function pickProvider() {
-  if (process.env.GOOGLE_AI_API_KEY) return { name: 'gemini' as const, key: process.env.GOOGLE_AI_API_KEY }
-  if (process.env.GEMINI_API_KEY) return { name: 'gemini' as const, key: process.env.GEMINI_API_KEY }
-  if (process.env.GROQ_API_KEY) return { name: 'groq' as const, key: process.env.GROQ_API_KEY }
-  if (process.env.MISTRAL_API_KEY) return { name: 'mistral' as const, key: process.env.MISTRAL_API_KEY }
-  if (process.env.ANTHROPIC_API_KEY) return { name: 'anthropic' as const, key: process.env.ANTHROPIC_API_KEY }
-  return null
+// Lista de TODOS los proveedores configurados (no solo el primero) — asi
+// podemos hacer fallback si uno da 429 / 5xx
+type ProviderName = 'gemini' | 'groq' | 'mistral' | 'anthropic'
+type Provider = { name: ProviderName, key: string }
+function listProviders(): Provider[] {
+  const out: Provider[] = []
+  const gem = process.env.GOOGLE_AI_API_KEY ?? process.env.GEMINI_API_KEY
+  if (gem) out.push({ name: 'gemini', key: gem })
+  if (process.env.GROQ_API_KEY) out.push({ name: 'groq', key: process.env.GROQ_API_KEY })
+  if (process.env.MISTRAL_API_KEY) out.push({ name: 'mistral', key: process.env.MISTRAL_API_KEY })
+  if (process.env.ANTHROPIC_API_KEY) out.push({ name: 'anthropic', key: process.env.ANTHROPIC_API_KEY })
+  return out
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ matchId: string }> }) {
@@ -43,12 +47,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ mat
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const provider = pickProvider()
-  if (!provider) {
+  const providers = listProviders()
+  if (providers.length === 0) {
     return NextResponse.json({
-      error: 'No hay ningún proveedor de IA configurado. En Vercel > Settings > Environment Variables, añade UNA de estas keys:\n' +
-        '• GOOGLE_AI_API_KEY (GRATIS, 1500 req/día) — https://aistudio.google.com/apikey\n' +
-        '• GROQ_API_KEY (GRATIS, 30 req/min) — https://console.groq.com/keys\n' +
+      error: 'No hay ningún proveedor de IA configurado. En Vercel > Settings > Environment Variables, añade UNA de estas keys (recomendada Groq, gratis y rápida):\n' +
+        '• GROQ_API_KEY (GRATIS, 30 req/min, modelo Llama 3.3 70B) — https://console.groq.com/keys\n' +
+        '• GOOGLE_AI_API_KEY (GRATIS pero solo 15 req/min) — https://aistudio.google.com/apikey\n' +
         '• MISTRAL_API_KEY (gratis limitado) — https://console.mistral.ai/api-keys\n' +
         '• ANTHROPIC_API_KEY (de pago, calidad alta) — https://console.anthropic.com',
     }, { status: 503 })
@@ -150,110 +154,106 @@ ${JSON.stringify(ctx, null, 2)}
 
 Genera ahora las 5 sugerencias en español, numeradas del 1 al 5.`
 
-  try {
-    let text = ''
-
-    if (provider.name === 'gemini') {
-      // Google Gemini — gratis. Default 'gemini-2.0-flash' (modelo flash actual,
-      // free tier generoso). Configurable via env GEMINI_MODEL.
+  // Llamar a un proveedor concreto. Devuelve { ok, text, status, errText }.
+  async function callProvider(p: Provider): Promise<{ ok: boolean, text?: string, status?: number, errText?: string }> {
+    if (p.name === 'gemini') {
       const model = process.env.GEMINI_MODEL ?? 'gemini-2.0-flash'
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${provider.key}`
-      const r = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${p.key}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: systemPrompt }] },
           contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
           generationConfig: { maxOutputTokens: 1500, temperature: 0.7 },
         }),
       })
-      if (!r.ok) {
-        const errText = await r.text()
-        console.error('Gemini API error:', r.status, errText)
-        return NextResponse.json({ error: `Error de Gemini (${r.status}): ${errText.slice(0, 200)}` }, { status: 502 })
-      }
+      if (!r.ok) return { ok: false, status: r.status, errText: await r.text() }
       const data = await r.json()
-      text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
-
-    } else if (provider.name === 'groq') {
-      // Groq — gratis 30 req/min, hostea Llama 3.3
+      return { ok: true, text: data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '' }
+    }
+    if (p.name === 'groq') {
       const model = process.env.GROQ_MODEL ?? 'llama-3.3-70b-versatile'
       const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${provider.key}`,
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${p.key}` },
         body: JSON.stringify({
-          model,
-          max_tokens: 1500,
-          temperature: 0.7,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt },
-          ],
+          model, max_tokens: 1500, temperature: 0.7,
+          messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
         }),
       })
-      if (!r.ok) {
-        const errText = await r.text()
-        console.error('Groq API error:', r.status, errText)
-        return NextResponse.json({ error: `Error de Groq (${r.status}): ${errText.slice(0, 200)}` }, { status: 502 })
-      }
+      if (!r.ok) return { ok: false, status: r.status, errText: await r.text() }
       const data = await r.json()
-      text = data?.choices?.[0]?.message?.content ?? ''
-
-    } else if (provider.name === 'mistral') {
-      // Mistral — free tier limitado
+      return { ok: true, text: data?.choices?.[0]?.message?.content ?? '' }
+    }
+    if (p.name === 'mistral') {
       const model = process.env.MISTRAL_MODEL ?? 'mistral-small-latest'
       const r = await fetch('https://api.mistral.ai/v1/chat/completions', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${provider.key}`,
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${p.key}` },
         body: JSON.stringify({
-          model,
-          max_tokens: 1500,
-          temperature: 0.7,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt },
-          ],
+          model, max_tokens: 1500, temperature: 0.7,
+          messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
         }),
       })
-      if (!r.ok) {
-        const errText = await r.text()
-        console.error('Mistral API error:', r.status, errText)
-        return NextResponse.json({ error: `Error de Mistral (${r.status}): ${errText.slice(0, 200)}` }, { status: 502 })
-      }
+      if (!r.ok) return { ok: false, status: r.status, errText: await r.text() }
       const data = await r.json()
-      text = data?.choices?.[0]?.message?.content ?? ''
-
-    } else if (provider.name === 'anthropic') {
-      // Claude — de pago, calidad alta
+      return { ok: true, text: data?.choices?.[0]?.message?.content ?? '' }
+    }
+    if (p.name === 'anthropic') {
       const model = process.env.ANTHROPIC_MODEL ?? 'claude-3-5-sonnet-latest'
       const r = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': provider.key,
+          'Content-Type': 'application/json', 'x-api-key': p.key,
           'anthropic-version': '2023-06-01',
         },
         body: JSON.stringify({
-          model,
-          max_tokens: 1500,
-          temperature: 0.7,
+          model, max_tokens: 1500, temperature: 0.7,
           system: systemPrompt,
           messages: [{ role: 'user', content: userPrompt }],
         }),
       })
-      if (!r.ok) {
-        const errText = await r.text()
-        console.error('Anthropic API error:', r.status, errText)
-        return NextResponse.json({ error: `Error de Claude (${r.status}): ${errText.slice(0, 200)}` }, { status: 502 })
-      }
+      if (!r.ok) return { ok: false, status: r.status, errText: await r.text() }
       const data = await r.json()
-      text = data?.content?.[0]?.text ?? ''
+      return { ok: true, text: data?.content?.[0]?.text ?? '' }
+    }
+    return { ok: false, errText: 'unknown provider' }
+  }
+
+  try {
+    let text = ''
+    let usedProvider: ProviderName | null = null
+    const errors: Array<{ provider: ProviderName, status?: number, message: string }> = []
+
+    // Intentar cada proveedor por orden. Fallback ante 429 (cuota), 5xx (servidor caido)
+    // o errores transitorios de fetch. Para 4xx que no es 429 (auth invalida, etc)
+    // seguimos al siguiente proveedor tambien — la idea es: pruebes lo que pruebes,
+    // si tienes >=2 keys configuradas, una de las dos te debe funcionar.
+    for (const p of providers) {
+      try {
+        const result = await callProvider(p)
+        if (result.ok && result.text) {
+          text = result.text
+          usedProvider = p.name
+          break
+        }
+        const msg = result.errText?.slice(0, 200) ?? 'unknown'
+        errors.push({ provider: p.name, status: result.status, message: msg })
+        console.error(`[${p.name}] error ${result.status}:`, msg)
+      } catch (e: any) {
+        errors.push({ provider: p.name, message: e?.message ?? String(e) })
+        console.error(`[${p.name}] fetch fail:`, e)
+      }
+    }
+
+    if (!usedProvider) {
+      // Todos fallaron — devolver un mensaje compuesto con los errores de cada uno
+      const summary = errors.map(e => `• ${e.provider}${e.status ? ` (${e.status})` : ''}: ${e.message}`).join('\n')
+      const tip = errors.some(e => e.status === 429)
+        ? '\n\n💡 Has llegado al límite de cuota. Recomendación: añade GROQ_API_KEY (https://console.groq.com/keys) — gratis con 30 req/min, mucho más generoso que Gemini.'
+        : ''
+      return NextResponse.json({
+        error: `Todos los proveedores fallaron:\n${summary}${tip}`,
+      }, { status: 502 })
     }
 
     // Parsear "1. ...\n2. ...\n3. ..." → array de strings
@@ -265,10 +265,18 @@ Genera ahora las 5 sugerencias en español, numeradas del 1 al 5.`
       .filter(Boolean)
 
     if (suggestions.length === 0) {
-      return NextResponse.json({ suggestions: [text.trim()].filter(Boolean), provider: provider.name })
+      return NextResponse.json({
+        suggestions: [text.trim()].filter(Boolean),
+        provider: usedProvider,
+        fallbackErrors: errors.length ? errors : undefined,
+      })
     }
 
-    return NextResponse.json({ suggestions, provider: provider.name })
+    return NextResponse.json({
+      suggestions,
+      provider: usedProvider,
+      fallbackErrors: errors.length ? errors : undefined,
+    })
   } catch (e: any) {
     console.error('AI suggestions error:', e)
     return NextResponse.json({ error: e?.message ?? 'Error inesperado' }, { status: 500 })
