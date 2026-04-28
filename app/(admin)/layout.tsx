@@ -21,6 +21,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     .single()
 
   if (!appUser) redirect('/login')
+  // Roles que no tienen acceso al panel de admin → redirige a su area
+  if ((appUser as any).role === 'commentator') redirect('/commentator')
+  if ((appUser as any).role === 'judge') {
+    // Los jueces sí pueden navegar a /dashboard si quieren (algunas
+    // cosas como /dashboard/stats les sirven), no los bloqueo.
+  }
 
   return (
     <div className="flex min-h-screen bg-gray-950">

@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 
 const TOURNAMENT_ID = '00000000-0000-0000-0000-000000000001'
 const roleColors: Record<string, any> = {
-  super_admin: 'danger', tournament_director: 'warning', staff: 'info', judge: 'success',
+  super_admin: 'danger', tournament_director: 'warning', staff: 'info', judge: 'success', commentator: 'default',
 }
 
 export default function UsersPage() {
@@ -74,6 +74,7 @@ export default function UsersPage() {
               <select value={form.role} onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
                 className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-brand-red">
                 <option value="judge">Juez árbitro</option>
+                <option value="commentator">🎙️ Comentarista</option>
                 <option value="staff">Staff</option>
                 <option value="tournament_director">Director de torneo</option>
                 <option value="super_admin">Super Admin</option>

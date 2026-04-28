@@ -20,6 +20,7 @@ const navItems = [
   { href: '/dashboard/graphics-editor', label: 'Editor gráficos', icon: '🎨', roles: ['super_admin','tournament_director'] },
   { href: '/broadcast', label: 'TV Broadcast', icon: '📺', roles: ['super_admin','tournament_director'] },
   { href: '/dashboard/streaming', label: 'Streaming Grafismo', icon: '🎬', roles: ['super_admin','tournament_director','staff'] },
+  { href: '/commentator', label: 'Comentarista (CIS)', icon: '🎙️', roles: ['super_admin','tournament_director','commentator'] },
 ]
 
 export function AdminNav({ user }: { user: AppUser }) {

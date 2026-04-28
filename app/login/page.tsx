@@ -17,13 +17,26 @@ function LoginForm() {
     e.preventDefault()
     setError('')
     setLoading(true)
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) {
+    const { data: signInData, error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error || !signInData.user) {
       setError('Credenciales incorrectas. Verifica tu email y contraseña.')
       setLoading(false)
     } else {
-      const redirect = searchParams.get('redirect') ?? '/dashboard'
-      router.replace(redirect)
+      // Redirect by role: ?redirect= en URL gana. Si no, deduce destino por rol
+      const explicitRedirect = searchParams.get('redirect')
+      let target = explicitRedirect ?? '/dashboard'
+      if (!explicitRedirect) {
+        const { data: appUser } = await supabase
+          .from('app_users')
+          .select('role')
+          .eq('id', signInData.user.id)
+          .single()
+        const role = (appUser as any)?.role
+        if (role === 'judge') target = '/judge'
+        else if (role === 'commentator') target = '/commentator'
+        else target = '/dashboard'
+      }
+      router.replace(target)
       router.refresh()
     }
   }

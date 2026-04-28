@@ -1,4 +1,4 @@
-export type UserRole = 'super_admin' | 'tournament_director' | 'staff' | 'judge'
+export type UserRole = 'super_admin' | 'tournament_director' | 'staff' | 'judge' | 'commentator'
 
 export type TournamentStatus = 'draft' | 'active' | 'finished'
 
