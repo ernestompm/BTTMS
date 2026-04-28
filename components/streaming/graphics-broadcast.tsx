@@ -17,6 +17,20 @@ import type { Player, Score, Sponsor, Tournament, WeatherData, Category } from '
 import { CATEGORY_LABELS } from '@/types'
 import { hexAlpha, flagPath, palette, firstSurname } from './stage-shared'
 
+// ─── HOOKS / FORMAT ────────────────────────────────────────────────────────
+function useTicker(start: string | null, stop: string | null) {
+  const [, tick] = useState(0)
+  useEffect(() => { const id = setInterval(() => tick(x => x+1), 1000); return () => clearInterval(id) }, [])
+  if (!start) return 0
+  const end = stop ? new Date(stop).getTime() : Date.now()
+  return Math.floor((end - new Date(start).getTime()) / 1000)
+}
+function fmtHHmm(secs: number) {
+  const s = Math.max(0, secs|0)
+  const hh = Math.floor(s/3600), mm = Math.floor((s%3600)/60)
+  return `${hh}:${String(mm).padStart(2,'0')}`
+}
+
 // ─── PALETA ─────────────────────────────────────────────────────────────────
 const BC = {
   cyan:    '#00e0c6',
@@ -207,277 +221,465 @@ function statValue(stats: any, stat: string, team: 1|2): string|number {
   return v
 }
 
+// Mismo formato que el scorebug Classic — sin skew (ilegible para info que
+// cambia cada punto). Estructura por filas con accent del color del equipo,
+// banderas reales, todos los sets jugados visibles, y stat ticker integrado
+// con un fondo / borde claramente diferente cuando esta activo.
 export function ScorebugBroadcast({ visible, match, tournament, tickerStat }: {
   visible: boolean, match: any, tournament: Tournament | null, tickerStat?: string | null,
 }) {
   if (!match) return null
+  const pal = palette(tournament?.scoreboard_config)
   const score = match.score as Score | null
   const isDoubles = match.match_type === 'doubles'
   const serving = match.serving_team as 1|2|null
   const inProgress = score?.match_status === 'in_progress'
 
   const setsPlayed = score?.sets?.length ?? 0
-  const cs = score?.current_set ?? { t1: 0, t2: 0 }
-  const tb = score?.tiebreak_score ?? { t1: 0, t2: 0 }
+  const setCount = Math.max(1, Math.min(3, setsPlayed + (inProgress ? 1 : 0)))
   const tbActive = !!(score?.tiebreak_active || score?.super_tiebreak_active)
-  const cT1 = tbActive ? (tb.t1 ?? 0) : (cs.t1 ?? 0)
-  const cT2 = tbActive ? (tb.t2 ?? 0) : (cs.t2 ?? 0)
-
-  // El bug muestra: SET (sets ganados), GAME (games del set actual o tb), POINT (juego)
-  const setLabel = inProgress
-    ? `${setsPlayed + 1}º SET${tbActive ? ' · TB' : ''}`
-    : (setsPlayed === 0 ? 'PRE-MATCH' : 'FINAL')
+  const currentSetIdx = inProgress ? setsPlayed : -1
 
   const showTicker = !!tickerStat && !!match.stats
   const tickerLabel = tickerStat ? (STAT_LABELS[tickerStat] ?? tickerStat.toUpperCase()) : ''
 
+  // Header label (1ER SET, 2DO SET, TIEBREAK, etc.)
+  const setOrdinal = setsPlayed + 1
+  const headerLabel = !inProgress
+    ? (setsPlayed === 0 ? 'PREVIA' : 'FINAL')
+    : tbActive
+      ? (score?.super_tiebreak_active ? 'SUPER TIE-BREAK' : 'TIE-BREAK')
+      : `${setOrdinal === 1 ? '1ER' : setOrdinal === 2 ? '2DO' : '3ER'} SET`
+
+  // Color del equipo: usa el accent del torneo (rojo Vinteon o lo que tenga
+  // configurado) — NO cyan/coral hardcodeado. Asi se respeta la marca.
+  const teamAccent = (t: 1|2) => t === 1 ? pal.accentA : pal.accentB
+
+  function teamPlayers(t: 1|2): any[] {
+    const e = t === 1 ? match.entry1 : match.entry2
+    if (!e) return []
+    return [e.player1, isDoubles ? e.player2 : null].filter(Boolean)
+  }
   function teamName(t: 1|2) {
-    const e = t === 1 ? match.entry1 : match.entry2
-    if (!e) return ''
-    if (isDoubles) {
-      return [e.player1, e.player2].map((p:any) => firstSurname(p)).filter(Boolean).join(' / ')
-    }
-    return e.player1?.last_name ?? ''
+    const players = teamPlayers(t)
+    if (!players.length) return ''
+    if (isDoubles) return players.map((p:any) => firstSurname(p)).join(' / ')
+    return players[0]?.last_name ?? ''
   }
-  function teamFlag(t: 1|2) {
-    const e = t === 1 ? match.entry1 : match.entry2
-    return e?.player1?.nationality
-  }
+
+  // Grid: [accent 6px] [name auto] [set cells] [point cell wider]
+  const gridCols = `6px minmax(220px, max-content) ${Array(setCount).fill('44px').join(' ')} 70px`
 
   return (
     <div style={{
       position: 'absolute', top: 42, left: 42,
-      width: 510, height: 128,
-      ...cardStyle(28),
-      transform: SKEW_OUTER,
+      ...cardStyle(20),
       fontFamily: FONT,
-      ...animSkew(visible, 'L', 700),
+      animation: visible
+        ? 'sgInR 600ms cubic-bezier(.22,.9,.25,1) both'
+        : 'sgOutR 500ms cubic-bezier(.22,.9,.25,1) both',
+      willChange: 'transform, opacity',
     }}>
       <Sheen/>
 
-      {/* Title pill flotante encima del card */}
+      {/* Header — INTEGRADO en la card (no flotante arriba) */}
       <div style={{
-        position: 'absolute', left: 24, top: -11, zIndex: 5,
-        padding: '6px 15px', borderRadius: 999,
-        background: 'rgba(8,18,25,.82)',
-        border: `1px solid ${BC.stroke}`,
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
-        transform: SKEW_INNER,
-        ...subtleStyle(8, BC.white),
-        letterSpacing: '.20em',
+        padding: '8px 16px',
+        borderBottom: `1px solid rgba(255,255,255,.10)`,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        position: 'relative', zIndex: 2,
+        background: 'rgba(0,0,0,.18)',
       }}>
-        {setLabel}
+        <span style={{ ...subtleStyle(11, BC.white), letterSpacing: '.28em' }}>{headerLabel}</span>
+        {tournament?.logo_url && (
+          <img src={tournament.logo_url} alt="" style={{ height: 18, opacity: .85, objectFit: 'contain' }}/>
+        )}
       </div>
 
-      {/* Inner content (counter-skewed) */}
+      {/* Body — 2 filas de equipo */}
       <div style={{
-        height: '100%', padding: '22px 25px 16px',
-        transform: SKEW_INNER,
         display: 'grid',
-        gridTemplateColumns: '1fr 44px 54px 66px',
-        gridTemplateRows: '18px 38px 38px',
-        columnGap: 10, alignItems: 'center',
+        gridTemplateColumns: gridCols,
+        gridTemplateRows: '46px 46px',
         position: 'relative', zIndex: 2,
       }}>
-        {/* Labels row */}
-        <span style={{ ...subtleStyle(8, 'rgba(255,255,255,.52)'), paddingLeft: 30 }}>
-          {showTicker ? tickerLabel : 'JUGADORES'}
-        </span>
-        <span style={{ ...subtleStyle(8, 'rgba(255,255,255,.52)'), textAlign: 'center' }}>SET</span>
-        <span style={{ ...subtleStyle(8, 'rgba(255,255,255,.52)'), textAlign: 'center' }}>{tbActive ? 'TB' : 'GAME'}</span>
-        <span style={{ ...subtleStyle(8, 'rgba(255,255,255,.52)'), textAlign: 'center' }}>{showTicker ? 'STAT' : 'PTS'}</span>
+        {[1, 2].map(tn => {
+          const team = tn as 1|2
+          const accent = teamAccent(team)
+          const players = teamPlayers(team)
+          const sets = setsFor(score, team).slice(0, setCount)
+          const pt = gamePoint(score, team)
+          const isServingTeam = serving === team
+          const row = team
+          const tickerVal = showTicker ? statValue(match.stats, tickerStat!, team) : null
 
-        {/* Team 1 row */}
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 8,
-          minWidth: 0, whiteSpace: 'nowrap',
-          fontSize: 13, fontWeight: 950, letterSpacing: '.07em', textTransform: 'uppercase',
-          fontStyle: 'italic',
-        }}>
-          {serving === 1 ? <ServeDot color={BC.cyan}/> : <span style={{ width: 8 }}/>}
-          <span style={{ fontSize: 16 }}>{flagEmoji(teamFlag(1))}</span>
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', textShadow: TS_HARD }}>{teamName(1).toUpperCase()}</span>
-        </div>
-        <PillCell value={setsWonCount(score, 1)} kind="set"/>
-        <PillCell value={cT1} kind="game" accent={BC.cyan}/>
-        <PillCell
-          value={showTicker ? statValue(match.stats, tickerStat!, 1) : gamePoint(score, 1)}
-          kind="point" accent={tbActive ? '#fbbf24' : undefined}
-        />
+          return (
+            <React.Fragment key={team}>
+              {/* Accent stripe del equipo a la IZQUIERDA */}
+              <div style={{
+                gridColumn: 1, gridRow: row,
+                background: accent,
+                boxShadow: `inset 0 0 8px ${hexAlpha(accent,.6)}`,
+              }}/>
 
-        {/* Team 2 row */}
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 8,
-          minWidth: 0, whiteSpace: 'nowrap',
-          fontSize: 13, fontWeight: 950, letterSpacing: '.07em', textTransform: 'uppercase',
-          fontStyle: 'italic',
-        }}>
-          {serving === 2 ? <ServeDot color={BC.coral}/> : <span style={{ width: 8 }}/>}
-          <span style={{ fontSize: 16 }}>{flagEmoji(teamFlag(2))}</span>
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', textShadow: TS_HARD }}>{teamName(2).toUpperCase()}</span>
-        </div>
-        <PillCell value={setsWonCount(score, 2)} kind="set"/>
-        <PillCell value={cT2} kind="game" accent={BC.coral}/>
-        <PillCell
-          value={showTicker ? statValue(match.stats, tickerStat!, 2) : gamePoint(score, 2)}
-          kind="point" accent={tbActive ? '#fbbf24' : undefined}
-        />
+              {/* Nombre + bandera + serve */}
+              <div style={{
+                gridColumn: 2, gridRow: row,
+                padding: '0 14px 0 12px',
+                display: 'flex', alignItems: 'center', gap: 10,
+                borderTop: team === 2 ? '1px solid rgba(255,255,255,.10)' : 'none',
+                background: isServingTeam ? hexAlpha(accent, .10) : 'transparent',
+                minWidth: 0,
+              }}>
+                {isDoubles ? (
+                  <div style={{ display: 'flex', gap: 3, flex: 'none' }}>
+                    {players.map((p:any, i:number) => (
+                      <img key={i} src={flagPath(p?.nationality)} alt="" style={{ width: 22, height: 15, borderRadius: 2, objectFit: 'cover' }}/>
+                    ))}
+                  </div>
+                ) : (
+                  <img src={flagPath(players[0]?.nationality)} alt="" style={{ width: 28, height: 19, borderRadius: 2, objectFit: 'cover', flex: 'none' }}/>
+                )}
+                <span style={{
+                  fontSize: 18, fontWeight: 950, fontStyle: 'italic',
+                  letterSpacing: '.04em', textTransform: 'uppercase',
+                  color: BC.white,
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                  textShadow: TS_HARD,
+                }}>
+                  {teamName(team).toUpperCase()}
+                </span>
+                {isServingTeam && (
+                  <span style={{
+                    flex: 'none', width: 12, height: 12, borderRadius: '50%',
+                    background: pal.serve, boxShadow: `0 0 12px ${pal.serve}`,
+                    animation: 'sgSrvPulse 1.4s infinite', marginLeft: 'auto',
+                  }}/>
+                )}
+              </div>
+
+              {/* Set cells — UNO POR SET JUGADO */}
+              {sets.map((v, i) => {
+                const isCurrent = i === currentSetIdx
+                return (
+                  <div key={i} style={{
+                    gridColumn: 3 + i, gridRow: row,
+                    display: 'grid', placeItems: 'center',
+                    fontSize: 22, fontWeight: 900,
+                    fontVariantNumeric: 'tabular-nums',
+                    color: v == null ? 'rgba(255,255,255,.30)' : BC.white,
+                    textShadow: TS_HARD,
+                    background: isCurrent ? hexAlpha(accent, .22) : 'rgba(0,0,0,.20)',
+                    borderLeft: '1px solid rgba(255,255,255,.06)',
+                    borderTop: team === 2 ? '1px solid rgba(255,255,255,.10)' : 'none',
+                  }}>
+                    {v == null ? '–' : v}
+                  </div>
+                )
+              })}
+
+              {/* Point/Ticker cell — VISUALMENTE DISTINTO cuando es ticker */}
+              <div style={{
+                gridColumn: 3 + setCount, gridRow: row,
+                display: 'grid', placeItems: 'center',
+                fontSize: 24, fontWeight: 950,
+                fontVariantNumeric: 'tabular-nums',
+                color: showTicker ? '#fbbf24' : BC.white,  // ámbar cuando es STAT
+                background: showTicker
+                  ? `linear-gradient(135deg, rgba(251,191,36,.22) 0%, rgba(251,191,36,.08) 100%)`
+                  : tbActive
+                    ? hexAlpha('#fbbf24', .35)
+                    : hexAlpha(accent, .85),
+                borderLeft: showTicker
+                  ? '2px solid #fbbf24'
+                  : '1px solid rgba(255,255,255,.06)',
+                borderTop: team === 2 ? '1px solid rgba(255,255,255,.10)' : 'none',
+                textShadow: TS_HARD,
+              }}>
+                {showTicker ? tickerVal : pt}
+              </div>
+            </React.Fragment>
+          )
+        })}
       </div>
 
-      <Accents/>
+      {/* Stat ticker label — pill ámbar muy visible al pie cuando esta activo */}
+      {showTicker && (
+        <div style={{
+          padding: '6px 16px',
+          background: 'rgba(251,191,36,.18)',
+          borderTop: '1px solid rgba(251,191,36,.45)',
+          display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8,
+          position: 'relative', zIndex: 2,
+        }}>
+          <span style={{
+            fontSize: 9, fontWeight: 950, color: '#fbbf24',
+            letterSpacing: '.32em', textTransform: 'uppercase',
+            textShadow: TS_HARD,
+          }}>
+            ESTADÍSTICA
+          </span>
+          <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#fbbf24' }}/>
+          <span style={{
+            fontSize: 11, fontWeight: 800, color: BC.white,
+            letterSpacing: '.16em', textTransform: 'uppercase',
+            textShadow: TS_HARD,
+          }}>
+            {tickerLabel}
+          </span>
+        </div>
+      )}
     </div>
   )
-}
-
-function ServeDot({ color }: { color: string }) {
-  return (
-    <span style={{
-      width: 8, height: 8, borderRadius: '50%',
-      background: color, boxShadow: `0 0 16px ${color}`,
-      animation: 'bcServePulse 1.15s ease-in-out infinite',
-      flex: 'none',
-    }}/>
-  )
-}
-
-// Bandera como emoji (regional indicators) — más simple que la imagen
-function flagEmoji(nat: string | null | undefined): string {
-  const n = (nat ?? 'ESP').toUpperCase()
-  // Mapeo común
-  const FLAGS: Record<string, string> = {
-    ESP: '🇪🇸', ITA: '🇮🇹', FRA: '🇫🇷', POR: '🇵🇹', GER: '🇩🇪', BRA: '🇧🇷',
-    ARG: '🇦🇷', USA: '🇺🇸', GBR: '🇬🇧', NED: '🇳🇱', BEL: '🇧🇪', SUI: '🇨🇭',
-    AUT: '🇦🇹', POL: '🇵🇱', RUS: '🇷🇺', UKR: '🇺🇦', CZE: '🇨🇿', JPN: '🇯🇵',
-    AUS: '🇦🇺', MEX: '🇲🇽', COL: '🇨🇴', CHI: '🇨🇱', URU: '🇺🇾', PER: '🇵🇪',
-    VEN: '🇻🇪', ECU: '🇪🇨', BOL: '🇧🇴', PAR: '🇵🇾',
-  }
-  return FLAGS[n] ?? '🏳️'
 }
 
 // ════════════════════════════════════════════════════════════════════════════
 // 02 · BIG SCOREBOARD BROADCAST — lower third 960×178, skewed -10deg
 // ════════════════════════════════════════════════════════════════════════════
-export function BigScoreboardBroadcast({ visible, match, tournament, sponsor }: {
+// Mismo formato que el Classic Big Scoreboard:
+// - Header: logo + nombre torneo + categoria | round pill | TIEMPO TOTAL
+// - Body: por equipo: accent bar | nombre completo + bandera + saque |
+//   set scores (uno por set jugado) | sponsor (opcional, pegado a la derecha)
+// Usa banderas reales, brand colors del torneo (no cyan/coral fijos),
+// muestra TODOS los sets jugados con sus resultados.
+export function BigScoreboardBroadcast({ visible, match, tournament, sponsor, opts }: {
   visible: boolean, match: any, tournament: Tournament | null, sponsor?: Sponsor | null, opts?: any,
 }) {
   if (!match) return null
+  const pal = palette(tournament?.scoreboard_config)
   const score = match.score as Score | null
   const isDoubles = match.match_type === 'doubles'
+  const totalSecs = useTicker(match.started_at, match.finished_at)
+  const showSponsor = opts?.show_sponsor !== false && !!sponsor
+  const serving = match.serving_team as 1|2|null
 
-  const setsT1 = setsWonCount(score, 1)
-  const setsT2 = setsWonCount(score, 2)
-  const round = ROUND_SHORT[match.round] ?? roundLabel(match.round)
-  const cat = (CATEGORY_LABELS[match.category as Category] ?? match.category ?? '').toUpperCase()
+  const finishedSetCount = score?.sets?.length ?? 0
+  const inProgress = score?.match_status === 'in_progress'
+  const cs = score?.current_set ?? { t1: 0, t2: 0 }
+  const tb = score?.tiebreak_score ?? { t1: 0, t2: 0 }
+  const tbActive = !!(score?.tiebreak_active || score?.super_tiebreak_active)
+  const cT1 = tbActive ? (tb.t1 ?? 0) : (cs.t1 ?? 0)
+  const cT2 = tbActive ? (tb.t2 ?? 0) : (cs.t2 ?? 0)
+  const currentHasScore = inProgress && (cT1 > 0 || cT2 > 0)
+  const setCount = Math.min(3, finishedSetCount + (currentHasScore ? 1 : 0))
 
-  function pairLines(t: 1|2): string[] {
+  const setColW = 90
+  const sponsorColW = 220
+  const cardMaxW = showSponsor ? 1500 : 1100
+
+  const round = ROUND_LABELS[match.round] ?? roundLabel(match.round)
+
+  function teamPlayers(t: 1|2): any[] {
     const e = t === 1 ? match.entry1 : match.entry2
-    if (!e) return ['—']
-    if (isDoubles) {
-      const p1 = firstSurname(e.player1)
-      const p2 = firstSurname(e.player2)
-      return [p1, p2].filter(Boolean)
-    }
-    return [e.player1?.last_name ?? '—']
-  }
-  function flag(t: 1|2) {
-    const e = t === 1 ? match.entry1 : match.entry2
-    return e?.player1?.nationality
-  }
-  function countryName(nat: string | null | undefined): string {
-    const n = (nat ?? 'ESP').toUpperCase()
-    const N: Record<string, string> = {
-      ESP: 'España', ITA: 'Italia', FRA: 'Francia', POR: 'Portugal',
-      GER: 'Alemania', BRA: 'Brasil', ARG: 'Argentina', USA: 'EE.UU.',
-      GBR: 'Reino Unido', NED: 'Países Bajos', BEL: 'Bélgica', SUI: 'Suiza',
-      AUT: 'Austria', POL: 'Polonia', JPN: 'Japón', MEX: 'México',
-    }
-    return N[n] ?? n
+    if (!e) return []
+    return [e.player1, isDoubles ? e.player2 : null].filter(Boolean)
   }
 
   return (
-    <div style={{
-      position: 'absolute', left: '50%', bottom: 64,
-      width: 960, height: 178,
-      ...cardStyle(34),
-      transform: 'translateX(-50%) skewX(-10deg)',
-      fontFamily: FONT,
-      animation: visible ? 'bcInUpSkew 850ms cubic-bezier(.2,.9,.18,1) both' : 'bcOutUpSkew 700ms cubic-bezier(.2,.9,.18,1) both',
-      willChange: 'transform, opacity',
-    }}>
-      <Sheen/>
-
+    <div style={{ position: 'absolute', left: 0, right: 0, bottom: 50, display: 'flex', justifyContent: 'center', pointerEvents: 'none' }}>
       <div style={{
-        height: '100%', padding: '18px 46px',
-        transform: 'skewX(10deg)',
-        display: 'grid',
-        gridTemplateColumns: '1.15fr 116px 34px 116px 1.15fr',
-        gridTemplateRows: '40px 88px 42px',
-        alignItems: 'center', position: 'relative', zIndex: 2,
+        width: 'fit-content', maxWidth: cardMaxW,
+        ...cardStyle(20),
+        fontFamily: FONT,
+        pointerEvents: 'auto',
+        animation: visible
+          ? 'sgInU 750ms cubic-bezier(.22,.9,.25,1) both'
+          : 'sgOutU 600ms cubic-bezier(.22,.9,.25,1) both',
+        willChange: 'transform, opacity',
       }}>
-        {/* Round label */}
-        <div style={{ gridColumn: '1 / -1', textAlign: 'center', ...subtleStyle(12, 'rgba(255,255,255,.66)'), letterSpacing: '.24em' }}>
-          {[match.match_type === 'doubles' ? 'DOBLES' : 'INDIVIDUAL', round, cat].filter(Boolean).join(' · ')}
+        <Sheen/>
+
+        {/* HEADER */}
+        <div style={{
+          display: 'grid', gridTemplateColumns: 'auto 1fr auto',
+          alignItems: 'center', padding: '12px 26px', gap: 18,
+          borderBottom: '1px solid rgba(255,255,255,.10)',
+          position: 'relative', zIndex: 2,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            {tournament?.logo_url && <img src={tournament.logo_url} alt="" style={{ height: 44, objectFit: 'contain' }}/>}
+            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.05 }}>
+              <span style={{ fontSize: 22, fontWeight: 950, letterSpacing: '.02em', textTransform: 'uppercase', whiteSpace: 'nowrap', color: BC.white, textShadow: TS_HARD }}>
+                {tournament?.name}
+              </span>
+              <span style={subtleStyle(13, BC.muted)}>
+                {CATEGORY_LABELS[match.category as Category] ?? match.category}
+              </span>
+            </div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <span style={{
+              padding: '7px 22px', borderRadius: 999,
+              background: hexAlpha(pal.accentA, .18),
+              border: `1.5px solid ${hexAlpha(pal.accentA, .55)}`,
+              fontSize: 16, fontWeight: 950, letterSpacing: '.22em',
+              textTransform: 'uppercase', color: pal.accentA,
+              whiteSpace: 'nowrap', textShadow: TS_HARD,
+            }}>
+              {round || '—'}
+            </span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', lineHeight: 1.05 }}>
+            <span style={subtleStyle(11, BC.muted)}>TIEMPO</span>
+            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 24, fontWeight: 800, color: BC.white, marginTop: 3, textShadow: TS_HARD }}>
+              {fmtHHmm(totalSecs)}
+            </span>
+          </div>
         </div>
 
-        {/* Pair 1 */}
-        <div style={{ ...italicNameStyle(21), lineHeight: 1.15 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 7, fontSize: 11, fontStyle: 'normal', color: BC.muted, letterSpacing: '.18em', fontWeight: 700 }}>
-            <span style={{ fontSize: 16 }}>{flagEmoji(flag(1))}</span>
-            <span>{countryName(flag(1)).toUpperCase()}</span>
-          </div>
-          {pairLines(1).map((l, i) => <div key={i}>{l.toUpperCase()}</div>)}
+        {/* BODY */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: setCount > 0
+            ? (showSponsor
+                ? `8px minmax(420px, max-content) repeat(${setCount}, ${setColW}px) ${sponsorColW}px`
+                : `8px minmax(420px, max-content) repeat(${setCount}, ${setColW}px)`)
+            : (showSponsor
+                ? `8px minmax(420px, max-content) ${sponsorColW}px`
+                : `8px minmax(420px, max-content)`),
+          gridTemplateRows: setCount > 0 ? '28px 1fr 1fr' : '1fr 1fr',
+          position: 'relative', zIndex: 2,
+        }}>
+
+          {/* Set headers */}
+          {setCount > 0 && (
+            <>
+              <div style={{ gridColumn: '1 / span 2', gridRow: 1, borderBottom: '1px solid rgba(255,255,255,.06)', background: 'rgba(0,0,0,.18)' }}/>
+              {Array.from({ length: setCount }).map((_, i) => (
+                <div key={`st${i}`} style={{
+                  gridColumn: 3 + i, gridRow: 1, display: 'grid', placeItems: 'center',
+                  fontSize: 13, letterSpacing: '.22em', fontWeight: 800,
+                  color: 'rgba(255,255,255,.65)',
+                  textTransform: 'uppercase',
+                  borderLeft: '1px solid rgba(255,255,255,.06)',
+                  borderBottom: '1px solid rgba(255,255,255,.06)',
+                  background: 'rgba(0,0,0,.18)',
+                  textShadow: TS_HARD,
+                }}>
+                  SET {i+1}
+                </div>
+              ))}
+            </>
+          )}
+
+          {/* TEAM ROWS */}
+          {[1,2].map(tn => {
+            const team = tn as 1|2
+            const accent = team === 1 ? pal.accentA : pal.accentB
+            const sets = setsFor(score, team).slice(0, setCount)
+            const opSets = setsFor(score, team === 1 ? 2 : 1).slice(0, setCount)
+            const won = match.status === 'finished' && score?.winner_team === team
+            const players = teamPlayers(team)
+            const isServingTeam = serving === team
+            const row = setCount > 0 ? 1 + team : team
+            const rowBg = won ? hexAlpha(accent, .14) : isServingTeam ? hexAlpha(accent, .08) : 'transparent'
+
+            return (
+              <div key={team} style={{ display: 'contents' }}>
+                <div style={{ gridColumn: 1, gridRow: row, background: accent, boxShadow: `inset 0 0 12px ${hexAlpha(accent,.6)}` }}/>
+                <div style={{
+                  gridColumn: 2, gridRow: row,
+                  display: 'flex', flexDirection: 'column', justifyContent: 'center',
+                  gap: isDoubles ? 6 : 2,
+                  padding: '12px 24px',
+                  background: rowBg,
+                  borderTop: team === 2 ? '1px solid rgba(255,255,255,.06)' : 'none',
+                }}>
+                  {players.map((p: any, i: number) => {
+                    const isServer = isServingTeam && (!isDoubles || p.id === match.current_server_id)
+                    return (
+                      <BcBigPlayerLine key={i} player={p} isDoubles={isDoubles} isServer={isServer} servingColor={pal.serve}/>
+                    )
+                  })}
+                </div>
+                {sets.map((v, i) => {
+                  const isCurrent = i === finishedSetCount && currentHasScore
+                  const isWonSet = i < finishedSetCount && v != null && opSets[i] != null && v > (opSets[i] as number)
+                  return (
+                    <div key={i} style={{
+                      gridColumn: 3 + i, gridRow: row, display: 'grid', placeItems: 'center',
+                      fontSize: 56, fontWeight: 900,
+                      borderLeft: '1px solid rgba(255,255,255,.06)',
+                      borderTop: team === 2 ? '1px solid rgba(255,255,255,.06)' : 'none',
+                      background: isWonSet ? accent : isCurrent ? hexAlpha(accent, .18) : 'rgba(0,0,0,.20)',
+                      color: v == null ? 'rgba(255,255,255,.30)' : isWonSet ? '#0a0a14' : '#fff',
+                      fontVariantNumeric: 'tabular-nums',
+                      textShadow: isWonSet ? '0 1px 0 rgba(255,255,255,.25)' : TS_HARD,
+                    }}>
+                      {v == null ? '–' : v}
+                    </div>
+                  )
+                })}
+                {showSponsor && team === 1 && (
+                  <div style={{
+                    gridColumn: setCount > 0 ? `${3 + setCount} / ${4 + setCount}` : '3 / 4',
+                    gridRow: setCount > 0 ? '1 / 4' : '1 / 3',
+                    borderLeft: '1px solid rgba(255,255,255,.10)',
+                    background: 'rgba(255,255,255,.03)',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    padding: 14,
+                  }}>
+                    <div style={subtleStyle(10, BC.muted)}>PATROCINADOR OFICIAL</div>
+                    <div style={{ flex: 1, display: 'grid', placeItems: 'center', width: '100%', marginTop: 8 }}>
+                      {sponsor?.logo_url
+                        ? <img src={sponsor.logo_url} alt={sponsor?.name} style={{ maxWidth: 180, maxHeight: 80, objectFit: 'contain' }}/>
+                        : <span style={{ fontSize: 18, fontWeight: 950, letterSpacing: '.06em', textAlign: 'center', color: BC.white, textTransform: 'uppercase', textShadow: TS_HARD }}>{sponsor?.name ?? ''}</span>
+                      }
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
-
-        {/* Big sets */}
-        <BigGameCell value={setsT1} accent={BC.cyan}/>
-        <div style={{ width: 1, height: 86, background: 'rgba(255,255,255,.34)', justifySelf: 'center' }}/>
-        <BigGameCell value={setsT2} accent={BC.coral}/>
-
-        {/* Pair 2 */}
-        <div style={{ ...italicNameStyle(21), lineHeight: 1.15, textAlign: 'right' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 7, fontSize: 11, fontStyle: 'normal', color: BC.muted, letterSpacing: '.18em', fontWeight: 700, justifyContent: 'flex-end' }}>
-            <span>{countryName(flag(2)).toUpperCase()}</span>
-            <span style={{ fontSize: 16 }}>{flagEmoji(flag(2))}</span>
-          </div>
-          {pairLines(2).map((l, i) => <div key={i}>{l.toUpperCase()}</div>)}
-        </div>
-
-        {/* Sponsor pill */}
-        {sponsor?.name && (
-          <div style={{
-            gridColumn: '1 / -1', justifySelf: 'center',
-            display: 'flex', alignItems: 'center', gap: 13,
-            padding: '8px 20px', borderRadius: 999,
-            background: 'rgba(0,0,0,.18)',
-            border: `1px solid ${BC.stroke}`,
-            ...subtleStyle(10, BC.muted),
-          }}>
-            <span>PRESENTED BY</span>
-            {sponsor.logo_url
-              ? <img src={sponsor.logo_url} alt="" style={{ height: 22, objectFit: 'contain' }}/>
-              : <b style={{ color: BC.white, letterSpacing: '.22em', fontSize: 12, fontWeight: 950 }}>{sponsor.name.toUpperCase()}</b>
-            }
-          </div>
-        )}
       </div>
-
-      <Accents/>
     </div>
   )
 }
 
-function BigGameCell({ value, accent }: { value: number, accent: string }) {
+function BcBigPlayerLine({ player, isDoubles, isServer, servingColor }: {
+  player: any, isDoubles: boolean, isServer: boolean, servingColor: string,
+}) {
+  if (!player) return null
+  const lastFs = isDoubles ? 32 : 44
+  const firstFs = isDoubles ? 18 : 22
+  const flagSz = isDoubles ? { w: 38, h: 26 } : { w: 50, h: 34 }
   return (
-    <div style={{
-      display: 'grid', placeItems: 'center', height: 82, borderRadius: 24,
-      background: 'rgba(255,255,255,.10)',
-      border: '1px solid rgba(255,255,255,.15)',
-      fontSize: 68, lineHeight: 1, fontWeight: 950, letterSpacing: '-.07em',
-      color: accent, textShadow: `0 0 32px ${hexAlpha(accent, .55)}`,
-      fontVariantNumeric: 'tabular-nums',
-    }}>
-      {value}
+    <div style={{ display: 'flex', alignItems: 'center', gap: 14, whiteSpace: 'nowrap' }}>
+      <img src={flagPath(player.nationality)} alt="" style={{ flex: 'none', width: flagSz.w, height: flagSz.h, borderRadius: 3, objectFit: 'cover' }}/>
+      {player.first_name && (
+        <span style={{
+          fontSize: firstFs, fontWeight: 700, letterSpacing: '.02em',
+          textTransform: 'uppercase', color: 'rgba(255,255,255,.82)',
+          fontStyle: 'italic', textShadow: TS_HARD,
+        }}>
+          {player.first_name.toUpperCase()}
+        </span>
+      )}
+      <span style={{
+        fontSize: lastFs, fontWeight: 950, letterSpacing: '-.005em',
+        textTransform: 'uppercase', color: BC.white,
+        fontStyle: 'italic', textShadow: TS_HARD,
+      }}>
+        {(player.last_name ?? '').toUpperCase()}
+      </span>
+      {isServer && (
+        <span aria-label="saca" style={{
+          flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 8,
+          marginLeft: 8, padding: '3px 10px 3px 6px', borderRadius: 999,
+          background: hexAlpha(servingColor, .20),
+          border: `1px solid ${hexAlpha(servingColor, .60)}`,
+        }}>
+          <span style={{
+            width: 12, height: 12, borderRadius: '50%', background: servingColor,
+            boxShadow: `0 0 12px ${servingColor}`,
+            animation: 'sgSrvPulse 1.3s infinite',
+          }}/>
+          <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.20em', color: servingColor, textShadow: TS_HARD }}>
+            SAQUE
+          </span>
+        </span>
+      )}
     </div>
   )
 }
@@ -574,7 +776,7 @@ function PresPair({ flag, pair, seed, align }: { flag: any, pair: string[], seed
         flexDirection: isRight ? 'row-reverse' : 'row',
         textShadow: TS_HARD,
       }}>
-        <span style={{ fontSize: 22 }}>{flagEmoji(flag)}</span>
+        <img src={flagPath(flag)} alt="" style={{ width: 30, height: 20, borderRadius: 3, objectFit: 'cover' }}/>
         <span>{(flag ?? 'ESP').toUpperCase()}</span>
       </div>
       <h2 style={italicNameStyle(46)}>
@@ -645,12 +847,13 @@ export function PlayerBioBroadcast({ visible, player, team, category, tournament
 
       <div style={{
         height: '100%', transform: SKEW_INNER,
-        display: 'grid', gridTemplateColumns: '150px 1fr 190px',
+        display: 'grid',
+        gridTemplateColumns: player.photo_url ? '150px 1fr 190px' : '1fr 220px',
         gap: 30, alignItems: 'center', padding: '34px 42px',
         position: 'relative', zIndex: 2,
       }}>
-        {/* Photo */}
-        {player.photo_url ? (
+        {/* Photo — solo si existe (sin placeholder de letra) */}
+        {player.photo_url && (
           <div style={{
             width: 148, height: 148, borderRadius: 32, overflow: 'hidden',
             border: `1px solid ${BC.stroke}`,
@@ -658,46 +861,22 @@ export function PlayerBioBroadcast({ visible, player, team, category, tournament
           }}>
             <img src={player.photo_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
           </div>
-        ) : (
-          <div style={{
-            width: 148, height: 148, borderRadius: 32,
-            background: `linear-gradient(135deg, rgba(255,255,255,.64), rgba(255,255,255,.08)),
-                         radial-gradient(circle at 50% 26%, rgba(255,255,255,.4), transparent 32%),
-                         linear-gradient(135deg, ${hexAlpha(BC.cyan, .35)}, ${hexAlpha(BC.coral, .22)})`,
-            border: `1px solid ${BC.stroke}`,
-            display: 'grid', placeItems: 'center',
-            fontSize: 58, fontWeight: 950, fontStyle: 'italic',
-            color: 'rgba(255,255,255,.62)',
-            boxShadow: 'inset 0 0 0 1px rgba(255,255,255,.1)',
-            textShadow: TS_HARD,
-          }}>
-            {(player.first_name?.[0] ?? '?').toUpperCase()}
-          </div>
         )}
 
         {/* Main */}
         <div>
           <div style={{
-            display: 'flex', gap: 12, alignItems: 'center',
+            display: 'flex', gap: 10, alignItems: 'center',
             ...subtleStyle(11, 'rgba(255,255,255,.7)'), letterSpacing: '.18em',
             marginBottom: 12,
           }}>
-            <span style={{ fontSize: 20 }}>{flagEmoji(player.nationality)}</span>
+            <img src={flagPath(player.nationality)} alt="" style={{ width: 28, height: 19, borderRadius: 2, objectFit: 'cover' }}/>
             <span>{(player.nationality ?? 'ESP').toUpperCase()}</span>
           </div>
-          <h3 style={{ ...italicNameStyle(40), marginBottom: 18, lineHeight: .9 }}>
+          <h3 style={{ ...italicNameStyle(40), marginBottom: 14, lineHeight: .9 }}>
             <div>{(player.first_name ?? '').toUpperCase()}</div>
             <div>{(player.last_name ?? '').toUpperCase()}</div>
           </h3>
-          <div style={{
-            display: 'flex', gap: 12, alignItems: 'center',
-            textTransform: 'uppercase', letterSpacing: '.14em',
-            fontSize: 11, fontWeight: 900, color: 'rgba(255,255,255,.64)',
-            textShadow: TS_HARD,
-          }}>
-            <span>{category?.endsWith('_f') ? 'JUGADORA' : 'JUGADOR'}</span>
-            <b style={{ color: accent }}>DOBLES</b>
-          </div>
         </div>
 
         {/* Facts */}
@@ -739,40 +918,43 @@ export function WeatherBroadcast({ visible, weather, tournament }: {
       <Sheen/>
 
       <div style={{
-        height: '100%', padding: '34px 40px',
+        height: '100%', padding: '28px 36px',
         transform: SKEW_INNER,
-        display: 'grid', gridTemplateColumns: '110px 1fr',
-        gap: 28, alignItems: 'center',
+        display: 'grid', gridTemplateColumns: '120px 1fr',
+        gap: 24, alignItems: 'center',
         position: 'relative', zIndex: 2,
       }}>
-        {/* Animated sun */}
+        {/* Icono real según condition (sol, nube, lluvia, etc.), no siempre el sol */}
         <div style={{
-          width: 72, height: 72, borderRadius: '50%',
-          border: '4px solid rgba(255,255,255,.86)',
-          position: 'relative',
-          animation: 'bcSunSpin 14s linear infinite',
+          width: 110, height: 110, display: 'grid', placeItems: 'center',
+          fontSize: 88, lineHeight: 1,
+          filter: 'drop-shadow(0 4px 16px rgba(0,0,0,.45))',
         }}>
-          <div style={{
-            position: 'absolute', inset: -22,
-            background: 'repeating-conic-gradient(rgba(255,255,255,.86) 0 8deg, transparent 8deg 22deg)',
-            mask: 'radial-gradient(circle, transparent 0 47px, #000 48px 52px, transparent 53px)',
-            WebkitMask: 'radial-gradient(circle, transparent 0 47px, #000 48px 52px, transparent 53px)',
-          }}/>
+          {weatherIconFor(weather.condition)}
         </div>
 
         <div>
-          <div style={kickerStyle(BC.cyan)}>WEATHER · {(tournament?.venue_city ?? '').toUpperCase()}</div>
-          <div style={{ fontSize: 58, lineHeight: .9, fontWeight: 900, letterSpacing: '-.06em', color: BC.white, textShadow: TS_HARD }}>
+          <div style={kickerStyle(BC.cyan)}>{(tournament?.venue_city ?? 'TIEMPO').toUpperCase()}</div>
+          <div style={{
+            fontSize: 64, lineHeight: .92, fontWeight: 900,
+            letterSpacing: '-.04em', color: BC.white, textShadow: TS_HARD,
+            fontStyle: 'italic',
+          }}>
             {Math.round(weather.temperature_c)}°
           </div>
           <div style={{
-            marginTop: 18, display: 'grid', gridTemplateColumns: '1fr 1fr',
-            gap: '10px 20px', textTransform: 'uppercase',
+            ...subtleStyle(11, BC.muted), marginTop: 2,
           }}>
-            <WxKv label="Wind" value={`${Math.round(weather.wind_speed_kmh)} km/h`}/>
-            <WxKv label="Humidity" value={`${weather.humidity_pct}%`}/>
-            <WxKv label="UV Index" value={String(weather.uv_index)}/>
-            <WxKv label="Feels" value={`${Math.round(weather.feels_like_c)}°`}/>
+            {(weather.condition ?? '').toUpperCase()}
+          </div>
+          <div style={{
+            marginTop: 12, display: 'grid', gridTemplateColumns: '1fr 1fr',
+            gap: '8px 18px', textTransform: 'uppercase',
+          }}>
+            <WxKv label="Viento" value={`${Math.round(weather.wind_speed_kmh)} km/h`}/>
+            <WxKv label="Humedad" value={`${weather.humidity_pct}%`}/>
+            <WxKv label="UV" value={uvLabel(weather.uv_index)}/>
+            <WxKv label="Sensación" value={`${Math.round(weather.feels_like_c)}°`}/>
           </div>
         </div>
       </div>
@@ -786,9 +968,38 @@ function WxKv({ label, value }: { label: string, value: string }) {
   return (
     <div>
       <small style={{ display: 'block', color: BC.muted, fontSize: 9, letterSpacing: '.16em', fontWeight: 900, marginBottom: 4, textShadow: TS_HARD }}>{label.toUpperCase()}</small>
-      <strong style={{ fontSize: 13, letterSpacing: '.08em', fontWeight: 950, color: BC.white, textShadow: TS_HARD }}>{value}</strong>
+      <strong style={{ fontSize: 14, letterSpacing: '.06em', fontWeight: 950, color: BC.white, textShadow: TS_HARD }}>{value}</strong>
     </div>
   )
+}
+
+// Icono real para cada condicion meteorologica — mismo mapping que el resto
+// del sistema (lib/weather mapea OpenMeteo a estas etiquetas)
+function weatherIconFor(condition: string | null | undefined): string {
+  const c = (condition ?? '').trim()
+  const M: Record<string, string> = {
+    'Despejado': '☀️',
+    'Parcialmente nublado': '⛅',
+    'Niebla': '🌫️',
+    'Llovizna': '🌦️',
+    'Lluvia': '🌧️',
+    'Chubascos': '🌧️',
+    'Tormenta': '⛈️',
+    'Nieve': '❄️',
+    'Desconocido': '🌡️',
+    // Tambien aceptar inglés por si viene de otra fuente
+    clear: '☀️', cloudy: '⛅', rain: '🌧️', snow: '❄️', fog: '🌫️', storm: '⛈️',
+  }
+  return M[c] ?? '☀️'
+}
+// UV Index numerico -> etiqueta legible
+function uvLabel(uv: number | null | undefined): string {
+  const v = uv ?? 0
+  if (v < 3) return 'BAJO'
+  if (v < 6) return 'MODERADO'
+  if (v < 8) return 'ALTO'
+  if (v < 11) return 'MUY ALTO'
+  return 'EXTREMO'
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -932,31 +1143,20 @@ export function RefereeLowerThirdBroadcast({ visible, referee }: {
       <Sheen/>
 
       <div style={{
-        height: '100%', padding: '28px 34px',
+        height: '100%', padding: '24px 34px',
         transform: SKEW_INNER,
-        display: 'grid', gridTemplateColumns: '78px 1fr',
-        gap: 24, alignItems: 'center',
+        display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 6,
         position: 'relative', zIndex: 2,
       }}>
-        <div style={{
-          width: 78, height: 78, borderRadius: '50%',
-          background: 'rgba(255,255,255,.10)',
-          border: '1px solid rgba(255,255,255,.18)',
-          display: 'grid', placeItems: 'center',
-          fontSize: 34, color: BC.white, textShadow: TS_HARD,
-        }}>
-          ⚖
+        {/* Sin icono — solo texto kicker + nombre + federacion */}
+        <div style={kickerStyle(BC.cyan)}>JUEZ ÁRBITRO</div>
+        <div style={{ ...italicNameStyle(34), lineHeight: .95 }}>
+          {first && <span>{first.toUpperCase()} </span>}
+          <span>{last.toUpperCase()}</span>
         </div>
-        <div>
-          <div style={kickerStyle(BC.cyan)}>JUEZ ÁRBITRO</div>
-          <div style={{ ...italicNameStyle(28), marginTop: 8, lineHeight: .95 }}>
-            {first && <div>{first.toUpperCase()}</div>}
-            {last && <div>{last.toUpperCase()}</div>}
-          </div>
-          {referee.federacion && (
-            <div style={subtleStyle(10, BC.muted)}>{referee.federacion.toUpperCase()}</div>
-          )}
-        </div>
+        {referee.federacion && (
+          <div style={subtleStyle(11, BC.muted)}>{referee.federacion.toUpperCase()}</div>
+        )}
       </div>
 
       <div style={{ position: 'absolute', right: 0, bottom: 0, height: 3, width: '100%', background: BC.coral, boxShadow: `0 0 20px ${BC.coral}`, zIndex: 2 }}/>
@@ -980,9 +1180,12 @@ export function StatsPanelBroadcast({ visible, match, tournament, scope }: {
   visible: boolean, match: any, tournament: Tournament | null, scope: 'set_1'|'set_2'|'set_3'|'match'|'auto',
 }) {
   if (!match?.stats) return null
+  const pal = palette(tournament?.scoreboard_config)
   const advanced = !!tournament?.advanced_stats_enabled
   const resolvedScope = scope === 'auto' ? autoScope(match) : scope
   const s = match.stats
+  const isDoubles = match.match_type === 'doubles'
+  const score = match.score as Score | null
 
   const breaksWonA = s.t1.break_points_won
   const breaksWonTotA = s.t1.break_points_played_on_return ?? 0
@@ -993,24 +1196,46 @@ export function StatsPanelBroadcast({ visible, match, tournament, scope }: {
   const breaksSavedB = s.t2.break_points_saved
   const breaksFacedB = s.t2.break_points_faced ?? 0
 
+  // Labels en formato consistente con el resto del proyecto (no apretados)
   const rows = [
-    { label: 'ACES', a: s.t1.aces, b: s.t2.aces },
-    { label: 'DOBLES FALTAS', a: s.t1.double_faults, b: s.t2.double_faults },
+    { label: 'Aces', a: s.t1.aces, b: s.t2.aces },
+    { label: 'Dobles faltas', a: s.t1.double_faults, b: s.t2.double_faults },
     ...(advanced ? [
-      { label: 'WINNERS', a: s.t1.winners, b: s.t2.winners },
-      { label: 'ERR. NO FORZADOS', a: s.t1.unforced_errors, b: s.t2.unforced_errors },
+      { label: 'Winners', a: s.t1.winners, b: s.t2.winners },
+      { label: 'Errores no forzados', a: s.t1.unforced_errors, b: s.t2.unforced_errors },
     ] : []),
-    { label: '% PTS SAQUE', a: `${Math.round(s.t1.serve_points_won_pct||0)}%`, b: `${Math.round(s.t2.serve_points_won_pct||0)}%` },
-    { label: '% PTS RESTO', a: `${Math.round(s.t1.return_points_won_pct||0)}%`, b: `${Math.round(s.t2.return_points_won_pct||0)}%` },
-    { label: 'BREAKS', a: `${breaksWonA}/${breaksWonTotA}`, b: `${breaksWonB}/${breaksWonTotB}` },
-    { label: 'BREAKS SALV.', a: `${breaksSavedA}/${breaksFacedA}`, b: `${breaksSavedB}/${breaksFacedB}` },
-    { label: 'PUNTOS', a: s.t1.total_points_won, b: s.t2.total_points_won },
+    { label: '% Puntos saque', a: `${Math.round(s.t1.serve_points_won_pct||0)}%`, b: `${Math.round(s.t2.serve_points_won_pct||0)}%` },
+    { label: '% Puntos resto', a: `${Math.round(s.t1.return_points_won_pct||0)}%`, b: `${Math.round(s.t2.return_points_won_pct||0)}%` },
+    { label: 'Breaks ganados / total', a: `${breaksWonA}/${breaksWonTotA}`, b: `${breaksWonB}/${breaksWonTotB}` },
+    { label: 'Breaks salvados / total', a: `${breaksSavedA}/${breaksFacedA}`, b: `${breaksSavedB}/${breaksFacedB}` },
+    { label: 'Puntos totales', a: s.t1.total_points_won, b: s.t2.total_points_won },
   ] as Array<{ label: string, a: number|string, b: number|string }>
+
+  // Sets visibles segun scope (igual que el Classic)
+  const sets = score?.sets ?? []
+  const currentSet = score?.current_set
+  const showCount = resolvedScope === 'set_1' ? 1 : resolvedScope === 'set_2' ? 2 : resolvedScope === 'set_3' ? 3 : Math.max(1, sets.length)
+  const visibleSets: Array<{ num: number, t1: number, t2: number, isCurrent: boolean }> = []
+  for (let i = 0; i < showCount; i++) {
+    if (sets[i]) visibleSets.push({ num: i+1, t1: sets[i].t1, t2: sets[i].t2, isCurrent: false })
+    else if (i === sets.length && currentSet && match.status === 'in_progress') {
+      visibleSets.push({ num: i+1, t1: currentSet.t1 ?? 0, t2: currentSet.t2 ?? 0, isCurrent: true })
+    }
+  }
+
+  function teamName(t: 1|2): string {
+    const e = t === 1 ? match.entry1 : match.entry2
+    if (!e) return ''
+    if (isDoubles) {
+      return [e.player1, e.player2].map((p:any) => firstSurname(p)).filter(Boolean).join(' / ')
+    }
+    return e.player1?.last_name ?? ''
+  }
 
   return (
     <div style={{
       position: 'absolute', left: '50%', top: '50%',
-      width: 1100, maxHeight: 880,
+      width: 1180, maxHeight: 880,
       ...cardStyle(40),
       transform: 'translate(-50%,-50%) skewX(-8deg)',
       fontFamily: FONT,
@@ -1020,12 +1245,50 @@ export function StatsPanelBroadcast({ visible, match, tournament, scope }: {
       <Sheen/>
 
       <div style={{ padding: '40px 56px', transform: SKEW_INNER, position: 'relative', zIndex: 2 }}>
+        {/* Title CENTRADO */}
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <div style={kickerStyle(BC.cyan)}>ESTADÍSTICAS</div>
-          <div style={{ ...italicNameStyle(40), marginTop: 6 }}>{SCOPE_TITLE[resolvedScope] ?? ''}</div>
+          <div style={{ ...kickerStyle(BC.cyan), letterSpacing: '.36em' }}>ESTADÍSTICAS</div>
+          <div style={{ ...italicNameStyle(42), marginTop: 4 }}>{SCOPE_TITLE[resolvedScope] ?? ''}</div>
         </div>
 
-        <div style={{ display: 'grid', gap: 8 }}>
+        {/* Nombres + resultado CENTRADO */}
+        <div style={{
+          display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 32,
+          alignItems: 'center', marginBottom: 24,
+          paddingBottom: 16, borderBottom: '1px solid rgba(255,255,255,.10)',
+        }}>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ ...italicNameStyle(28, pal.accentA), lineHeight: 1, textShadow: TS_HARD }}>
+              {teamName(1).toUpperCase()}
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center', minWidth: 200 }}>
+            {visibleSets.length === 0 ? (
+              <span style={{ ...subtleStyle(13, BC.muted) }}>—</span>
+            ) : (
+              visibleSets.map(s => (
+                <div key={s.num} style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+                  <span style={subtleStyle(11, BC.muted)}>SET {s.num}</span>
+                  <span style={{
+                    fontSize: 32, fontWeight: 950, fontStyle: 'italic',
+                    color: BC.white, fontVariantNumeric: 'tabular-nums', lineHeight: 1,
+                    textShadow: TS_HARD,
+                  }}>
+                    {s.t1}<span style={{ opacity: .35, margin: '0 10px' }}>—</span>{s.t2}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+          <div style={{ textAlign: 'left' }}>
+            <div style={{ ...italicNameStyle(28, pal.accentB), lineHeight: 1, textShadow: TS_HARD }}>
+              {teamName(2).toUpperCase()}
+            </div>
+          </div>
+        </div>
+
+        {/* Filas de stats — labels CENTRADOS, números rectos (no italic) para legibilidad */}
+        <div style={{ display: 'grid', gap: 6 }}>
           {rows.map((r, i) => {
             const numA = parseFloat(String(r.a).replace('%', '').split('/')[0]) || 0
             const numB = parseFloat(String(r.b).replace('%', '').split('/')[0]) || 0
@@ -1034,23 +1297,26 @@ export function StatsPanelBroadcast({ visible, match, tournament, scope }: {
             return (
               <div key={i} style={{
                 display: 'grid', gridTemplateColumns: '1fr 2fr 1fr',
-                alignItems: 'center', gap: 22, padding: '14px 18px',
-                borderRadius: 18,
-                background: 'rgba(255,255,255,.05)',
-                border: '1px solid rgba(255,255,255,.10)',
+                alignItems: 'center', gap: 22, padding: '12px 18px',
+                borderRadius: 14,
+                background: i % 2 === 0 ? 'rgba(255,255,255,.04)' : 'transparent',
+                border: '1px solid rgba(255,255,255,.06)',
               }}>
                 <span style={{
-                  fontSize: 32, fontWeight: 950, fontStyle: 'italic',
+                  fontSize: 30, fontWeight: 900,
                   textAlign: 'right', fontVariantNumeric: 'tabular-nums', lineHeight: 1,
-                  color: aWins ? BC.cyan : BC.white,
-                  textShadow: aWins ? `0 0 18px ${hexAlpha(BC.cyan, .55)}` : TS_HARD,
+                  color: aWins ? pal.accentA : BC.white,
+                  textShadow: aWins ? `0 0 18px ${hexAlpha(pal.accentA, .55)}` : TS_HARD,
                 }}>{r.a}</span>
-                <span style={subtleStyle(12, BC.muted)}>{r.label}</span>
                 <span style={{
-                  fontSize: 32, fontWeight: 950, fontStyle: 'italic',
+                  ...subtleStyle(13, BC.muted),
+                  letterSpacing: '.20em', textAlign: 'center',
+                }}>{r.label.toUpperCase()}</span>
+                <span style={{
+                  fontSize: 30, fontWeight: 900,
                   textAlign: 'left', fontVariantNumeric: 'tabular-nums', lineHeight: 1,
-                  color: bWins ? BC.coral : BC.white,
-                  textShadow: bWins ? `0 0 18px ${hexAlpha(BC.coral, .55)}` : TS_HARD,
+                  color: bWins ? pal.accentB : BC.white,
+                  textShadow: bWins ? `0 0 18px ${hexAlpha(pal.accentB, .55)}` : TS_HARD,
                 }}>{r.b}</span>
               </div>
             )
