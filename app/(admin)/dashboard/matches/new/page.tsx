@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import type { DrawEntry, Court } from '@/types'
 import { CATEGORY_LABELS } from '@/types'
@@ -30,12 +31,12 @@ export default function NewMatchPage() {
       const [courtsRes, judgesRes, entriesRes, drawsRes] = await Promise.all([
         supabase.from('courts').select('*').eq('tournament_id', TOURNAMENT_ID),
         supabase.from('app_users').select('*').eq('role', 'judge'),
-        supabase.from('draw_entries').select('*, player1:players!player1_id(first_name,last_name), player2:players!player2_id(first_name,last_name)').eq('status', 'confirmed'),
+        supabase.from('draw_entries').select('id, draw_id, seed, status, player1:players!player1_id(first_name,last_name), player2:players!player2_id(first_name,last_name)').eq('status', 'confirmed'),
         supabase.from('draws').select('id, category, match_type, structure').eq('tournament_id', TOURNAMENT_ID),
       ])
       setCourts((courtsRes.data as Court[]) ?? [])
       setJudges(judgesRes.data ?? [])
-      setEntries((entriesRes.data as DrawEntry[]) ?? [])
+      setEntries(((entriesRes.data ?? []) as unknown) as DrawEntry[])
       setDraws(drawsRes.data ?? [])
     }
     load()
@@ -177,22 +178,65 @@ export default function NewMatchPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm text-gray-400 mb-1">Pareja/Jugador 1</label>
-            <select value={form.entry1_id} onChange={(e) => setForm((f) => ({ ...f, entry1_id: e.target.value }))} className={selectClass}>
-              <option value="">Por determinar</option>
-              {entries.filter((e) => e.id !== form.entry2_id).map((e) => <option key={e.id} value={e.id}>{entryName(e)}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm text-gray-400 mb-1">Pareja/Jugador 2</label>
-            <select value={form.entry2_id} onChange={(e) => setForm((f) => ({ ...f, entry2_id: e.target.value }))} className={selectClass}>
-              <option value="">Por determinar</option>
-              {entries.filter((e) => e.id !== form.entry1_id).map((e) => <option key={e.id} value={e.id}>{entryName(e)}</option>)}
-            </select>
-          </div>
-        </div>
+        {/* Filtrar inscripciones por el cuadro seleccionado para no mezclar
+            categorias. Si no hay cuadro elegido, mostrar TODAS las
+            inscripciones confirmadas. */}
+        {(() => {
+          const filteredEntries = form.draw_id
+            ? entries.filter((e: any) => e.draw_id === form.draw_id)
+            : entries
+          const noEntries = filteredEntries.length === 0
+          return (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="block text-sm text-gray-400">Inscripciones (parejas/jugadores)</label>
+                <span className="text-gray-500 text-xs">{filteredEntries.length} disponible(s)</span>
+              </div>
+              {noEntries ? (
+                <div className="bg-yellow-900/20 border border-yellow-700/50 rounded-xl p-4 space-y-2">
+                  <p className="text-yellow-200 text-sm font-semibold">⚠️ No hay parejas/jugadores inscritos {form.draw_id ? 'en este cuadro' : 'todavía'}</p>
+                  <p className="text-gray-400 text-xs">
+                    Para crear un partido necesitas <strong className="text-gray-300">inscribir primero</strong> a las parejas (o jugadores en individual) en un cuadro. Crear un jugador suelto no basta — hay que asociarlo a un cuadro como inscripción.
+                  </p>
+                  <div className="flex gap-2 flex-wrap pt-1">
+                    {form.draw_id ? (
+                      <Link href={`/dashboard/draws/${form.category}`}
+                        className="bg-brand-red hover:bg-red-600 text-white px-4 py-2 rounded-xl text-xs font-semibold transition-colors">
+                        Inscribir en este cuadro →
+                      </Link>
+                    ) : (
+                      <Link href="/dashboard/draws"
+                        className="bg-brand-red hover:bg-red-600 text-white px-4 py-2 rounded-xl text-xs font-semibold transition-colors">
+                        Ir a Cuadros →
+                      </Link>
+                    )}
+                    <Link href="/dashboard/players/new"
+                      className="bg-gray-800 hover:bg-gray-700 text-gray-200 px-4 py-2 rounded-xl text-xs font-semibold transition-colors">
+                      + Nuevo jugador
+                    </Link>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Lado A</label>
+                    <select value={form.entry1_id} onChange={(e) => setForm((f) => ({ ...f, entry1_id: e.target.value }))} className={selectClass}>
+                      <option value="">Por determinar</option>
+                      {filteredEntries.filter((e: any) => e.id !== form.entry2_id).map((e: any) => <option key={e.id} value={e.id}>{entryName(e)}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Lado B</label>
+                    <select value={form.entry2_id} onChange={(e) => setForm((f) => ({ ...f, entry2_id: e.target.value }))} className={selectClass}>
+                      <option value="">Por determinar</option>
+                      {filteredEntries.filter((e: any) => e.id !== form.entry1_id).map((e: any) => <option key={e.id} value={e.id}>{entryName(e)}</option>)}
+                    </select>
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })()}
 
         {error && <div className="bg-red-900/30 border border-red-700 rounded-xl px-4 py-3 text-red-300 text-sm">{error}</div>}
 

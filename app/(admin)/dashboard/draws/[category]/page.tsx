@@ -2,6 +2,7 @@ import { createServiceSupabase } from '@/lib/supabase-server'
 import Link from 'next/link'
 import { EmptyDrawCTA } from './empty-cta'
 import { BracketTree } from '@/components/admin/bracket-tree'
+import { EntryRegister } from '@/components/admin/entry-register'
 import { Badge } from '@/components/ui/badge'
 import { CATEGORY_LABELS } from '@/types'
 
@@ -71,7 +72,7 @@ export default async function DrawDetailPage({ params }: { params: Promise<{ cat
   }
 
   const { data: entries } = await service.from('draw_entries')
-    .select('*, player1:players!player1_id(first_name,last_name,nationality,ranking_rfet), player2:players!player2_id(first_name,last_name,nationality,ranking_rfet)')
+    .select('*, player1:players!player1_id(id,first_name,last_name,nationality,ranking_rfet), player2:players!player2_id(id,first_name,last_name,nationality,ranking_rfet)')
     .eq('draw_id', draw.id)
     .order('seed', { ascending: true, nullsFirst: false })
 
@@ -155,6 +156,15 @@ export default async function DrawDetailPage({ params }: { params: Promise<{ cat
           </Link>
         </div>
       </div>
+
+      {/* Inscribir parejas/jugadores */}
+      <EntryRegister
+        drawId={draw.id}
+        drawSize={draw.size}
+        matchType={matchType as 'singles' | 'doubles'}
+        existingPlayerIds={(entries ?? []).flatMap((e: any) => [e.player1?.id, e.player2?.id].filter(Boolean))}
+        currentCount={entries?.length ?? 0}
+      />
 
       {/* Entries */}
       <div className="bg-gray-900 rounded-2xl border border-gray-800 p-5">

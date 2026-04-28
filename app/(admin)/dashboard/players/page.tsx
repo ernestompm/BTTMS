@@ -32,6 +32,15 @@ export default async function PlayersPage({ searchParams }: { searchParams: Prom
         </div>
       </div>
 
+      {/* Aviso explicativo del flujo */}
+      <div className="bg-blue-900/20 border border-blue-700/40 rounded-2xl p-4 text-sm">
+        <p className="text-blue-200 font-semibold mb-1">📋 Cómo funciona el flujo</p>
+        <p className="text-gray-300">
+          1. Crea jugadores aquí. 2. Ve a <Link href="/dashboard/draws" className="text-brand-red underline">Cuadros</Link> e <strong>inscríbelos</strong> (en parejas si es dobles, individuales si singles). 3. Una vez inscritos como pareja/jugador en un cuadro, podrás usarlos al crear un partido.
+          <span className="block text-gray-500 text-xs mt-1">Crear un jugador suelto NO lo hace seleccionable en el formulario de partido — necesita estar inscrito en un cuadro primero.</span>
+        </p>
+      </div>
+
       {/* Search */}
       <form className="relative">
         <input
