@@ -27,6 +27,51 @@ const TONE_INSTRUCTIONS: Record<string, string> = {
   tactical: 'Tono TÁCTICO: estrategia, lectura del juego, fortalezas/debilidades observadas en los puntos.',
 }
 
+// Compactar un equipo a los datos esenciales para el comentario.
+// Bio truncada a 200 chars (mucho menos input al modelo) y palmarés a top 3.
+function compactTeam(entry: any) {
+  if (!entry) return null
+  return {
+    seed: entry.seed,
+    jugadores: [entry.player1, entry.player2].filter(Boolean).map((p: any) => {
+      const edad = p.birth_date
+        ? Math.floor((Date.now() - new Date(p.birth_date).getTime()) / (365.25*24*3600*1000))
+        : (p.age_manual ?? null)
+      const out: any = { nombre: `${p.first_name} ${p.last_name}`.trim() }
+      if (p.nationality) out.pais = p.nationality
+      if (edad) out.edad = edad
+      if (p.ranking_rfet) out.rfet = p.ranking_rfet
+      if (p.ranking_itf) out.itf = p.ranking_itf
+      if (p.club) out.club = p.club
+      if (p.laterality && p.laterality !== 'right') out.mano = p.laterality
+      if (p.bio) out.bio = String(p.bio).slice(0, 200)
+      if (Array.isArray(p.titles) && p.titles.length) {
+        out.palmares = p.titles.slice(0, 3).map((t: any) => `${t.year}: ${t.name}`)
+      }
+      return out
+    }),
+  }
+}
+
+// Compactar stats — quitar campos que la IA casi nunca usa
+function compactStats(s: any) {
+  if (!s) return null
+  const summarize = (t: any) => ({
+    pts: t.total_points_won,
+    aces: t.aces,
+    df: t.double_faults,
+    win: t.winners ?? 0,
+    err: t.unforced_errors ?? 0,
+    pct_saque: Math.round(t.serve_points_won_pct ?? 0),
+    pct_resto: Math.round(t.return_points_won_pct ?? 0),
+    breaks_ganados: t.break_points_won,
+    breaks_oport: t.break_points_played_on_return ?? 0,
+    breaks_salv: t.break_points_saved,
+    breaks_face: t.break_points_faced ?? 0,
+  })
+  return { t1: summarize(s.t1 ?? {}), t2: summarize(s.t2 ?? {}) }
+}
+
 // Lista de TODOS los proveedores configurados (no solo el primero) — asi
 // podemos hacer fallback si uno da 429 / 5xx
 type ProviderName = 'gemini' | 'groq' | 'mistral' | 'anthropic'
@@ -89,48 +134,33 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ mat
     pista: m.court?.name,
     saque_actual: m.serving_team,
     duracion_min: m.started_at ? Math.floor((Date.now() - new Date(m.started_at).getTime()) / 60000) : null,
-    equipo1: {
-      jugadores: [m.entry1?.player1, m.entry1?.player2].filter(Boolean).map((p: any) => ({
-        nombre: `${p.first_name} ${p.last_name}`,
-        nacionalidad: p.nationality,
-        edad: p.birth_date ? Math.floor((Date.now() - new Date(p.birth_date).getTime()) / (365.25*24*3600*1000)) : null,
-        ranking_rfet: p.ranking_rfet,
-        ranking_itf: p.ranking_itf,
-        club: p.club,
-        lateralidad: p.laterality,
-        bio: p.bio,
-        palmares: p.titles,
-      })),
-      seed: m.entry1?.seed,
-    },
-    equipo2: {
-      jugadores: [m.entry2?.player1, m.entry2?.player2].filter(Boolean).map((p: any) => ({
-        nombre: `${p.first_name} ${p.last_name}`,
-        nacionalidad: p.nationality,
-        edad: p.birth_date ? Math.floor((Date.now() - new Date(p.birth_date).getTime()) / (365.25*24*3600*1000)) : null,
-        ranking_rfet: p.ranking_rfet,
-        ranking_itf: p.ranking_itf,
-        club: p.club,
-        lateralidad: p.laterality,
-        bio: p.bio,
-        palmares: p.titles,
-      })),
-      seed: m.entry2?.seed,
-    },
-    score: m.score,
-    stats: m.stats,
-    ultimos_puntos: pointLog.slice(0, 15).map((p: any) => ({
+    // Jugadores compactos — solo los campos verdaderamente utiles para
+    // generar comentarios. Bio truncada a 200 chars y palmarés a 3 títulos
+    // recientes para no llenar el prompt con texto enorme.
+    equipo1: compactTeam(m.entry1),
+    equipo2: compactTeam(m.entry2),
+    // Solo sets jugados + sets ganados (no toda la struct interna del score)
+    score: m.score ? {
+      sets_jugados: m.score.sets,
+      sets_ganados: m.score.sets_won,
+      set_actual: m.score.current_set,
+      juego_actual: m.score.current_game,
+      tiebreak_activo: m.score.tiebreak_active || m.score.super_tiebreak_active,
+      ganador_partido: m.score.winner_team,
+    } : null,
+    // Stats simplificadas — solo los campos clave que la IA suele usar
+    stats: m.stats ? compactStats(m.stats) : null,
+    // Solo los 8 ultimos puntos (suficiente para hablar del momento)
+    ultimos_puntos: pointLog.slice(0, 8).map((p: any) => ({
       seq: p.sequence,
-      ganador_equipo: p.winner_team,
-      tipo_punto: p.point_type,
-      direccion: p.shot_direction,
+      ganador: p.winner_team,
+      tipo: p.point_type,
     })),
-    historial_torneo: previousMatches.slice(0, 10).map((pm: any) => ({
+    // Solo los 5 ultimos partidos del torneo
+    historial_torneo: previousMatches.slice(0, 5).map((pm: any) => ({
       ronda: pm.round,
       ganador: pm.score?.winner_team,
       sets: pm.score?.sets,
-      equipo1: pm.entry1 ? [pm.entry1.player1, pm.entry1.player2].filter(Boolean).map((p:any) => p.last_name).join(' / ') : null,
-      equipo2: pm.entry2 ? [pm.entry2.player1, pm.entry2.player2].filter(Boolean).map((p:any) => p.last_name).join(' / ') : null,
     })),
   }
 
@@ -147,12 +177,16 @@ REGLAS ESTRICTAS:
 - Devuelve EXACTAMENTE 5 sugerencias, una por línea, NUMERADAS (1. 2. 3. 4. 5.).
 - No añadas introducción ni cierre, solo las 5 frases numeradas.`
 
+  // JSON sin pretty-print para ahorrar tokens
+  const ctxJson = JSON.stringify(ctx)
   const userPrompt = `Contexto del partido (datos en JSON):
-\`\`\`json
-${JSON.stringify(ctx, null, 2)}
-\`\`\`
+${ctxJson}
 
 Genera ahora las 5 sugerencias en español, numeradas del 1 al 5.`
+
+  // Log tamaño aproximado del prompt para debug — visible en logs de Vercel
+  const approxTokens = Math.round((systemPrompt.length + userPrompt.length) / 4)
+  console.log(`[AI suggestions] prompt size ~${approxTokens} tokens (${systemPrompt.length + userPrompt.length} chars)`)
 
   // Llamar a un proveedor concreto. Devuelve { ok, text, status, errText }.
   async function callProvider(p: Provider): Promise<{ ok: boolean, text?: string, status?: number, errText?: string }> {
