@@ -30,6 +30,8 @@ export function CommentatorAIPanel({ match, tournament, previousMatches, pointLo
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [tone, setTone] = useState<'analytical' | 'colorful' | 'historical' | 'tactical'>('analytical')
+  const [diag, setDiag] = useState<any>(null)
+  const [diagLoading, setDiagLoading] = useState(false)
 
   async function generate() {
     setLoading(true); setError(null)
@@ -47,6 +49,19 @@ export function CommentatorAIPanel({ match, tournament, previousMatches, pointLo
       setError(e.message ?? String(e))
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function runDiagnostics() {
+    setDiagLoading(true); setDiag(null)
+    try {
+      const r = await fetch('/api/ai-status')
+      const data = await r.json()
+      setDiag(data)
+    } catch (e: any) {
+      setDiag({ error: e?.message ?? String(e) })
+    } finally {
+      setDiagLoading(false)
     }
   }
 
@@ -85,14 +100,62 @@ export function CommentatorAIPanel({ match, tournament, previousMatches, pointLo
       <div className="p-5">
         {error && (
           <div className="mb-3 bg-red-900/30 border border-red-700 rounded-xl px-4 py-3 text-red-300 text-sm whitespace-pre-line">
-            ✗ {error}
+            <div>✗ {error}</div>
+            <button onClick={runDiagnostics}
+              className="mt-3 text-xs underline text-red-200 hover:text-white">
+              {diagLoading ? 'Diagnosticando…' : 'Ver diagnóstico de configuración →'}
+            </button>
+          </div>
+        )}
+
+        {diag && (
+          <div className="mb-3 bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-xs space-y-2 font-mono">
+            <div className="text-purple-300 font-bold mb-1">🔧 DIAGNÓSTICO IA</div>
+            <div>
+              <span className="text-gray-500">Variables detectadas:</span>
+              <div className="mt-1 space-y-0.5 pl-2">
+                {Object.entries(diag.envVarsDetected ?? {}).map(([k, v]) => (
+                  <div key={k}>
+                    <span className={v ? 'text-green-400' : 'text-gray-600'}>{v ? '✓' : '✗'}</span>{' '}
+                    <span className={v ? 'text-white' : 'text-gray-600'}>{k}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <span className="text-gray-500">Proveedor activo:</span>{' '}
+              <span className="text-white font-bold">{diag.activeProvider ?? 'NINGUNO'}</span>
+            </div>
+            {diag.pingResult && (
+              <div>
+                <span className="text-gray-500">Test ping:</span>
+                <div className={`mt-1 pl-2 ${diag.pingResult.ok ? 'text-green-400' : 'text-red-400'}`}>
+                  {diag.pingResult.ok
+                    ? `✓ Status ${diag.pingResult.status} · ${diag.pingResult.body}`
+                    : `✗ Status ${diag.pingResult.status} · ${diag.pingResult.body ?? diag.pingResult.error}`}
+                  {diag.pingResult.model && <div className="text-gray-500 mt-1">Modelo: {diag.pingResult.model}</div>}
+                </div>
+              </div>
+            )}
+            <div className="text-gray-500 italic pt-2 border-t border-gray-800">
+              💡 {diag.hint}
+            </div>
+            <div className="text-yellow-300 text-[11px] pt-1">
+              ⚠️ Recuerda: tras añadir/cambiar una env var en Vercel TIENES QUE HACER REDEPLOY del último deployment para que aplique.
+            </div>
           </div>
         )}
 
         {suggestions.length === 0 && !error && !loading && (
-          <p className="text-sm text-gray-400">
-            Pulsa <strong className="text-purple-300">✨ Generar</strong> para que la IA te dé 5 frases listas para comentar el partido en directo. La IA analiza el marcador, las stats acumuladas, el historial reciente y los últimos puntos jugados.
-          </p>
+          <div className="space-y-3">
+            <p className="text-sm text-gray-400">
+              Pulsa <strong className="text-purple-300">✨ Generar</strong> para que la IA te dé 5 frases listas para comentar el partido en directo.
+            </p>
+            <button onClick={runDiagnostics}
+              className="text-xs text-gray-500 hover:text-purple-300 underline">
+              {diagLoading ? 'Diagnosticando…' : '🔧 Ver diagnóstico de IA (qué key está activa)'}
+            </button>
+          </div>
         )}
 
         {loading && (

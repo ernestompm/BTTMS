@@ -154,8 +154,9 @@ Genera ahora las 5 sugerencias en español, numeradas del 1 al 5.`
     let text = ''
 
     if (provider.name === 'gemini') {
-      // Google Gemini — gratis 1500 req/dia
-      const model = process.env.GEMINI_MODEL ?? 'gemini-1.5-flash-latest'
+      // Google Gemini — gratis. Default 'gemini-2.0-flash' (modelo flash actual,
+      // free tier generoso). Configurable via env GEMINI_MODEL.
+      const model = process.env.GEMINI_MODEL ?? 'gemini-2.0-flash'
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${provider.key}`
       const r = await fetch(url, {
         method: 'POST',
