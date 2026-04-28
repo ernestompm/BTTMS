@@ -3,6 +3,9 @@ import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import type { Match } from '@/types'
 import { CATEGORY_LABELS } from '@/types'
+import { BulkJudgeAssigner } from '@/components/admin/judge-assigner'
+
+const TOURNAMENT_ID = '00000000-0000-0000-0000-000000000001'
 
 const statusLabel: Record<string, { label: string; variant: any }> = {
   scheduled: { label: 'Programado', variant: 'outline' },
@@ -54,6 +57,9 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
           </Link>
         ))}
       </div>
+
+      {/* Bulk assignment de juez */}
+      <BulkJudgeAssigner tournamentId={TOURNAMENT_ID}/>
 
       {/* Matches list */}
       <div className="space-y-3">

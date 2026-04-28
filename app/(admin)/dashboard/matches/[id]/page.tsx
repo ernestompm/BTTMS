@@ -4,13 +4,14 @@ import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import type { Match } from '@/types'
 import { CATEGORY_LABELS } from '@/types'
+import { JudgeAssigner } from '@/components/admin/judge-assigner'
 
 export default async function MatchDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = createServiceSupabase()
 
   const { data: match } = await supabase.from('matches')
-    .select(`*, court:courts(name), entry1:draw_entries!entry1_id(*, player1:players!player1_id(*), player2:players!player2_id(*)), entry2:draw_entries!entry2_id(*, player1:players!player1_id(*), player2:players!player2_id(*))`)
+    .select(`*, court:courts(name), judge:app_users!judge_id(id, full_name), entry1:draw_entries!entry1_id(*, player1:players!player1_id(*), player2:players!player2_id(*)), entry2:draw_entries!entry2_id(*, player1:players!player1_id(*), player2:players!player2_id(*))`)
     .eq('id', id)
     .single()
 
@@ -76,6 +77,13 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
           </div>
         </div>
       </div>
+
+      {/* Judge assignment */}
+      <JudgeAssigner
+        matchId={m.id}
+        currentJudgeId={m.judge_id}
+        currentJudgeName={m.judge?.full_name ?? null}
+      />
 
       {/* Score detail */}
       {score && (

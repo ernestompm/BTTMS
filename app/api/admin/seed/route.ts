@@ -139,12 +139,21 @@ export async function POST(req: Request) {
   // Asi el cuadro siempre se ve entero desde el principio aunque las rondas
   // siguientes esten vacias (slots = "Por determinar").
   const drawScoring = (draw as any).structure?.scoring_system ?? 'best_of_2_sets_super_tb'
+
+  // Auto-asignar el primer juez disponible. Si no hay ningun usuario con
+  // role='judge', dejamos null y el director puede asignarlo despues
+  // desde la pantalla de partidos (BulkJudgeAssigner / JudgeAssigner).
+  const { data: firstJudge } = await service.from('app_users')
+    .select('id').eq('role', 'judge').limit(1).maybeSingle()
+  const defaultJudgeId = firstJudge?.id ?? null
+
   const baseFields = {
     tournament_id: TOURNAMENT_ID,
     draw_id: draw.id,
     category: 'absolute_m',
     match_type: 'doubles',
     scoring_system: drawScoring,
+    judge_id: defaultJudgeId,
   }
   const r16Matches = R16_PAIRS.map(([s1, s2], idx) => ({
     ...baseFields,
