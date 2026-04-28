@@ -53,6 +53,9 @@ export default function ScoreboardConfigPage() {
   const [uploadError, setUploadError] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
+  // Edit existing sponsor
+  const [editingIdx, setEditingIdx] = useState<number | null>(null)
+
   // Tournament logo
   const [tournamentLogoMode, setTournamentLogoMode] = useState<'url' | 'upload'>('url')
   const [uploadingTournamentLogo, setUploadingTournamentLogo] = useState(false)
@@ -113,6 +116,16 @@ export default function ScoreboardConfigPage() {
     const arr = [...sponsors]; const ni = idx + dir
     if (ni < 0 || ni >= arr.length) return
     ;[arr[idx], arr[ni]] = [arr[ni], arr[idx]]
+    setTournament(t => t ? { ...t, sponsors: arr as any } : t)
+  }
+  function updateSponsor(idx: number, patch: Partial<Sponsor>) {
+    const arr = [...sponsors]
+    arr[idx] = { ...arr[idx], ...patch }
+    setTournament(t => t ? { ...t, sponsors: arr as any } : t)
+  }
+  function setMainSponsor(idx: number) {
+    // Solo uno puede ser "main": al activar uno desactivo el resto
+    const arr = sponsors.map((sp, i) => ({ ...sp, is_main: i === idx }))
     setTournament(t => t ? { ...t, sponsors: arr as any } : t)
   }
 
@@ -426,6 +439,10 @@ export default function ScoreboardConfigPage() {
             {sponsors.length > 1 && <span className="text-xs text-gray-600">Usa ↑↓ para reordenar</span>}
           </div>
 
+          <p className="text-gray-500 text-xs mb-3">
+            La <span className="text-yellow-400">★ estrella</span> marca el patrocinador <strong className="text-gray-300">PRINCIPAL</strong> — es el que aparece en el panel lateral del marcador grande del overlay de streaming. Solo uno a la vez.
+          </p>
+
           {sponsors.length === 0 ? (
             <div className="bg-gray-800 rounded-xl px-4 py-6 text-center border border-dashed border-gray-700">
               <p className="text-gray-500 text-sm">No hay patrocinadores añadidos.</p>
@@ -433,8 +450,56 @@ export default function ScoreboardConfigPage() {
             </div>
           ) : (
             <div className="space-y-2">
-              {sponsors.map((sp, i) => (
-                <div key={i} className="flex items-center gap-3 bg-gray-800 rounded-xl px-4 py-3 border border-gray-700">
+              {sponsors.map((sp, i) => editingIdx === i ? (
+                /* Edit mode */
+                <div key={i} className="bg-gray-800/80 rounded-xl px-4 py-4 border border-brand-red/40 space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1.5">Nombre *</label>
+                      <input value={sp.name} onChange={e => updateSponsor(i, { name: e.target.value })}
+                        className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-brand-red" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1.5">Categoría</label>
+                      <select value={sp.tier} onChange={e => updateSponsor(i, { tier: e.target.value })}
+                        className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-brand-red">
+                        <option value="">Sin categoría</option>
+                        <option value="title">Title Sponsor</option>
+                        <option value="gold">Gold</option>
+                        <option value="silver">Silver</option>
+                        <option value="partner">Partner</option>
+                        <option value="media">Media Partner</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1.5">URL del logo</label>
+                    <div className="flex gap-3 items-center">
+                      <input value={sp.logo_url} onChange={e => updateSponsor(i, { logo_url: e.target.value })}
+                        placeholder="https://..."
+                        className="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-brand-red" />
+                      {sp.logo_url && (
+                        <div className="w-14 h-10 rounded-lg bg-gray-700 overflow-hidden flex-shrink-0">
+                          <img src={sp.logo_url} alt="" className="w-full h-full object-contain p-1" />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-end gap-2 pt-1">
+                    <button onClick={() => setEditingIdx(null)}
+                      className="text-gray-400 hover:text-white px-4 py-2 rounded-xl text-sm transition-colors">
+                      Listo
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* Display mode */
+                <div key={i} className={`flex items-center gap-3 rounded-xl px-4 py-3 border ${sp.is_main ? 'bg-yellow-500/10 border-yellow-500/40' : 'bg-gray-800 border-gray-700'}`}>
+                  {/* Star toggle (main sponsor) */}
+                  <button onClick={() => setMainSponsor(i)} title={sp.is_main ? 'Es el patrocinador PRINCIPAL' : 'Marcar como PRINCIPAL'}
+                    className={`text-2xl flex-shrink-0 transition-colors ${sp.is_main ? 'text-yellow-400' : 'text-gray-600 hover:text-yellow-300'}`}>
+                    {sp.is_main ? '★' : '☆'}
+                  </button>
                   {/* Logo preview */}
                   <div className="w-14 h-10 rounded-lg bg-gray-700 flex items-center justify-center flex-shrink-0 overflow-hidden">
                     {sp.logo_url ? (
@@ -445,16 +510,21 @@ export default function ScoreboardConfigPage() {
                   </div>
                   {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-white text-sm font-semibold truncate">{sp.name}</p>
+                    <p className="text-white text-sm font-semibold truncate">
+                      {sp.name}
+                      {sp.is_main && <span className="ml-2 text-yellow-400 text-xs font-bold uppercase tracking-wider">· PRINCIPAL</span>}
+                    </p>
                     <p className="text-gray-500 text-xs">{TIER_LABELS[sp.tier] ?? (sp.tier || 'Sin categoría')}</p>
                   </div>
                   {/* Controls */}
                   <div className="flex items-center gap-0.5 flex-shrink-0">
+                    <button onClick={() => setEditingIdx(i)} title="Editar"
+                      className="text-gray-400 hover:text-white px-2 py-1.5 rounded-lg hover:bg-gray-700 text-sm transition-colors">✎</button>
                     <button onClick={() => moveSponsor(i, -1)} disabled={i === 0}
                       className="text-gray-500 hover:text-white px-2 py-1.5 rounded-lg hover:bg-gray-700 disabled:opacity-20 disabled:cursor-not-allowed text-sm transition-colors">↑</button>
                     <button onClick={() => moveSponsor(i, 1)} disabled={i === sponsors.length - 1}
                       className="text-gray-500 hover:text-white px-2 py-1.5 rounded-lg hover:bg-gray-700 disabled:opacity-20 disabled:cursor-not-allowed text-sm transition-colors">↓</button>
-                    <button onClick={() => removeSponsor(i)}
+                    <button onClick={() => removeSponsor(i)} title="Eliminar"
                       className="text-red-500/70 hover:text-red-400 px-2 py-1.5 rounded-lg hover:bg-red-900/20 ml-1 text-sm transition-colors">✕</button>
                   </div>
                 </div>

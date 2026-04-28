@@ -17,6 +17,7 @@ const navItems = [
   { href: '/dashboard/tournament', label: 'Torneo', icon: '⚙️', roles: ['super_admin','tournament_director'] },
   { href: '/dashboard/users', label: 'Usuarios', icon: '👥', roles: ['super_admin','tournament_director'] },
   { href: '/dashboard/scoreboard', label: 'Marcador Venue', icon: '🖥️', roles: ['super_admin','tournament_director'] },
+  { href: '/dashboard/graphics-editor', label: 'Editor gráficos', icon: '🎨', roles: ['super_admin','tournament_director'] },
   { href: '/broadcast', label: 'TV Broadcast', icon: '📺', roles: ['super_admin','tournament_director'] },
   { href: '/dashboard/streaming', label: 'Streaming Grafismo', icon: '🎬', roles: ['super_admin','tournament_director','staff'] },
 ]

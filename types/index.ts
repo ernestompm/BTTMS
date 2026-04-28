@@ -29,6 +29,10 @@ export interface Sponsor {
   logo_url: string
   tier: string
   display_order: number
+  /** Si true, este es el patrocinador "principal" que aparece en el panel
+   *  lateral del marcador grande de streaming. Solo uno debe estar marcado:
+   *  el setter de la UI desmarca al resto al activar uno nuevo. */
+  is_main?: boolean
 }
 
 export interface ScoreboardConfig {
@@ -40,6 +44,22 @@ export interface ScoreboardConfig {
    *               tipografia ligera, transparencias suaves, premium minimalista)
    *  Afecta a TODOS los gráficos del overlay. */
   graphics_style?: 'classic' | 'tour' | 'pacific'
+  /** Overrides puntuales de tamaños para que el director ajuste sin tocar
+   *  código. Cada componente lee aquí valores opcionales y aplica el default
+   *  si no existen. Editable desde /dashboard/graphics-editor. */
+  graphics_overrides?: {
+    venue_pre_match?: {
+      name_fs_singles?: number   // default 156
+      name_fs_doubles?: number   // default 110
+      vs_fs?: number             // default 300
+      card_padding?: number      // default 48 (vertical), 52 (horizontal)
+    }
+    venue_finished?: {
+      name_fs_singles?: number   // default 156
+      name_fs_doubles?: number   // default 110
+      set_score_fs?: number      // default 140
+    }
+  }
   colors: {
     background: string[]
     team1_accent: string

@@ -44,7 +44,11 @@ export default async function OverlayPage({ params }: { params: Promise<{ matchI
     session = created
   }
 
-  const mainSponsor = (tournament?.sponsors ?? []).find((s:any) => s.tier === 'main' || s.tier === 'principal') ?? (tournament?.sponsors ?? [])[0] ?? null
+  // Patrocinador principal: el que el director ha marcado como `is_main`,
+  // o si no hay ninguno, el primero (por display_order).
+  const mainSponsor = (tournament?.sponsors ?? []).find((s:any) => s.is_main)
+    ?? (tournament?.sponsors ?? []).find((s:any) => s.tier === 'main' || s.tier === 'principal')
+    ?? (tournament?.sponsors ?? [])[0] ?? null
   // Preferir el judge_name que cada arbitro registra al entrar en pista
   // (usuario juez puede ser compartido por varios arbitros fisicos).
   const refereeName = (match as any).judge_name || (match as any).judge?.full_name || null

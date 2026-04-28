@@ -233,17 +233,18 @@ export function VenueScoreboard({ initialMatch, config, tournamentName, sponsors
             if (!isPreMatch) return null
             const isDoubles = teamA.players.length > 1
             // Nombres SIEMPRE al tamaño grande fijo. Si el apellido no entra
-            // en una linea, simplemente WRAP a 2 lineas en el espacio entre
-            // palabras (GARCIA MARTINEZ -> GARCIA / MARTINEZ). Asi nunca
-            // achicamos la tipografia y la simetria visual se mantiene
-            // porque ambos lados usan el mismo fontSize y un line-height
-            // tight (.86) que hace los wraps compactos.
-            const nameFs = isDoubles ? 110 : 156
+            // en una linea, simplemente WRAP a 2 lineas. Tamaño tomado de
+            // graphics_overrides.venue_pre_match si esta definido (editor
+            // visual en /dashboard/graphics-editor) — si no, defaults.
+            const ov = (cfg as any).graphics_overrides?.venue_pre_match ?? {}
+            const nameFs = isDoubles ? (ov.name_fs_doubles ?? 110) : (ov.name_fs_singles ?? 156)
+            const vsFs = ov.vs_fs ?? 300
+            const cardPadding = ov.card_padding ?? 48
             return (
             <div className="absolute z-10" style={{ left:64, right:64, top:172, bottom: showSponsors&&sponsorList.length>0?252:60, display:'grid', gridTemplateColumns:'1fr auto 1fr', gap:40, alignItems:'stretch', animation:'phaseIn .75s cubic-bezier(.2,.9,.25,1) both' }}>
 
               {/* Team A card */}
-              <PreMatchTeamCard team={teamA} accent={accentA} isRight={false} showFlags={showFlags} showSeed={showSeed} nameFs={nameFs} />
+              <PreMatchTeamCard team={teamA} accent={accentA} isRight={false} showFlags={showFlags} showSeed={showSeed} nameFs={nameFs} cardPadding={cardPadding} />
 
               {/* VS column — vuelvo al ancho original (320 minWidth) y al
                   VS gigante (300px). Los apellidos largos los resolvemos
@@ -252,7 +253,7 @@ export function VenueScoreboard({ initialMatch, config, tournamentName, sponsors
                 <div style={{ fontSize:34, letterSpacing:'.48em', opacity:.72, textTransform:'uppercase', fontWeight:800, marginBottom:24, textAlign:'center', lineHeight:1.2, whiteSpace:'nowrap' }}>
                   {STATUS_LABELS[status] ?? 'PRÓXIMO PARTIDO'}
                 </div>
-                <div style={{ fontSize:300, fontWeight:900, lineHeight:.82, color:accentA, letterSpacing:'-.04em', textShadow:`0 20px 80px ${hexAlpha(accentA,.5)}` }}>
+                <div style={{ fontSize:vsFs, fontWeight:900, lineHeight:.82, color:accentA, letterSpacing:'-.04em', textShadow:`0 20px 80px ${hexAlpha(accentA,.5)}` }}>
                   VS
                 </div>
                 <div style={{ marginTop:28, textAlign:'center' }}>
@@ -268,7 +269,7 @@ export function VenueScoreboard({ initialMatch, config, tournamentName, sponsors
               </div>
 
               {/* Team B card */}
-              <PreMatchTeamCard team={teamB} accent={accentB} isRight={true} showFlags={showFlags} showSeed={showSeed} nameFs={nameFs} />
+              <PreMatchTeamCard team={teamB} accent={accentB} isRight={true} showFlags={showFlags} showSeed={showSeed} nameFs={nameFs} cardPadding={cardPadding} />
             </div>
             )
           })()}
@@ -306,7 +307,7 @@ export function VenueScoreboard({ initialMatch, config, tournamentName, sponsors
               </div>
 
               {/* Sponsor bar */}
-              {showSponsors && sponsorList.length > 0 && <SponsorBar sponsorList={sponsorList} />}
+              {showSponsors && sponsorList.length > 0 && <SponsorBar sponsorList={sponsorList} secondsPerLap={carouselSpeed} />}
             </>
           )}
 
@@ -430,7 +431,7 @@ export function VenueScoreboard({ initialMatch, config, tournamentName, sponsors
 
           {/* Sponsor bar for pre-match and finished */}
           {(isPreMatch || isFinished) && showSponsors && sponsorList.length > 0 && (
-            <SponsorBar sponsorList={sponsorList} />
+            <SponsorBar sponsorList={sponsorList} secondsPerLap={carouselSpeed} />
           )}
 
         </div>
@@ -441,14 +442,16 @@ export function VenueScoreboard({ initialMatch, config, tournamentName, sponsors
 
 // ── Sponsor bar ───────────────────────────────────────────────────────────────
 // Fills the full 1920px stage regardless of sponsor count using dynamic keyframes.
-function SponsorBar({ sponsorList }: { sponsorList: Sponsor[] }) {
+function SponsorBar({ sponsorList, secondsPerLap }: { sponsorList: Sponsor[], secondsPerLap?: number }) {
   const CARD_W = 340, CARD_GAP = 80
   const cardSlot = CARD_W + CARD_GAP  // 420px per slot
   const oneSetW = sponsorList.length * cardSlot
   // Fill 1920px stage + buffer for seamless loop
   const copies = Math.max(4, Math.ceil((1920 * 2) / oneSetW) + 1)
-  // Fixed scroll speed: 80px/s regardless of sponsor count
-  const duration = Math.round(oneSetW / 80)
+  // Velocidad configurable desde scoreboard_config.sponsors.rotation_interval_seconds.
+  // El valor del slider es "segundos por vuelta completa". Si no llega, default 14s.
+  // Limit: minimo 4s (muy rapido) y maximo 90s (muy lento) por seguridad.
+  const duration = Math.max(4, Math.min(90, secondsPerLap ?? 14))
   const kf = `@keyframes vsbMarqueeDyn{0%{transform:translateX(0)}100%{transform:translateX(-${oneSetW}px)}}`
 
   return (
@@ -486,18 +489,18 @@ interface PreMatchTeamCardProps {
   showSeed: boolean
   /** tamaño compartido entre ambos equipos (para simetría) */
   nameFs?: number
+  /** padding vertical del card — viene del editor visual */
+  cardPadding?: number
 }
-function PreMatchTeamCard({ team, accent, isRight, showFlags, showSeed, nameFs }: PreMatchTeamCardProps) {
+function PreMatchTeamCard({ team, accent, isRight, showFlags, showSeed, nameFs, cardPadding }: PreMatchTeamCardProps) {
   const isDoubles = team.players.length > 1
   const fs = nameFs ?? (isDoubles ? 110 : 156)
+  const padV = cardPadding ?? 48
   return (
     <div style={{
       display:'flex', flexDirection:'column', justifyContent:'center',
-      // Padding restaurado a 48x52 (estaba en 32x36 que dejaba el card "vacio"
-      // arriba/abajo). Ahora distribuimos el espacio vertical con space-around
-      // si hay seed, asi seed-nombre-nombre se reparten bien.
       gap: isDoubles ? 32 : 0,
-      padding:'48px 52px', borderRadius:14,
+      padding:`${padV}px 52px`, borderRadius:14,
       background:'linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.02))',
       border:'1px solid rgba(255,255,255,.09)',
       borderTop:`8px solid ${accent}`,

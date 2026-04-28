@@ -40,7 +40,9 @@ export default async function StreamOperatorPage({ params }: { params: Promise<{
       entry2:draw_entries!entry2_id(id, seed, player1:players!player1_id(id,first_name,last_name,nationality,photo_url), player2:players!player2_id(id,first_name,last_name,nationality,photo_url))`)
     .eq('tournament_id', match.tournament_id).eq('category', match.category).order('match_number')
 
-  const mainSponsor = (tournament?.sponsors ?? []).find((s:any) => s.tier === 'main' || s.tier === 'principal') ?? (tournament?.sponsors ?? [])[0] ?? null
+  const mainSponsor = (tournament?.sponsors ?? []).find((s:any) => s.is_main)
+    ?? (tournament?.sponsors ?? []).find((s:any) => s.tier === 'main' || s.tier === 'principal')
+    ?? (tournament?.sponsors ?? [])[0] ?? null
   const refereeName = (match as any).judge_name || (match as any).judge?.full_name || null
   const referee = refereeName ? { full_name: refereeName } : null
 
