@@ -106,6 +106,11 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
                     className="bg-brand-red hover:bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs transition-colors">
                     ⚖️ Arbitrar
                   </Link>
+                  <Link href={`/commentator/${m.id}`} target="_blank"
+                    className="bg-purple-700/80 hover:bg-purple-600 text-white px-3 py-1.5 rounded-lg text-xs transition-colors"
+                    title="Abrir Centro de Información del Comentarista">
+                    🎙️ CIS ↗
+                  </Link>
                   {m.status === 'in_progress' && (
                     <Link href={`/scoreboard/${m.id}`} target="_blank"
                       className="bg-brand-red/20 hover:bg-brand-red/30 text-brand-red px-3 py-1.5 rounded-lg text-xs transition-colors">

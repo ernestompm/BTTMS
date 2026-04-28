@@ -66,6 +66,10 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
               className="bg-brand-red hover:bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">
               ⚖️ Arbitrar
             </Link>
+            <Link href={`/commentator/${m.id}`} target="_blank"
+              className="bg-purple-700 hover:bg-purple-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">
+              🎙️ Abrir CIS ↗
+            </Link>
             <Link href={`/dashboard/matches/${m.id}/edit-result`}
               className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">
               ✎ Editar resultado

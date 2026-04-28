@@ -95,6 +95,11 @@ export default async function DashboardPage() {
                       </p>
                     </div>
                   )}
+                  <Link href={`/commentator/${m.id}`} target="_blank"
+                    className="bg-purple-700/80 hover:bg-purple-600 text-white px-3 py-1.5 rounded-lg text-xs transition-colors"
+                    title="Centro de Información del Comentarista">
+                    🎙️ CIS ↗
+                  </Link>
                   <Link href={`/scoreboard/${m.id}`} target="_blank"
                     className="bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg text-xs transition-colors">
                     Marcador ↗
@@ -115,6 +120,7 @@ export default async function DashboardPage() {
             { href: '/dashboard/players', label: 'Jugadores', icon: '👤', color: 'from-blue-900/30 to-blue-800/20', roles: ['super_admin','tournament_director','staff'] },
             { href: '/dashboard/draws', label: 'Cuadros', icon: '🏆', color: 'from-purple-900/30 to-purple-800/20', roles: ['super_admin','tournament_director'] },
             { href: '/judge', label: 'Judge App', icon: '⚖️', color: 'from-orange-900/30 to-orange-800/20', roles: ['super_admin','tournament_director','staff'] },
+            { href: '/commentator', label: 'Comentarista (CIS)', icon: '🎙️', color: 'from-fuchsia-900/30 to-purple-800/20', roles: ['super_admin','tournament_director','staff'] },
           ] as const).filter((a) => a.roles.includes(appUser?.role as any)).map((a) => (
             <Link key={a.href} href={a.href}
               className={`bg-gradient-to-br ${a.color} border border-gray-800 rounded-2xl p-4 hover:border-gray-600 transition-colors group`}>
