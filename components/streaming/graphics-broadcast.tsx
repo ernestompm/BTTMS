@@ -221,10 +221,12 @@ function statValue(stats: any, stat: string, team: 1|2): string|number {
   return v
 }
 
-// Mismo formato que el scorebug Classic — sin skew (ilegible para info que
-// cambia cada punto). Estructura por filas con accent del color del equipo,
-// banderas reales, todos los sets jugados visibles, y stat ticker integrado
-// con un fondo / borde claramente diferente cuando esta activo.
+// Diseño BROADCAST: card skewed -8°, contenido counter-skewed, sheen, pill
+// cells, italic uppercase, glass dark.
+// Formato: igual que Classic — accent del color del equipo a la izquierda
+// de cada fila, banderas reales, todos los sets jugados con sus resultados,
+// y stat ticker que cambia el aspecto del cell de puntos a ámbar para que
+// sea inconfundible con el resultado.
 export function ScorebugBroadcast({ visible, match, tournament, tickerStat }: {
   visible: boolean, match: any, tournament: Tournament | null, tickerStat?: string | null,
 }) {
@@ -251,8 +253,6 @@ export function ScorebugBroadcast({ visible, match, tournament, tickerStat }: {
       ? (score?.super_tiebreak_active ? 'SUPER TIE-BREAK' : 'TIE-BREAK')
       : `${setOrdinal === 1 ? '1ER' : setOrdinal === 2 ? '2DO' : '3ER'} SET`
 
-  // Color del equipo: usa el accent del torneo (rojo Vinteon o lo que tenga
-  // configurado) — NO cyan/coral hardcodeado. Asi se respeta la marca.
   const teamAccent = (t: 1|2) => t === 1 ? pal.accentA : pal.accentB
 
   function teamPlayers(t: 1|2): any[] {
@@ -268,167 +268,192 @@ export function ScorebugBroadcast({ visible, match, tournament, tickerStat }: {
   }
 
   // Grid: [accent 6px] [name auto] [set cells] [point cell wider]
-  const gridCols = `6px minmax(220px, max-content) ${Array(setCount).fill('44px').join(' ')} 70px`
+  const gridCols = `6px minmax(220px, max-content) ${Array(setCount).fill('46px').join(' ')} 72px`
 
   return (
     <div style={{
       position: 'absolute', top: 42, left: 42,
-      ...cardStyle(20),
+      ...cardStyle(22),
+      transform: SKEW_OUTER,
       fontFamily: FONT,
-      animation: visible
-        ? 'sgInR 600ms cubic-bezier(.22,.9,.25,1) both'
-        : 'sgOutR 500ms cubic-bezier(.22,.9,.25,1) both',
-      willChange: 'transform, opacity',
+      ...animSkew(visible, 'L', 700),
     }}>
       <Sheen/>
 
-      {/* Header — INTEGRADO en la card (no flotante arriba) */}
+      {/* Inner content counter-skewed para que el TEXTO se lea recto pero
+          la card mantenga el ángulo del diseño broadcast */}
       <div style={{
-        padding: '8px 16px',
-        borderBottom: `1px solid rgba(255,255,255,.10)`,
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        transform: SKEW_INNER,
         position: 'relative', zIndex: 2,
-        background: 'rgba(0,0,0,.18)',
       }}>
-        <span style={{ ...subtleStyle(11, BC.white), letterSpacing: '.28em' }}>{headerLabel}</span>
-        {tournament?.logo_url && (
-          <img src={tournament.logo_url} alt="" style={{ height: 18, opacity: .85, objectFit: 'contain' }}/>
+        {/* Header integrado dentro del card (no pill flotante cortado) */}
+        <div style={{
+          padding: '7px 18px',
+          borderBottom: '1px solid rgba(255,255,255,.10)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          background: 'rgba(0,0,0,.22)',
+        }}>
+          <span style={{ ...subtleStyle(11, BC.white), letterSpacing: '.30em' }}>{headerLabel}</span>
+          {tournament?.logo_url && (
+            <img src={tournament.logo_url} alt="" style={{ height: 18, opacity: .85, objectFit: 'contain' }}/>
+          )}
+        </div>
+
+        {/* Body */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: gridCols,
+          gridTemplateRows: '48px 48px',
+        }}>
+          {[1, 2].map(tn => {
+            const team = tn as 1|2
+            const accent = teamAccent(team)
+            const players = teamPlayers(team)
+            const sets = setsFor(score, team).slice(0, setCount)
+            const pt = gamePoint(score, team)
+            const isServingTeam = serving === team
+            const row = team
+            const tickerVal = showTicker ? statValue(match.stats, tickerStat!, team) : null
+
+            return (
+              <React.Fragment key={team}>
+                {/* Accent stripe del color del equipo a la IZQUIERDA */}
+                <div style={{
+                  gridColumn: 1, gridRow: row,
+                  background: accent,
+                  boxShadow: `inset 0 0 8px ${hexAlpha(accent, .6)}`,
+                }}/>
+
+                {/* Nombre + bandera + saque */}
+                <div style={{
+                  gridColumn: 2, gridRow: row,
+                  padding: '0 14px 0 12px',
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  borderTop: team === 2 ? '1px solid rgba(255,255,255,.10)' : 'none',
+                  background: isServingTeam ? hexAlpha(accent, .10) : 'transparent',
+                  minWidth: 0,
+                }}>
+                  {isDoubles ? (
+                    <div style={{ display: 'flex', gap: 3, flex: 'none' }}>
+                      {players.map((p: any, i: number) => (
+                        <img key={i} src={flagPath(p?.nationality)} alt="" style={{ width: 22, height: 15, borderRadius: 2, objectFit: 'cover' }}/>
+                      ))}
+                    </div>
+                  ) : (
+                    <img src={flagPath(players[0]?.nationality)} alt="" style={{ width: 28, height: 19, borderRadius: 2, objectFit: 'cover', flex: 'none' }}/>
+                  )}
+                  <span style={{
+                    fontSize: 18, fontWeight: 950, fontStyle: 'italic',
+                    letterSpacing: '.04em', textTransform: 'uppercase',
+                    color: BC.white,
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                    textShadow: TS_HARD,
+                  }}>
+                    {teamName(team).toUpperCase()}
+                  </span>
+                  {isServingTeam && (
+                    <span style={{
+                      flex: 'none', width: 12, height: 12, borderRadius: '50%',
+                      background: pal.serve, boxShadow: `0 0 12px ${pal.serve}`,
+                      animation: 'sgSrvPulse 1.4s infinite', marginLeft: 'auto',
+                    }}/>
+                  )}
+                </div>
+
+                {/* Set cells — pill rounded del diseño broadcast */}
+                {sets.map((v, i) => {
+                  const isCurrent = i === currentSetIdx
+                  return (
+                    <div key={i} style={{
+                      gridColumn: 3 + i, gridRow: row,
+                      display: 'grid', placeItems: 'center',
+                      borderLeft: '1px solid rgba(255,255,255,.06)',
+                      borderTop: team === 2 ? '1px solid rgba(255,255,255,.10)' : 'none',
+                      padding: '6px',
+                    }}>
+                      <div style={{
+                        width: 34, height: 34, display: 'grid', placeItems: 'center',
+                        borderRadius: 999,
+                        background: isCurrent
+                          ? hexAlpha(accent, .35)
+                          : v != null ? 'rgba(255,255,255,.10)' : 'transparent',
+                        border: isCurrent
+                          ? `1px solid ${accent}`
+                          : v != null ? '1px solid rgba(255,255,255,.13)' : '1px dashed rgba(255,255,255,.10)',
+                        fontSize: 18, fontWeight: 950,
+                        fontVariantNumeric: 'tabular-nums',
+                        color: v == null ? 'rgba(255,255,255,.30)' : BC.white,
+                        textShadow: TS_HARD,
+                      }}>
+                        {v == null ? '–' : v}
+                      </div>
+                    </div>
+                  )
+                })}
+
+                {/* Point/Ticker cell — pill broadcast con cambio claro a ámbar
+                    si es ESTADÍSTICA en lugar de RESULTADO */}
+                <div style={{
+                  gridColumn: 3 + setCount, gridRow: row,
+                  display: 'grid', placeItems: 'center',
+                  borderLeft: showTicker ? '2px solid #fbbf24' : '1px solid rgba(255,255,255,.06)',
+                  borderTop: team === 2 ? '1px solid rgba(255,255,255,.10)' : 'none',
+                  padding: '6px 8px',
+                  background: showTicker
+                    ? 'linear-gradient(135deg, rgba(251,191,36,.22), rgba(251,191,36,.06))'
+                    : 'transparent',
+                }}>
+                  <div style={{
+                    minWidth: 50, height: 34, padding: '0 12px',
+                    display: 'grid', placeItems: 'center',
+                    borderRadius: 999,
+                    background: showTicker
+                      ? 'rgba(251,191,36,.92)'
+                      : tbActive ? '#fbbf24' : accent,
+                    color: showTicker ? '#1f1200' : tbActive ? '#1f1200' : '#fff',
+                    fontSize: 20, fontWeight: 950,
+                    fontVariantNumeric: 'tabular-nums',
+                    textShadow: showTicker || tbActive ? 'none' : TS_HARD,
+                    fontStyle: 'italic',
+                    letterSpacing: '-.01em',
+                  }}>
+                    {showTicker ? tickerVal : pt}
+                  </div>
+                </div>
+              </React.Fragment>
+            )
+          })}
+        </div>
+
+        {/* Stat label pill — solo cuando ticker activo, claramente "ESTADÍSTICA" */}
+        {showTicker && (
+          <div style={{
+            padding: '7px 16px',
+            background: 'rgba(251,191,36,.16)',
+            borderTop: '1px solid rgba(251,191,36,.45)',
+            display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 10,
+          }}>
+            <span style={{
+              fontSize: 9, fontWeight: 950, color: '#fbbf24',
+              letterSpacing: '.32em', textTransform: 'uppercase',
+              textShadow: TS_HARD,
+            }}>
+              ESTADÍSTICA
+            </span>
+            <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#fbbf24' }}/>
+            <span style={{
+              fontSize: 12, fontWeight: 800, color: BC.white,
+              letterSpacing: '.16em', textTransform: 'uppercase', fontStyle: 'italic',
+              textShadow: TS_HARD,
+            }}>
+              {tickerLabel}
+            </span>
+          </div>
         )}
       </div>
 
-      {/* Body — 2 filas de equipo */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: gridCols,
-        gridTemplateRows: '46px 46px',
-        position: 'relative', zIndex: 2,
-      }}>
-        {[1, 2].map(tn => {
-          const team = tn as 1|2
-          const accent = teamAccent(team)
-          const players = teamPlayers(team)
-          const sets = setsFor(score, team).slice(0, setCount)
-          const pt = gamePoint(score, team)
-          const isServingTeam = serving === team
-          const row = team
-          const tickerVal = showTicker ? statValue(match.stats, tickerStat!, team) : null
-
-          return (
-            <React.Fragment key={team}>
-              {/* Accent stripe del equipo a la IZQUIERDA */}
-              <div style={{
-                gridColumn: 1, gridRow: row,
-                background: accent,
-                boxShadow: `inset 0 0 8px ${hexAlpha(accent,.6)}`,
-              }}/>
-
-              {/* Nombre + bandera + serve */}
-              <div style={{
-                gridColumn: 2, gridRow: row,
-                padding: '0 14px 0 12px',
-                display: 'flex', alignItems: 'center', gap: 10,
-                borderTop: team === 2 ? '1px solid rgba(255,255,255,.10)' : 'none',
-                background: isServingTeam ? hexAlpha(accent, .10) : 'transparent',
-                minWidth: 0,
-              }}>
-                {isDoubles ? (
-                  <div style={{ display: 'flex', gap: 3, flex: 'none' }}>
-                    {players.map((p:any, i:number) => (
-                      <img key={i} src={flagPath(p?.nationality)} alt="" style={{ width: 22, height: 15, borderRadius: 2, objectFit: 'cover' }}/>
-                    ))}
-                  </div>
-                ) : (
-                  <img src={flagPath(players[0]?.nationality)} alt="" style={{ width: 28, height: 19, borderRadius: 2, objectFit: 'cover', flex: 'none' }}/>
-                )}
-                <span style={{
-                  fontSize: 18, fontWeight: 950, fontStyle: 'italic',
-                  letterSpacing: '.04em', textTransform: 'uppercase',
-                  color: BC.white,
-                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                  textShadow: TS_HARD,
-                }}>
-                  {teamName(team).toUpperCase()}
-                </span>
-                {isServingTeam && (
-                  <span style={{
-                    flex: 'none', width: 12, height: 12, borderRadius: '50%',
-                    background: pal.serve, boxShadow: `0 0 12px ${pal.serve}`,
-                    animation: 'sgSrvPulse 1.4s infinite', marginLeft: 'auto',
-                  }}/>
-                )}
-              </div>
-
-              {/* Set cells — UNO POR SET JUGADO */}
-              {sets.map((v, i) => {
-                const isCurrent = i === currentSetIdx
-                return (
-                  <div key={i} style={{
-                    gridColumn: 3 + i, gridRow: row,
-                    display: 'grid', placeItems: 'center',
-                    fontSize: 22, fontWeight: 900,
-                    fontVariantNumeric: 'tabular-nums',
-                    color: v == null ? 'rgba(255,255,255,.30)' : BC.white,
-                    textShadow: TS_HARD,
-                    background: isCurrent ? hexAlpha(accent, .22) : 'rgba(0,0,0,.20)',
-                    borderLeft: '1px solid rgba(255,255,255,.06)',
-                    borderTop: team === 2 ? '1px solid rgba(255,255,255,.10)' : 'none',
-                  }}>
-                    {v == null ? '–' : v}
-                  </div>
-                )
-              })}
-
-              {/* Point/Ticker cell — VISUALMENTE DISTINTO cuando es ticker */}
-              <div style={{
-                gridColumn: 3 + setCount, gridRow: row,
-                display: 'grid', placeItems: 'center',
-                fontSize: 24, fontWeight: 950,
-                fontVariantNumeric: 'tabular-nums',
-                color: showTicker ? '#fbbf24' : BC.white,  // ámbar cuando es STAT
-                background: showTicker
-                  ? `linear-gradient(135deg, rgba(251,191,36,.22) 0%, rgba(251,191,36,.08) 100%)`
-                  : tbActive
-                    ? hexAlpha('#fbbf24', .35)
-                    : hexAlpha(accent, .85),
-                borderLeft: showTicker
-                  ? '2px solid #fbbf24'
-                  : '1px solid rgba(255,255,255,.06)',
-                borderTop: team === 2 ? '1px solid rgba(255,255,255,.10)' : 'none',
-                textShadow: TS_HARD,
-              }}>
-                {showTicker ? tickerVal : pt}
-              </div>
-            </React.Fragment>
-          )
-        })}
-      </div>
-
-      {/* Stat ticker label — pill ámbar muy visible al pie cuando esta activo */}
-      {showTicker && (
-        <div style={{
-          padding: '6px 16px',
-          background: 'rgba(251,191,36,.18)',
-          borderTop: '1px solid rgba(251,191,36,.45)',
-          display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8,
-          position: 'relative', zIndex: 2,
-        }}>
-          <span style={{
-            fontSize: 9, fontWeight: 950, color: '#fbbf24',
-            letterSpacing: '.32em', textTransform: 'uppercase',
-            textShadow: TS_HARD,
-          }}>
-            ESTADÍSTICA
-          </span>
-          <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#fbbf24' }}/>
-          <span style={{
-            fontSize: 11, fontWeight: 800, color: BC.white,
-            letterSpacing: '.16em', textTransform: 'uppercase',
-            textShadow: TS_HARD,
-          }}>
-            {tickerLabel}
-          </span>
-        </div>
-      )}
+      {/* Doble accent al pie — firma visual del skin broadcast */}
+      <Accents/>
     </div>
   )
 }
