@@ -38,12 +38,15 @@ export interface Sponsor {
 export interface ScoreboardConfig {
   layout: 'horizontal_full' | 'vertical' | 'minimal' | 'stats_panel'
   /** Skin de los gráficos de overlay para vMix.
-   *  - 'classic' : BTTMS / Vinteon (rojo, glassy, sombras fuertes)
-   *  - 'tour'    : WTA broadcast (compacto, navy plano, tabs accent)
-   *  - 'pacific' : Sunset beach (gradientes turquesa/coral, formas organicas,
-   *               tipografia ligera, transparencias suaves, premium minimalista)
+   *  - 'classic'   : BTTMS / Vinteon (rojo, glassy, sombras fuertes)
+   *  - 'tour'      : WTA broadcast (compacto, navy plano, tabs accent)
+   *  - 'pacific'   : Sunset beach (gradientes turquesa/coral, formas organicas,
+   *                  tipografia ligera, transparencias suaves)
+   *  - 'broadcast' : Live TV broadcast (cards skewed -8deg, sheen sweep,
+   *                  pill cells, italic uppercase, dual cyan+coral accents,
+   *                  speed lines decorativas, vibe deportivo dinamico)
    *  Afecta a TODOS los gráficos del overlay. */
-  graphics_style?: 'classic' | 'tour' | 'pacific'
+  graphics_style?: 'classic' | 'tour' | 'pacific' | 'broadcast'
   /** Overrides puntuales de tamaños para que el director ajuste sin tocar
    *  código. Cada componente lee aquí valores opcionales y aplica el default
    *  si no existen. Editable desde /dashboard/graphics-editor. */

@@ -63,6 +63,19 @@ export const STREAM_KEYFRAMES = `
 /* Digit pop-in — usado al cambiar puntos/sets para darle vida */
 @keyframes sgDigitIn  { from{opacity:0;transform:translateY(-16px) scale(.85);filter:blur(4px)} to{opacity:1;transform:none;filter:blur(0)} }
 @keyframes sgDigitUp  { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:none} }
+/* Broadcast skin — sheen sweep across cards every 5.2s + speed lines */
+@keyframes bcSheen    { 0%,58%{transform:translateX(-125%)} 86%,100%{transform:translateX(125%)} }
+@keyframes bcStreak   { from{transform:translateX(-25vw) rotate(-13deg)} to{transform:translateX(160vw) rotate(-13deg)} }
+@keyframes bcServePulse { 0%,100%{transform:scale(.75);opacity:.55} 50%{transform:scale(1.35);opacity:1} }
+@keyframes bcSunSpin  { to{transform:rotate(360deg)} }
+@keyframes bcInLeftSkew  { from{opacity:0;transform:translateX(-34px) skewX(-8deg)} to{opacity:1;transform:skewX(-8deg)} }
+@keyframes bcOutLeftSkew { from{opacity:1;transform:skewX(-8deg)} to{opacity:0;transform:translateX(-34px) skewX(-8deg)} }
+@keyframes bcInRightSkew  { from{opacity:0;transform:translateX(34px) skewX(-8deg)} to{opacity:1;transform:skewX(-8deg)} }
+@keyframes bcOutRightSkew { from{opacity:1;transform:skewX(-8deg)} to{opacity:0;transform:translateX(34px) skewX(-8deg)} }
+@keyframes bcInUpSkew    { from{opacity:0;transform:translate(-50%,38px) skewX(-10deg)} to{opacity:1;transform:translate(-50%,0) skewX(-10deg)} }
+@keyframes bcOutUpSkew   { from{opacity:1;transform:translate(-50%,0) skewX(-10deg)} to{opacity:0;transform:translate(-50%,38px) skewX(-10deg)} }
+@keyframes bcInZoomSkew  { from{opacity:0;transform:translate(-50%,-50%) scale(.96) skewX(-8deg)} to{opacity:1;transform:translate(-50%,-50%) scale(1) skewX(-8deg)} }
+@keyframes bcOutZoomSkew { from{opacity:1;transform:translate(-50%,-50%) scale(1) skewX(-8deg)} to{opacity:0;transform:translate(-50%,-50%) scale(.96) skewX(-8deg)} }
 `
 
 /** Build an animation style using explicit enter/exit keyframes.

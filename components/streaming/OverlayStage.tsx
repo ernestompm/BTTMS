@@ -33,6 +33,12 @@ import {
   RefereeLowerThirdPacific, StatsPanelPacific, ResultsGridPacific, BracketViewPacific,
   CoinTossPacific, AwardsPodiumPacific,
 } from './graphics-pacific'
+import {
+  ScorebugBroadcast, BigScoreboardBroadcast, WeatherBroadcast,
+  TournamentIntroBroadcast, VenueCardBroadcast, MatchPresentationBroadcast, PlayerBioBroadcast,
+  RefereeLowerThirdBroadcast, StatsPanelBroadcast, ResultsGridBroadcast, BracketViewBroadcast,
+  CoinTossBroadcast, AwardsPodiumBroadcast,
+} from './graphics-broadcast'
 import { deriveLiveFlag } from '@/lib/streaming/flags'
 
 // ─── StageCanvas ────────────────────────────────────────────────────────────
@@ -77,66 +83,79 @@ export function StageCanvas({ match, tournament, allMatches, referee, mainSponso
   const awardsData = (d('awards_podium') as any) ?? null
   const tickerActive = v('stats_ticker')
   const tickerStat = tickerActive ? ((d('stats_ticker') as any)?.stat ?? 'aces') : null
-  // Skin selector — tournament.scoreboard_config.graphics_style ('classic' | 'tour' | 'pacific')
-  const skin: 'classic' | 'tour' | 'pacific' = (tournament?.scoreboard_config?.graphics_style ?? 'classic')
+  // Skin selector — 'classic' | 'tour' | 'pacific' | 'broadcast'
+  const skin: 'classic' | 'tour' | 'pacific' | 'broadcast' = (tournament?.scoreboard_config?.graphics_style ?? 'classic')
 
   // Helper: enruta cada grafico al render adecuado segun el skin
   // (classic / tour / pacific). Asi el switch de skin afecta a TODOS.
   return (
     <>
       <Presence show={v('tournament_intro')}    exitMs={700}>{(vis) =>
-        skin === 'pacific' ? <TournamentIntroPacific visible={vis} tournament={tournament}/>
-        : skin === 'tour'  ? <TournamentIntroTour    visible={vis} tournament={tournament}/>
-                           : <TournamentIntro       visible={vis} tournament={tournament}/> }</Presence>
+        skin === 'broadcast' ? <TournamentIntroBroadcast visible={vis} tournament={tournament}/>
+        : skin === 'pacific' ? <TournamentIntroPacific   visible={vis} tournament={tournament}/>
+        : skin === 'tour'    ? <TournamentIntroTour      visible={vis} tournament={tournament}/>
+                             : <TournamentIntro         visible={vis} tournament={tournament}/> }</Presence>
       <Presence show={v('venue_card')}          exitMs={650}>{(vis) =>
-        skin === 'pacific' ? <VenueCardPacific visible={vis} tournament={tournament}/>
-        : skin === 'tour'  ? <VenueCardTour    visible={vis} tournament={tournament}/>
-                           : <VenueCard       visible={vis} tournament={tournament}/> }</Presence>
+        skin === 'broadcast' ? <VenueCardBroadcast visible={vis} tournament={tournament}/>
+        : skin === 'pacific' ? <VenueCardPacific   visible={vis} tournament={tournament}/>
+        : skin === 'tour'    ? <VenueCardTour      visible={vis} tournament={tournament}/>
+                             : <VenueCard         visible={vis} tournament={tournament}/> }</Presence>
       <Presence show={v('match_presentation')}  exitMs={750}>{(vis) =>
-        skin === 'pacific' ? <MatchPresentationPacific visible={vis} match={match} tournament={tournament}/>
-        : skin === 'tour'  ? <MatchPresentationTour    visible={vis} match={match} tournament={tournament}/>
-                           : <MatchPresentation       visible={vis} match={match} tournament={tournament}/> }</Presence>
+        skin === 'broadcast' ? <MatchPresentationBroadcast visible={vis} match={match} tournament={tournament}/>
+        : skin === 'pacific' ? <MatchPresentationPacific   visible={vis} match={match} tournament={tournament}/>
+        : skin === 'tour'    ? <MatchPresentationTour      visible={vis} match={match} tournament={tournament}/>
+                             : <MatchPresentation         visible={vis} match={match} tournament={tournament}/> }</Presence>
       <Presence show={v('results_grid')}        exitMs={700}>{(vis) =>
-        skin === 'pacific' ? <ResultsGridPacific visible={vis} matches={allMatches} highlightMatchId={match.id} tournament={tournament} category={resultsCat}/>
-        : skin === 'tour'  ? <ResultsGridTour    visible={vis} matches={allMatches} highlightMatchId={match.id} tournament={tournament} category={resultsCat}/>
-                           : <ResultsGrid       visible={vis} matches={allMatches} highlightMatchId={match.id} tournament={tournament} category={resultsCat}/> }</Presence>
+        skin === 'broadcast' ? <ResultsGridBroadcast visible={vis} matches={allMatches} highlightMatchId={match.id} tournament={tournament} category={resultsCat}/>
+        : skin === 'pacific' ? <ResultsGridPacific   visible={vis} matches={allMatches} highlightMatchId={match.id} tournament={tournament} category={resultsCat}/>
+        : skin === 'tour'    ? <ResultsGridTour      visible={vis} matches={allMatches} highlightMatchId={match.id} tournament={tournament} category={resultsCat}/>
+                             : <ResultsGrid         visible={vis} matches={allMatches} highlightMatchId={match.id} tournament={tournament} category={resultsCat}/> }</Presence>
       <Presence show={v('bracket')}             exitMs={700}>{(vis) =>
-        skin === 'pacific' ? <BracketViewPacific visible={vis} matches={allMatches} highlightMatchId={match.id} tournament={tournament} category={bracketCat}/>
-        : skin === 'tour'  ? <BracketViewTour    visible={vis} matches={allMatches} highlightMatchId={match.id} tournament={tournament} category={bracketCat}/>
-                           : <BracketView       visible={vis} matches={allMatches} highlightMatchId={match.id} tournament={tournament} category={bracketCat}/> }</Presence>
+        skin === 'broadcast' ? <BracketViewBroadcast visible={vis} matches={allMatches} highlightMatchId={match.id} tournament={tournament} category={bracketCat}/>
+        : skin === 'pacific' ? <BracketViewPacific   visible={vis} matches={allMatches} highlightMatchId={match.id} tournament={tournament} category={bracketCat}/>
+        : skin === 'tour'    ? <BracketViewTour      visible={vis} matches={allMatches} highlightMatchId={match.id} tournament={tournament} category={bracketCat}/>
+                             : <BracketView         visible={vis} matches={allMatches} highlightMatchId={match.id} tournament={tournament} category={bracketCat}/> }</Presence>
       <Presence show={v('coin_toss')}           exitMs={700}>{(vis) =>
-        skin === 'pacific' ? <CoinTossPacific visible={vis} match={match} tournament={tournament}/>
-        : skin === 'tour'  ? <CoinTossTour    visible={vis} match={match} tournament={tournament}/>
-                           : <CoinToss       visible={vis} match={match} tournament={tournament}/> }</Presence>
+        skin === 'broadcast' ? <CoinTossBroadcast visible={vis} match={match} tournament={tournament}/>
+        : skin === 'pacific' ? <CoinTossPacific   visible={vis} match={match} tournament={tournament}/>
+        : skin === 'tour'    ? <CoinTossTour      visible={vis} match={match} tournament={tournament}/>
+                             : <CoinToss         visible={vis} match={match} tournament={tournament}/> }</Presence>
       <Presence show={v('stats_panel')}         exitMs={700}>{(vis) =>
-        skin === 'pacific' ? <StatsPanelPacific visible={vis} match={match} tournament={tournament} scope={statsScope}/>
-        : skin === 'tour'  ? <StatsPanelTour    visible={vis} match={match} tournament={tournament} scope={statsScope}/>
-                           : <StatsPanel       visible={vis} match={match} tournament={tournament} scope={statsScope}/> }</Presence>
+        skin === 'broadcast' ? <StatsPanelBroadcast visible={vis} match={match} tournament={tournament} scope={statsScope}/>
+        : skin === 'pacific' ? <StatsPanelPacific   visible={vis} match={match} tournament={tournament} scope={statsScope}/>
+        : skin === 'tour'    ? <StatsPanelTour      visible={vis} match={match} tournament={tournament} scope={statsScope}/>
+                             : <StatsPanel         visible={vis} match={match} tournament={tournament} scope={statsScope}/> }</Presence>
       <Presence show={v('player_bio') && !!bioPlayer} exitMs={700}>{(vis) =>
-        skin === 'pacific' ? <PlayerBioPacific visible={vis} player={bioPlayer!} team={bioTeam} category={match.category} tournament={tournament}/>
-        : skin === 'tour'  ? <PlayerBioTour    visible={vis} player={bioPlayer!} team={bioTeam} category={match.category} tournament={tournament}/>
-                           : <PlayerBio       visible={vis} player={bioPlayer!} team={bioTeam} category={match.category} tournament={tournament}/> }</Presence>
+        skin === 'broadcast' ? <PlayerBioBroadcast visible={vis} player={bioPlayer!} team={bioTeam} category={match.category} tournament={tournament}/>
+        : skin === 'pacific' ? <PlayerBioPacific   visible={vis} player={bioPlayer!} team={bioTeam} category={match.category} tournament={tournament}/>
+        : skin === 'tour'    ? <PlayerBioTour      visible={vis} player={bioPlayer!} team={bioTeam} category={match.category} tournament={tournament}/>
+                             : <PlayerBio         visible={vis} player={bioPlayer!} team={bioTeam} category={match.category} tournament={tournament}/> }</Presence>
       <Presence show={v('weather')}             exitMs={650}>{(vis) =>
-        skin === 'pacific' ? <WeatherPacific  visible={vis} weather={weather} tournament={tournament}/>
-        : skin === 'tour'  ? <WeatherBarTour  visible={vis} weather={weather} tournament={tournament}/>
-                           : <WeatherCard    visible={vis} weather={weather} tournament={tournament}/> }</Presence>
+        skin === 'broadcast' ? <WeatherBroadcast visible={vis} weather={weather} tournament={tournament}/>
+        : skin === 'pacific' ? <WeatherPacific   visible={vis} weather={weather} tournament={tournament}/>
+        : skin === 'tour'    ? <WeatherBarTour   visible={vis} weather={weather} tournament={tournament}/>
+                             : <WeatherCard     visible={vis} weather={weather} tournament={tournament}/> }</Presence>
       <Presence show={v('big_scoreboard')}      exitMs={700}>{(vis) =>
-        skin === 'pacific' ? <BigScoreboardPacific visible={vis} match={match} tournament={tournament} sponsor={mainSponsor} opts={bigScoreOpts}/>
-        : skin === 'tour'  ? <BigScoreboardTour    visible={vis} match={match} tournament={tournament} sponsor={mainSponsor} opts={bigScoreOpts}/>
-                           : <BigScoreboard       visible={vis} match={match} tournament={tournament} sponsor={mainSponsor} opts={bigScoreOpts}/> }</Presence>
+        skin === 'broadcast' ? <BigScoreboardBroadcast visible={vis} match={match} tournament={tournament} sponsor={mainSponsor} opts={bigScoreOpts}/>
+        : skin === 'pacific' ? <BigScoreboardPacific   visible={vis} match={match} tournament={tournament} sponsor={mainSponsor} opts={bigScoreOpts}/>
+        : skin === 'tour'    ? <BigScoreboardTour      visible={vis} match={match} tournament={tournament} sponsor={mainSponsor} opts={bigScoreOpts}/>
+                             : <BigScoreboard         visible={vis} match={match} tournament={tournament} sponsor={mainSponsor} opts={bigScoreOpts}/> }</Presence>
       <Presence show={v('awards_podium') && !!awardsData} exitMs={750}>{(vis) =>
-        skin === 'pacific' ? <AwardsPodiumPacific visible={vis} data={awardsData} tournament={tournament}/>
-        : skin === 'tour'  ? <AwardsPodiumTour    visible={vis} data={awardsData} tournament={tournament}/>
-                           : <AwardsPodium       visible={vis} data={awardsData} tournament={tournament}/> }</Presence>
+        skin === 'broadcast' ? <AwardsPodiumBroadcast visible={vis} data={awardsData} tournament={tournament}/>
+        : skin === 'pacific' ? <AwardsPodiumPacific   visible={vis} data={awardsData} tournament={tournament}/>
+        : skin === 'tour'    ? <AwardsPodiumTour      visible={vis} data={awardsData} tournament={tournament}/>
+                             : <AwardsPodium         visible={vis} data={awardsData} tournament={tournament}/> }</Presence>
       {/* stats_ticker se integra en el Scorebug. */}
       <Presence show={v('referee_lower_third')} exitMs={700}>{(vis) =>
-        skin === 'pacific' ? <RefereeLowerThirdPacific visible={vis} referee={referee} tournament={tournament}/>
-        : skin === 'tour'  ? <RefereeLowerThirdTour    visible={vis} referee={referee} tournament={tournament}/>
-                           : <RefereeLowerThird       visible={vis} referee={referee} tournament={tournament}/> }</Presence>
+        skin === 'broadcast' ? <RefereeLowerThirdBroadcast visible={vis} referee={referee} tournament={tournament}/>
+        : skin === 'pacific' ? <RefereeLowerThirdPacific   visible={vis} referee={referee} tournament={tournament}/>
+        : skin === 'tour'    ? <RefereeLowerThirdTour      visible={vis} referee={referee} tournament={tournament}/>
+                             : <RefereeLowerThird         visible={vis} referee={referee} tournament={tournament}/> }</Presence>
       <Presence show={v('scorebug')}            exitMs={500}>{(vis) =>
-        skin === 'pacific' ? <ScorebugPacific visible={vis} match={match} tournament={tournament} tickerStat={tickerStat}/>
-        : skin === 'tour'  ? <ScorebugTour    visible={vis} match={match} tournament={tournament} tickerStat={tickerStat}/>
-                           : <Scorebug       visible={vis} match={match} tournament={tournament} flag={flag} tickerStat={tickerStat}/> }</Presence>
+        skin === 'broadcast' ? <ScorebugBroadcast visible={vis} match={match} tournament={tournament} tickerStat={tickerStat}/>
+        : skin === 'pacific' ? <ScorebugPacific   visible={vis} match={match} tournament={tournament} tickerStat={tickerStat}/>
+        : skin === 'tour'    ? <ScorebugTour      visible={vis} match={match} tournament={tournament} tickerStat={tickerStat}/>
+                             : <Scorebug         visible={vis} match={match} tournament={tournament} flag={flag} tickerStat={tickerStat}/> }</Presence>
     </>
   )
 }
