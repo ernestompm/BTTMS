@@ -17,8 +17,16 @@ interface Props {
   pointLog: any[]
 }
 
+const PROVIDER_LABEL: Record<string, string> = {
+  gemini: '✨ Gemini · gratis',
+  groq: '⚡ Groq · gratis',
+  mistral: '🌬 Mistral · gratis',
+  anthropic: '💎 Claude · de pago',
+}
+
 export function CommentatorAIPanel({ match, tournament, previousMatches, pointLog }: Props) {
   const [suggestions, setSuggestions] = useState<string[]>([])
+  const [provider, setProvider] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [tone, setTone] = useState<'analytical' | 'colorful' | 'historical' | 'tactical'>('analytical')
@@ -34,6 +42,7 @@ export function CommentatorAIPanel({ match, tournament, previousMatches, pointLo
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Error desconocido')
       setSuggestions(data.suggestions ?? [])
+      setProvider(data.provider ?? null)
     } catch (e: any) {
       setError(e.message ?? String(e))
     } finally {
@@ -50,7 +59,9 @@ export function CommentatorAIPanel({ match, tournament, previousMatches, pointLo
       <div className="px-5 py-3 border-b border-purple-900/40 flex items-center justify-between flex-wrap gap-3">
         <h2 className="text-sm font-bold text-white flex items-center gap-2">
           🤖 Sugerencias de comentario
-          <span className="text-[10px] font-normal text-purple-300/70 uppercase tracking-widest">IA · Claude</span>
+          <span className="text-[10px] font-normal text-purple-300/70 uppercase tracking-widest">
+            {provider ? `IA · ${PROVIDER_LABEL[provider] ?? provider}` : 'IA'}
+          </span>
         </h2>
         <div className="flex items-center gap-2">
           <select
@@ -73,13 +84,8 @@ export function CommentatorAIPanel({ match, tournament, previousMatches, pointLo
 
       <div className="p-5">
         {error && (
-          <div className="mb-3 bg-red-900/30 border border-red-700 rounded-xl px-4 py-3 text-red-300 text-sm">
+          <div className="mb-3 bg-red-900/30 border border-red-700 rounded-xl px-4 py-3 text-red-300 text-sm whitespace-pre-line">
             ✗ {error}
-            {error.toLowerCase().includes('api key') && (
-              <p className="mt-2 text-xs text-red-400">
-                Configura <code className="bg-red-950 px-1 rounded">ANTHROPIC_API_KEY</code> en las variables de entorno de Vercel para activar las sugerencias de IA.
-              </p>
-            )}
           </div>
         )}
 

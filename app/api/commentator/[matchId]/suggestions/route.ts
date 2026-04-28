@@ -1,24 +1,24 @@
 // ============================================================================
 // POST /api/commentator/[matchId]/suggestions
 // ============================================================================
-// Genera 5 sugerencias de comentario para el partido actual usando Claude.
-// Auth: cualquier usuario logado (los comentaristas tambien).
+// Genera 5 sugerencias de comentario usando un proveedor de IA. Soporta:
+//   - Google Gemini (GRATIS, 1500 req/dia) — set GOOGLE_AI_API_KEY
+//   - Groq (GRATIS, 30 req/min, Llama 3.3) — set GROQ_API_KEY
+//   - Mistral (GRATIS limitado) — set MISTRAL_API_KEY
+//   - Anthropic Claude (de pago, calidad alta) — set ANTHROPIC_API_KEY
+//
+// Prioridad: la primera key que encuentre. Asi puedes empezar gratis y
+// pasarte a Claude cuando quieras. Sin ninguna key → error 503 con
+// instrucciones claras.
 //
 // Request body:
-//   { tone: 'analytical' | 'colorful' | 'historical' | 'tactical',
-//     previousMatches: [...], pointLog: [...] }
-//
+//   { tone, previousMatches, pointLog }
 // Response:
-//   { suggestions: string[] }
-//
-// Requiere ANTHROPIC_API_KEY en env. Sin la key devuelve error 503.
+//   { suggestions: string[], provider: 'gemini'|'groq'|'mistral'|'anthropic' }
 // ============================================================================
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabase, createServiceSupabase } from '@/lib/supabase-server'
-
-const MODEL = process.env.ANTHROPIC_MODEL ?? 'claude-3-5-sonnet-latest'
-const API_URL = 'https://api.anthropic.com/v1/messages'
 
 const TONE_INSTRUCTIONS: Record<string, string> = {
   analytical: 'Tono ANALÍTICO: bésate en porcentajes, conteos, eficacia. Cita datos concretos del partido.',
@@ -27,16 +27,30 @@ const TONE_INSTRUCTIONS: Record<string, string> = {
   tactical: 'Tono TÁCTICO: estrategia, lectura del juego, fortalezas/debilidades observadas en los puntos.',
 }
 
+// Detectar proveedor disponible (en orden de preferencia: gratis primero)
+function pickProvider() {
+  if (process.env.GOOGLE_AI_API_KEY) return { name: 'gemini' as const, key: process.env.GOOGLE_AI_API_KEY }
+  if (process.env.GEMINI_API_KEY) return { name: 'gemini' as const, key: process.env.GEMINI_API_KEY }
+  if (process.env.GROQ_API_KEY) return { name: 'groq' as const, key: process.env.GROQ_API_KEY }
+  if (process.env.MISTRAL_API_KEY) return { name: 'mistral' as const, key: process.env.MISTRAL_API_KEY }
+  if (process.env.ANTHROPIC_API_KEY) return { name: 'anthropic' as const, key: process.env.ANTHROPIC_API_KEY }
+  return null
+}
+
 export async function POST(req: NextRequest, { params }: { params: Promise<{ matchId: string }> }) {
   const { matchId } = await params
   const supabase = await createServerSupabase()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) {
+  const provider = pickProvider()
+  if (!provider) {
     return NextResponse.json({
-      error: 'ANTHROPIC_API_KEY no está configurada en el entorno. Ve a Vercel > Settings > Environment Variables y añade la clave para activar las sugerencias de IA.',
+      error: 'No hay ningún proveedor de IA configurado. En Vercel > Settings > Environment Variables, añade UNA de estas keys:\n' +
+        '• GOOGLE_AI_API_KEY (GRATIS, 1500 req/día) — https://aistudio.google.com/apikey\n' +
+        '• GROQ_API_KEY (GRATIS, 30 req/min) — https://console.groq.com/keys\n' +
+        '• MISTRAL_API_KEY (gratis limitado) — https://console.mistral.ai/api-keys\n' +
+        '• ANTHROPIC_API_KEY (de pago, calidad alta) — https://console.anthropic.com',
     }, { status: 503 })
   }
 
@@ -137,32 +151,109 @@ ${JSON.stringify(ctx, null, 2)}
 Genera ahora las 5 sugerencias en español, numeradas del 1 al 5.`
 
   try {
-    const r = await fetch(API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 1500,
-        temperature: 0.7,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: userPrompt }],
-      }),
-    })
+    let text = ''
 
-    if (!r.ok) {
-      const errText = await r.text()
-      console.error('Anthropic API error:', r.status, errText)
-      return NextResponse.json({
-        error: `Error de la API de Claude (${r.status}): ${errText.slice(0, 200)}`,
-      }, { status: 502 })
+    if (provider.name === 'gemini') {
+      // Google Gemini — gratis 1500 req/dia
+      const model = process.env.GEMINI_MODEL ?? 'gemini-1.5-flash-latest'
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${provider.key}`
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+          generationConfig: { maxOutputTokens: 1500, temperature: 0.7 },
+        }),
+      })
+      if (!r.ok) {
+        const errText = await r.text()
+        console.error('Gemini API error:', r.status, errText)
+        return NextResponse.json({ error: `Error de Gemini (${r.status}): ${errText.slice(0, 200)}` }, { status: 502 })
+      }
+      const data = await r.json()
+      text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
+
+    } else if (provider.name === 'groq') {
+      // Groq — gratis 30 req/min, hostea Llama 3.3
+      const model = process.env.GROQ_MODEL ?? 'llama-3.3-70b-versatile'
+      const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${provider.key}`,
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: 1500,
+          temperature: 0.7,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+        }),
+      })
+      if (!r.ok) {
+        const errText = await r.text()
+        console.error('Groq API error:', r.status, errText)
+        return NextResponse.json({ error: `Error de Groq (${r.status}): ${errText.slice(0, 200)}` }, { status: 502 })
+      }
+      const data = await r.json()
+      text = data?.choices?.[0]?.message?.content ?? ''
+
+    } else if (provider.name === 'mistral') {
+      // Mistral — free tier limitado
+      const model = process.env.MISTRAL_MODEL ?? 'mistral-small-latest'
+      const r = await fetch('https://api.mistral.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${provider.key}`,
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: 1500,
+          temperature: 0.7,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+        }),
+      })
+      if (!r.ok) {
+        const errText = await r.text()
+        console.error('Mistral API error:', r.status, errText)
+        return NextResponse.json({ error: `Error de Mistral (${r.status}): ${errText.slice(0, 200)}` }, { status: 502 })
+      }
+      const data = await r.json()
+      text = data?.choices?.[0]?.message?.content ?? ''
+
+    } else if (provider.name === 'anthropic') {
+      // Claude — de pago, calidad alta
+      const model = process.env.ANTHROPIC_MODEL ?? 'claude-3-5-sonnet-latest'
+      const r = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': provider.key,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: 1500,
+          temperature: 0.7,
+          system: systemPrompt,
+          messages: [{ role: 'user', content: userPrompt }],
+        }),
+      })
+      if (!r.ok) {
+        const errText = await r.text()
+        console.error('Anthropic API error:', r.status, errText)
+        return NextResponse.json({ error: `Error de Claude (${r.status}): ${errText.slice(0, 200)}` }, { status: 502 })
+      }
+      const data = await r.json()
+      text = data?.content?.[0]?.text ?? ''
     }
-
-    const data = await r.json()
-    const text = (data?.content?.[0]?.text ?? '') as string
 
     // Parsear "1. ...\n2. ...\n3. ..." → array de strings
     const suggestions = text
@@ -173,11 +264,10 @@ Genera ahora las 5 sugerencias en español, numeradas del 1 al 5.`
       .filter(Boolean)
 
     if (suggestions.length === 0) {
-      // Fallback: devolver el texto entero como una sola sugerencia
-      return NextResponse.json({ suggestions: [text.trim()].filter(Boolean) })
+      return NextResponse.json({ suggestions: [text.trim()].filter(Boolean), provider: provider.name })
     }
 
-    return NextResponse.json({ suggestions })
+    return NextResponse.json({ suggestions, provider: provider.name })
   } catch (e: any) {
     console.error('AI suggestions error:', e)
     return NextResponse.json({ error: e?.message ?? 'Error inesperado' }, { status: 500 })
