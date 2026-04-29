@@ -24,12 +24,22 @@ const PROVIDER_LABEL: Record<string, string> = {
   anthropic: '💎 Claude · de pago',
 }
 
+const QUICK_PROMPTS = [
+  'Cuéntame sobre los jugadores',
+  'Comenta el cuadro y los próximos rivales',
+  'Habla de las estadísticas más interesantes',
+  'Anécdotas o curiosidades del torneo',
+  'Análisis táctico de los últimos puntos',
+  'Datos sobre rankings y palmarés',
+]
+
 export function CommentatorAIPanel({ match, tournament, previousMatches, pointLog }: Props) {
   const [suggestions, setSuggestions] = useState<string[]>([])
   const [provider, setProvider] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [tone, setTone] = useState<'analytical' | 'colorful' | 'historical' | 'tactical'>('analytical')
+  const [customPrompt, setCustomPrompt] = useState('')
   const [diag, setDiag] = useState<any>(null)
   const [diagLoading, setDiagLoading] = useState(false)
 
@@ -39,7 +49,12 @@ export function CommentatorAIPanel({ match, tournament, previousMatches, pointLo
       const res = await fetch(`/api/commentator/${match.id}/suggestions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tone, previousMatches, pointLog: pointLog.slice(0, 20) }),
+        body: JSON.stringify({
+          tone,
+          customPrompt: customPrompt.trim() || undefined,
+          previousMatches,
+          pointLog: pointLog.slice(0, 20),
+        }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Error desconocido')
@@ -95,6 +110,52 @@ export function CommentatorAIPanel({ match, tournament, previousMatches, pointLo
             {loading ? 'Generando…' : suggestions.length > 0 ? '↻ Regenerar' : '✨ Generar'}
           </button>
         </div>
+      </div>
+
+      {/* Custom prompt input */}
+      <div className="px-5 pt-4 pb-2 border-b border-purple-900/30 space-y-2">
+        <label className="text-[10px] font-bold uppercase tracking-widest text-purple-300/80">
+          ¿Sobre qué quieres que enfoque las sugerencias? <span className="text-gray-500 font-normal normal-case tracking-normal">(opcional)</span>
+        </label>
+        <div className="flex gap-2 items-stretch">
+          <textarea
+            value={customPrompt}
+            onChange={(e) => setCustomPrompt(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault()
+                if (!loading) generate()
+              }
+            }}
+            placeholder="Ej: cuéntame sobre el cuadro · datos curiosos del torneo · habla del saque de Carlos · qué está fallando en el resto del equipo 2…"
+            rows={2}
+            className="flex-1 bg-gray-900/80 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 resize-none focus:outline-none focus:border-purple-500"
+          />
+          {customPrompt && (
+            <button
+              onClick={() => setCustomPrompt('')}
+              title="Vaciar"
+              className="text-gray-500 hover:text-white px-2 self-start py-1 text-xs">
+              ✕
+            </button>
+          )}
+        </div>
+        {/* Quick chip suggestions */}
+        <div className="flex flex-wrap gap-1.5">
+          {QUICK_PROMPTS.map((p) => (
+            <button
+              key={p}
+              onClick={() => setCustomPrompt(p)}
+              className={`text-[10px] px-2.5 py-1 rounded-full border transition-colors ${customPrompt === p
+                ? 'bg-purple-700 border-purple-500 text-white'
+                : 'bg-gray-800/60 border-gray-700 text-gray-400 hover:text-white hover:border-purple-700'}`}>
+              {p}
+            </button>
+          ))}
+        </div>
+        <p className="text-[10px] text-gray-600">
+          💡 Tip: <kbd className="bg-gray-800 px-1 rounded text-gray-400">Ctrl/Cmd + Enter</kbd> en el cuadro de texto para generar
+        </p>
       </div>
 
       <div className="p-5">

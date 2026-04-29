@@ -110,6 +110,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ mat
     body = {}
   }
   const tone = (body?.tone ?? 'analytical') as keyof typeof TONE_INSTRUCTIONS
+  const customPrompt = typeof body?.customPrompt === 'string' ? body.customPrompt.trim().slice(0, 500) : ''
   const previousMatches = Array.isArray(body?.previousMatches) ? body.previousMatches : []
   const pointLog = Array.isArray(body?.pointLog) ? body.pointLog : []
 
@@ -164,11 +165,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ mat
     })),
   }
 
+  // Si el usuario ha pedido un enfoque concreto ("habla de X", "cuéntame
+  // sobre Y") incorporamos ese hint a las reglas. La estructura sigue
+  // siendo 5 frases numeradas para la pantalla, solo cambia el tema.
+  const focusBlock = customPrompt
+    ? `\n- ENFOQUE PEDIDO POR EL COMENTARISTA: "${customPrompt}". Las 5 sugerencias deben girar alrededor de ESTE tema concreto. Si los datos del contexto no soportan el tema, di una variante que se aproxime sin inventar.`
+    : ''
+
   const systemPrompt = `Eres un comentarista experto en tenis playa retransmitiendo en TV. Tu trabajo es ofrecer al comentarista del partido 5 frases CORTAS (entre 1 y 3 frases cada una, máximo 240 caracteres por sugerencia) que pueda decir EN VOZ ALTA durante la retransmisión.
 
 REGLAS ESTRICTAS:
 - Español de España, registro periodístico deportivo natural.
-- ${TONE_INSTRUCTIONS[tone] ?? TONE_INSTRUCTIONS.analytical}
+- ${TONE_INSTRUCTIONS[tone] ?? TONE_INSTRUCTIONS.analytical}${focusBlock}
 - Cada sugerencia es independiente y autónoma — el comentarista la escogerá y soltará en directo.
 - NUNCA inventes datos. Si un dato no aparece en el contexto, NO lo digas.
 - Usa los nombres reales de los jugadores tal como aparecen en el contexto.
@@ -179,10 +187,9 @@ REGLAS ESTRICTAS:
 
   // JSON sin pretty-print para ahorrar tokens
   const ctxJson = JSON.stringify(ctx)
-  const userPrompt = `Contexto del partido (datos en JSON):
-${ctxJson}
-
-Genera ahora las 5 sugerencias en español, numeradas del 1 al 5.`
+  const userPrompt = customPrompt
+    ? `Contexto del partido (JSON):\n${ctxJson}\n\nEnfoque del comentarista: "${customPrompt}"\n\nGenera 5 sugerencias en español sobre ese enfoque, numeradas del 1 al 5.`
+    : `Contexto del partido (datos en JSON):\n${ctxJson}\n\nGenera ahora las 5 sugerencias en español, numeradas del 1 al 5.`
 
   // Log tamaño aproximado del prompt para debug — visible en logs de Vercel
   const approxTokens = Math.round((systemPrompt.length + userPrompt.length) / 4)
