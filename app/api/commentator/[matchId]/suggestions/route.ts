@@ -21,10 +21,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabase, createServiceSupabase } from '@/lib/supabase-server'
 
 const TONE_INSTRUCTIONS: Record<string, string> = {
-  analytical: 'Tono ANALÍTICO: bésate en porcentajes, conteos, eficacia. Cita datos concretos del partido.',
-  colorful: 'Tono COLOR: anécdotas, atmósfera, picadillos divertidos. Lenguaje vivo y cálido.',
-  historical: 'Tono HISTÓRICO: trayectoria de los jugadores, palmarés, antecedentes en este torneo.',
-  tactical: 'Tono TÁCTICO: estrategia, lectura del juego, fortalezas/debilidades observadas en los puntos.',
+  analytical: 'Tono ANALÍTICO: máxima densidad de datos. Cifras concretas (% saque, % resto, aces, breaks, dobles faltas, conteos exactos). Comparativas numéricas entre los dos equipos.',
+  colorful: 'Tono COLOR: anécdotas, atmósfera, picadillos divertidos. Lenguaje vivo y cálido — pero apoyado en datos concretos del jugador (edad, club, federación, palmarés con años) para no caer en lo genérico.',
+  historical: 'Tono HISTÓRICO: trayectoria con AÑOS y nombres de torneos del palmarés, ranking RFET/ITF actual, posición en este torneo (ronda, partidos previos, set scores), y datos del club/federación.',
+  tactical: 'Tono TÁCTICO: estrategia y lectura del juego, anclada en cifras del partido. Cita % al saque, breaks ganados/salvados, errores no forzados, winners. Identifica qué está funcionando y qué no.',
 }
 
 // Compactar un equipo a los datos esenciales para el comentario.
@@ -183,7 +183,27 @@ REGLAS ESTRICTAS:
 - No uses emojis, ni asteriscos, ni markdown.
 - Cada sugerencia debe poder leerse en menos de 8 segundos.
 - Devuelve EXACTAMENTE 5 sugerencias, una por línea, NUMERADAS (1. 2. 3. 4. 5.).
-- No añadas introducción ni cierre, solo las 5 frases numeradas.`
+- No añadas introducción ni cierre, solo las 5 frases numeradas.
+
+CALIDAD DE LAS SUGERENCIAS (CRÍTICO):
+- USA NÚMEROS CONCRETOS del contexto siempre que puedas: aces, dobles faltas, % saque, % resto, breaks ganados/oportunidades, sets ganados, ranking, edad, palmarés con años, etc.
+- Cita estadísticas específicas, no afirmaciones genéricas. Si una stat es relevante en el contexto, MENCIÓNALA con su valor exacto.
+- Datos que casi siempre son útiles: ranking RFET/ITF, aces acumulados, % puntos al saque, breaks, palmarés con año, edad de los jugadores, partidos previos del torneo, club o federación.
+- Cuando hables de un jugador, intenta combinar 2-3 datos suyos para dar contexto rico.
+
+EJEMPLOS de buena vs mala calidad:
+
+❌ MAL (genérico, sin datos):
+   "Carlos está jugando muy bien al saque en este partido"
+   "Pareja española con experiencia en el circuito"
+   "Han tenido un set complicado pero remontaron"
+
+✅ BIEN (con datos concretos):
+   "Carlos García, número 12 del ranking RFET con 28 años, ha clavado 6 aces y un 78% al saque en este primer set"
+   "García y Ruiz, pareja del CT Marbella, llegan a estos cuartos tras eliminar a los terceros cabezas de serie con un 6-3 6-4"
+   "Cámara y Castaño han salvado 3 de 5 break points, pero perdieron el set 6-4 con dos dobles faltas decisivas"
+
+Cuando los datos lo permitan, prefiere SIEMPRE el formato "BIEN" con cifras concretas.`
 
   // JSON sin pretty-print para ahorrar tokens
   const ctxJson = JSON.stringify(ctx)
