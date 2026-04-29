@@ -34,7 +34,7 @@ export async function GET() {
   let pingResult: any = null
   if (activeProvider === 'gemini') {
     const key = process.env.GOOGLE_AI_API_KEY ?? process.env.GEMINI_API_KEY!
-    const model = process.env.GEMINI_MODEL ?? 'gemini-2.5-flash'
+    const model = process.env.GEMINI_MODEL ?? 'gemini-3.1-flash'
     try {
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`, {
         method: 'POST',
