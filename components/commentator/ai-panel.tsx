@@ -25,12 +25,15 @@ const PROVIDER_LABEL: Record<string, string> = {
 }
 
 const QUICK_PROMPTS = [
+  'Introducción del partido con datos del torneo y la sede',
   'Cuéntame sobre los jugadores',
+  'Habla del torneo, edición y patrocinadores',
+  'Datos de la sede y la pista',
   'Comenta el cuadro y los próximos rivales',
-  'Habla de las estadísticas más interesantes',
-  'Anécdotas o curiosidades del torneo',
+  'Estadísticas más interesantes hasta ahora',
+  'Anécdotas y curiosidades del torneo',
   'Análisis táctico de los últimos puntos',
-  'Datos sobre rankings y palmarés',
+  'Rankings RFET/ITF y palmarés',
 ]
 
 export function CommentatorAIPanel({ match, tournament, previousMatches, pointLog }: Props) {

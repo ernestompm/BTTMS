@@ -118,16 +118,44 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ mat
   const service = createServiceSupabase()
   const { data: match } = await service.from('matches')
     .select(`*,
-      court:courts(name),
+      court:courts(*),
       entry1:draw_entries!entry1_id(*, player1:players!player1_id(*), player2:players!player2_id(*)),
       entry2:draw_entries!entry2_id(*, player1:players!player1_id(*), player2:players!player2_id(*))
     `).eq('id', matchId).single()
   if (!match) return NextResponse.json({ error: 'Match not found' }, { status: 404 })
 
+  // Refetch tournament con datos completos (nombre, edicion, fechas, venue,
+  // sponsors). Antes el contexto tenia "Beach Tennis Tournament" hardcodeado
+  // — bug. Ahora la IA tiene acceso al nombre real del torneo, las fechas,
+  // la sede, y el listado de patrocinadores con tier.
+  const { data: tournament } = await service.from('tournaments')
+    .select('*').eq('id', (match as any).tournament_id).single()
+
   // Construir el contexto del partido en formato compacto
   const m = match as any
-  const ctx = {
-    torneo: 'Beach Tennis Tournament',
+  const t = tournament as any
+  const ctx: any = {
+    torneo: t ? {
+      nombre: t.name,
+      edicion: t.edition,
+      fechas: t.start_date && t.end_date
+        ? `${new Date(t.start_date).toLocaleDateString('es-ES', { day: '2-digit', month: 'long' })} – ${new Date(t.end_date).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })}`
+        : null,
+      desde: t.start_date,
+      hasta: t.end_date,
+    } : null,
+    sede: t ? {
+      nombre: t.venue_name,
+      ciudad: t.venue_city,
+      coords: (t.venue_lat && t.venue_lng) ? { lat: t.venue_lat, lng: t.venue_lng } : undefined,
+    } : null,
+    patrocinadores: Array.isArray(t?.sponsors) && t.sponsors.length > 0
+      ? t.sponsors.map((s: any) => ({
+          nombre: s.name,
+          tier: s.tier || null,
+          es_principal: !!s.is_main,
+        }))
+      : null,
     ronda: m.round,
     modalidad: m.match_type,
     categoria: m.category,
@@ -164,6 +192,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ mat
       sets: pm.score?.sets,
     })),
   }
+  // Eliminar campos null/undefined del contexto top-level para limpiar JSON
+  Object.keys(ctx).forEach(k => { if (ctx[k] == null) delete ctx[k] })
 
   // Si el usuario ha pedido un enfoque concreto ("habla de X", "cuéntame
   // sobre Y") incorporamos ese hint a las reglas. La estructura sigue
@@ -191,6 +221,13 @@ CALIDAD DE LAS SUGERENCIAS (CRÍTICO):
 - Datos que casi siempre son útiles: ranking RFET/ITF, aces acumulados, % puntos al saque, breaks, palmarés con año, edad de los jugadores, partidos previos del torneo, club o federación.
 - Cuando hables de un jugador, intenta combinar 2-3 datos suyos para dar contexto rico.
 
+INFORMACIÓN DEL TORNEO Y SEDE (úsala cuando aporte contexto):
+- El campo "torneo.nombre" contiene el nombre EXACTO del campeonato. NUNCA inventes nombres de torneos.
+- "torneo.edicion" es el número de edición. Cítalo cuando sea relevante (ej. "XXIV Campeonato de España...").
+- "torneo.fechas" es el rango de fechas oficiales (ej. "12 de junio – 18 de junio de 2026").
+- "sede.nombre" y "sede.ciudad" son los datos REALES del lugar. Cítalos para introducir el partido o entre puntos.
+- "patrocinadores" lista a los sponsors del torneo. El campo "es_principal: true" identifica al patrocinador principal. Puedes mencionarlos en sugerencias tipo "presented by", "este torneo cuenta con el respaldo de…" o como crédito puntual.
+
 EJEMPLOS de buena vs mala calidad:
 
 ❌ MAL (genérico, sin datos):
@@ -203,7 +240,12 @@ EJEMPLOS de buena vs mala calidad:
    "García y Ruiz, pareja del CT Marbella, llegan a estos cuartos tras eliminar a los terceros cabezas de serie con un 6-3 6-4"
    "Cámara y Castaño han salvado 3 de 5 break points, pero perdieron el set 6-4 con dos dobles faltas decisivas"
 
-Cuando los datos lo permitan, prefiere SIEMPRE el formato "BIEN" con cifras concretas.`
+✅ EJEMPLOS con torneo / sede / sponsors:
+   "Estamos en la pista central del Club de Mar de Las Palmas, sede oficial del XXIV Campeonato de España de Tenis Playa, del 12 al 18 de junio."
+   "El torneo, patrocinado oficialmente por Atlantic Air, encara la jornada decisiva tras tres días de competición intensa."
+   "García y Ruiz buscan revalidar el título conquistado el año pasado en este mismo Club de Mar."
+
+Cuando los datos lo permitan, prefiere SIEMPRE el formato "BIEN" con cifras concretas. Si el comentarista pide datos del torneo, sede o sponsors, úsalos sin reservas.`
 
   // JSON sin pretty-print para ahorrar tokens
   const ctxJson = JSON.stringify(ctx)
