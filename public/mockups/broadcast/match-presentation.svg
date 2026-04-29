@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Match Presentation · skin Broadcast
+  Dimensiones: 1010 x 540 px
+  Posición: centrado en stage 1920x1080 (translate(-50%,-50%))
+  Edita libremente. Skew exterior -8deg (visible en grupo principal).
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1010 540" width="1010" height="540">
+  <defs>
+    <linearGradient id="cardBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0c1820" stop-opacity="0.72"/>
+      <stop offset="100%" stop-color="#0c1820" stop-opacity="0.42"/>
+    </linearGradient>
+    <linearGradient id="vsGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#00e0c6"/>
+      <stop offset="100%" stop-color="#ff7b61"/>
+    </linearGradient>
+    <linearGradient id="pillGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#00e0c6"/>
+      <stop offset="50%" stop-color="#4a90c2"/>
+      <stop offset="100%" stop-color="#ff7b61"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Speed lines decoration -->
+  <g opacity="0.25">
+    <line x1="-200" y1="80" x2="500" y2="-100" stroke="white" stroke-width="1" transform="rotate(-13)"/>
+    <line x1="-200" y1="200" x2="500" y2="20" stroke="#00e0c6" stroke-width="1" transform="rotate(-13)"/>
+    <line x1="-200" y1="380" x2="500" y2="200" stroke="#ff7b61" stroke-width="1" transform="rotate(-13)"/>
+  </g>
+
+  <!-- Card body skewed -->
+  <g transform="translate(505 270) skewX(-8) translate(-505 -270)">
+    <rect x="0" y="0" width="1010" height="540" rx="42" fill="url(#cardBg)" stroke="rgba(255,255,255,0.24)" stroke-width="1"/>
+
+    <!-- Inner content (counter-skewed) -->
+    <g transform="translate(505 270) skewX(8) translate(-505 -270)">
+
+      <!-- Top label -->
+      <text x="505" y="60" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="13" font-weight="900" letter-spacing="4.5" fill="rgba(255,255,255,0.66)">PRESENTACIÓN DEL PARTIDO · DOBLES</text>
+
+      <!-- Center vertical divider -->
+      <line x1="505" y1="100" x2="505" y2="380" stroke="rgba(255,255,255,0.38)" stroke-width="1"/>
+
+      <!-- TEAM 1 (left) -->
+      <g>
+        <!-- Country -->
+        <rect x="60" y="120" width="42" height="28" rx="3" fill="#c8102e"/>
+        <rect x="60" y="120" width="42" height="9" fill="#ffd100"/>
+        <text x="120" y="142" font-family="Inter, system-ui, sans-serif" font-size="13" font-weight="900" letter-spacing="2" fill="rgba(255,255,255,0.7)">ESPAÑA</text>
+
+        <!-- Names -->
+        <text x="60" y="220" font-family="Inter, system-ui, sans-serif" font-size="46" font-weight="900" font-style="italic" letter-spacing="0.6" fill="#ffffff">GARCÍA</text>
+        <text x="60" y="280" font-family="Inter, system-ui, sans-serif" font-size="46" font-weight="900" font-style="italic" letter-spacing="0.6" fill="#ffffff">RUIZ</text>
+
+        <!-- Seed pill -->
+        <rect x="60" y="320" width="120" height="36" rx="18" fill="rgba(255,255,255,0.09)" stroke="rgba(255,255,255,0.14)"/>
+        <text x="120" y="343" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="11" font-weight="900" letter-spacing="2" fill="rgba(255,255,255,0.74)">SEED #2</text>
+      </g>
+
+      <!-- VS gradient (en lugar de centro) -->
+      <text x="505" y="270" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="100" font-weight="900" font-style="italic" fill="url(#vsGrad)">vs</text>
+
+      <!-- TEAM 2 (right) -->
+      <g>
+        <!-- Country -->
+        <text x="890" y="142" text-anchor="end" font-family="Inter, system-ui, sans-serif" font-size="13" font-weight="900" letter-spacing="2" fill="rgba(255,255,255,0.7)">ESPAÑA</text>
+        <rect x="908" y="120" width="42" height="28" rx="3" fill="#c8102e"/>
+        <rect x="908" y="120" width="42" height="9" fill="#ffd100"/>
+
+        <!-- Names -->
+        <text x="950" y="220" text-anchor="end" font-family="Inter, system-ui, sans-serif" font-size="46" font-weight="900" font-style="italic" letter-spacing="0.6" fill="#ffffff">CÁMARA</text>
+        <text x="950" y="280" text-anchor="end" font-family="Inter, system-ui, sans-serif" font-size="46" font-weight="900" font-style="italic" letter-spacing="0.6" fill="#ffffff">CASTAÑO</text>
+
+        <!-- Seed pill -->
+        <rect x="830" y="320" width="120" height="36" rx="18" fill="rgba(255,255,255,0.09)" stroke="rgba(255,255,255,0.14)"/>
+        <text x="890" y="343" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="11" font-weight="900" letter-spacing="2" fill="rgba(255,255,255,0.74)">SEED #5</text>
+      </g>
+
+      <!-- Meta boxes (4-up) -->
+      <g>
+        <rect x="60" y="410" width="210" height="78" rx="14" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.13)"/>
+        <text x="80" y="436" font-family="Inter, system-ui, sans-serif" font-size="9" font-weight="900" letter-spacing="2" fill="rgba(255,255,255,0.52)">FORMATO</text>
+        <text x="80" y="468" font-family="Inter, system-ui, sans-serif" font-size="16" font-weight="900" letter-spacing="0.8" fill="#ffffff">DOBLES</text>
+
+        <rect x="280" y="410" width="210" height="78" rx="14" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.13)"/>
+        <text x="300" y="436" font-family="Inter, system-ui, sans-serif" font-size="9" font-weight="900" letter-spacing="2" fill="rgba(255,255,255,0.52)">RONDA</text>
+        <text x="300" y="468" font-family="Inter, system-ui, sans-serif" font-size="16" font-weight="900" letter-spacing="0.8" fill="#ffffff">QUARTERFINAL</text>
+
+        <rect x="500" y="410" width="210" height="78" rx="14" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.13)"/>
+        <text x="520" y="436" font-family="Inter, system-ui, sans-serif" font-size="9" font-weight="900" letter-spacing="2" fill="rgba(255,255,255,0.52)">PISTA</text>
+        <text x="520" y="468" font-family="Inter, system-ui, sans-serif" font-size="16" font-weight="900" letter-spacing="0.8" fill="#ffffff">CENTRAL</text>
+
+        <rect x="720" y="410" width="220" height="78" rx="14" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.13)"/>
+        <text x="740" y="436" font-family="Inter, system-ui, sans-serif" font-size="9" font-weight="900" letter-spacing="2" fill="rgba(255,255,255,0.52)">HORA</text>
+        <text x="740" y="468" font-family="Inter, system-ui, sans-serif" font-size="16" font-weight="900" letter-spacing="0.8" fill="#ffffff">17:30</text>
+      </g>
+    </g>
+
+    <!-- Bottom dual accents -->
+    <rect x="0" y="537" width="343" height="3" fill="#00e0c6"/>
+    <rect x="667" y="537" width="343" height="3" fill="#ff7b61"/>
+  </g>
+</svg>

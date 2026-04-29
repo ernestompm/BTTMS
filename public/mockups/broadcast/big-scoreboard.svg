@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Big Scoreboard (lower-third) · skin Broadcast
+  Dimensiones: 1100 x 240 px (sin sponsor) · ajustable a 1500x240 con sponsor
+  Posición: bottom 50, centrado horizontal en stage 1920x1080
+  Edita libremente. Placeholders: nombres, sets, tiempo, sponsor.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 240" width="1100" height="240">
+  <defs>
+    <linearGradient id="cardBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0c1820" stop-opacity="0.72"/>
+      <stop offset="100%" stop-color="#0c1820" stop-opacity="0.42"/>
+    </linearGradient>
+    <linearGradient id="sheen" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="20%" stop-color="white" stop-opacity="0"/>
+      <stop offset="47%" stop-color="white" stop-opacity="0.16"/>
+      <stop offset="64%" stop-color="white" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Card body -->
+  <rect x="0" y="0" width="1100" height="240" rx="20" fill="url(#cardBg)" stroke="rgba(255,255,255,0.24)" stroke-width="1"/>
+  <rect x="0" y="0" width="1100" height="240" rx="20" fill="url(#sheen)" opacity="0.5"/>
+
+  <!-- HEADER -->
+  <g>
+    <line x1="0" y1="80" x2="1100" y2="80" stroke="rgba(255,255,255,0.10)"/>
+    <!-- logo placeholder -->
+    <rect x="26" y="20" width="44" height="44" rx="6" fill="rgba(255,255,255,0.10)" stroke="rgba(255,255,255,0.20)"/>
+    <text x="48" y="48" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="10" font-weight="700" fill="rgba(255,255,255,0.55)">LOGO</text>
+    <!-- nombre torneo -->
+    <text x="84" y="42" font-family="Inter, system-ui, sans-serif" font-size="22" font-weight="900" letter-spacing="0.4" fill="#ffffff">CAMPEONATO ESPAÑA TENIS PLAYA</text>
+    <text x="84" y="62" font-family="Inter, system-ui, sans-serif" font-size="13" font-weight="700" letter-spacing="3" fill="rgba(255,255,255,0.65)">ABSOLUTO MASCULINO</text>
+
+    <!-- Round pill -->
+    <rect x="490" y="22" width="180" height="38" rx="19" fill="rgba(239,68,68,0.18)" stroke="rgba(239,68,68,0.55)" stroke-width="1.5"/>
+    <text x="580" y="46" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="16" font-weight="900" letter-spacing="3" fill="#ef4444">CUARTOS</text>
+
+    <!-- TIEMPO -->
+    <text x="1074" y="34" text-anchor="end" font-family="Inter, system-ui, sans-serif" font-size="11" font-weight="700" letter-spacing="3" fill="rgba(255,255,255,0.65)">TIEMPO</text>
+    <text x="1074" y="62" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="24" font-weight="800" fill="#ffffff">1:24</text>
+  </g>
+
+  <!-- SET HEADERS -->
+  <g>
+    <text x="450" y="100" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="13" font-weight="700" letter-spacing="3" fill="rgba(255,255,255,0.65)">SET 1</text>
+    <text x="540" y="100" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="13" font-weight="700" letter-spacing="3" fill="rgba(255,255,255,0.65)">SET 2</text>
+    <text x="630" y="100" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="13" font-weight="700" letter-spacing="3" fill="rgba(255,255,255,0.65)">SET 3</text>
+    <line x1="0" y1="110" x2="1100" y2="110" stroke="rgba(255,255,255,0.06)"/>
+  </g>
+
+  <!-- TEAM 1 ROW -->
+  <g>
+    <!-- accent left -->
+    <rect x="0" y="110" width="8" height="65" fill="#ef4444"/>
+    <!-- name area background (light tint when serving) -->
+    <rect x="8" y="110" width="392" height="65" fill="rgba(239,68,68,0.08)"/>
+    <!-- bandera -->
+    <rect x="28" y="125" width="50" height="34" rx="3" fill="#c8102e"/>
+    <rect x="28" y="125" width="50" height="11" fill="#ffd100"/>
+    <!-- first name -->
+    <text x="92" y="140" font-family="Inter, system-ui, sans-serif" font-size="22" font-weight="700" font-style="italic" letter-spacing="0.4" fill="rgba(255,255,255,0.82)">CARLOS</text>
+    <!-- last name -->
+    <text x="92" y="167" font-family="Inter, system-ui, sans-serif" font-size="44" font-weight="900" font-style="italic" letter-spacing="-0.1" fill="#ffffff">GARCÍA</text>
+    <!-- saque pill -->
+    <rect x="280" y="128" width="92" height="26" rx="13" fill="rgba(253,224,71,0.20)" stroke="rgba(253,224,71,0.60)"/>
+    <circle cx="294" cy="141" r="5" fill="#fde047"/>
+    <text x="334" y="146" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="11" font-weight="900" letter-spacing="2.5" fill="#fde047">SAQUE</text>
+
+    <!-- set 1 cell -->
+    <rect x="402" y="110" width="90" height="65" fill="rgba(0,0,0,0.20)" stroke="rgba(255,255,255,0.06)"/>
+    <text x="447" y="158" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="50" font-weight="900" fill="#ffffff">6</text>
+    <!-- set 2 cell -->
+    <rect x="492" y="110" width="90" height="65" fill="#ef4444" stroke="rgba(255,255,255,0.06)"/>
+    <text x="537" y="158" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="50" font-weight="900" fill="#0a0a14">4</text>
+    <!-- set 3 cell (current) -->
+    <rect x="582" y="110" width="90" height="65" fill="rgba(239,68,68,0.18)" stroke="rgba(255,255,255,0.06)"/>
+    <text x="627" y="158" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="50" font-weight="900" fill="#ffffff">2</text>
+  </g>
+
+  <!-- TEAM 2 ROW -->
+  <g>
+    <line x1="0" y1="175" x2="1100" y2="175" stroke="rgba(255,255,255,0.06)"/>
+    <rect x="0" y="175" width="8" height="65" fill="#af005f"/>
+    <rect x="28" y="190" width="50" height="34" rx="3" fill="#c8102e"/>
+    <rect x="28" y="190" width="50" height="11" fill="#ffd100"/>
+    <text x="92" y="205" font-family="Inter, system-ui, sans-serif" font-size="22" font-weight="700" font-style="italic" letter-spacing="0.4" fill="rgba(255,255,255,0.82)">DAVID</text>
+    <text x="92" y="232" font-family="Inter, system-ui, sans-serif" font-size="44" font-weight="900" font-style="italic" letter-spacing="-0.1" fill="#ffffff">CÁMARA</text>
+
+    <rect x="402" y="175" width="90" height="65" fill="rgba(0,0,0,0.20)" stroke="rgba(255,255,255,0.06)"/>
+    <text x="447" y="223" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="50" font-weight="900" fill="#ffffff">3</text>
+    <rect x="492" y="175" width="90" height="65" fill="rgba(0,0,0,0.20)" stroke="rgba(255,255,255,0.06)"/>
+    <text x="537" y="223" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="50" font-weight="900" fill="rgba(255,255,255,0.95)">6</text>
+    <rect x="582" y="175" width="90" height="65" fill="rgba(175,0,95,0.18)" stroke="rgba(255,255,255,0.06)"/>
+    <text x="627" y="223" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="50" font-weight="900" fill="#ffffff">1</text>
+  </g>
+
+  <!-- SPONSOR area (right) -->
+  <g>
+    <line x1="700" y1="110" x2="700" y2="240" stroke="rgba(255,255,255,0.10)"/>
+    <text x="900" y="145" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="11" font-weight="700" letter-spacing="3" fill="rgba(255,255,255,0.55)">PATROCINADOR OFICIAL</text>
+    <rect x="800" y="160" width="200" height="60" rx="6" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.15)" stroke-dasharray="4 4"/>
+    <text x="900" y="195" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="14" font-weight="700" fill="rgba(255,255,255,0.50)">[ LOGO SPONSOR ]</text>
+  </g>
+
+  <!-- Bottom dual accents -->
+  <rect x="0" y="237" width="374" height="3" fill="#00e0c6"/>
+  <rect x="726" y="237" width="374" height="3" fill="#ff7b61"/>
+</svg>

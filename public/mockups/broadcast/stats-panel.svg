@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Stats Panel · skin Broadcast
+  Dimensiones: 1180 x 880 px
+  Posición: centrado en stage 1920x1080
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 880" width="1180" height="880">
+  <defs>
+    <linearGradient id="cardBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0c1820" stop-opacity="0.72"/>
+      <stop offset="100%" stop-color="#0c1820" stop-opacity="0.42"/>
+    </linearGradient>
+  </defs>
+
+  <g transform="translate(590 440) skewX(-8) translate(-590 -440)">
+    <rect x="0" y="0" width="1180" height="880" rx="40" fill="url(#cardBg)" stroke="rgba(255,255,255,0.24)"/>
+
+    <g transform="translate(590 440) skewX(8) translate(-590 -440)">
+      <!-- Title -->
+      <text x="590" y="80" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="11" font-weight="900" letter-spacing="4.5" fill="#00e0c6">ESTADÍSTICAS</text>
+      <text x="590" y="138" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="42" font-weight="900" font-style="italic" letter-spacing="0.5" fill="#ffffff">PRIMER SET</text>
+
+      <!-- Player names + sets -->
+      <g>
+        <text x="500" y="200" text-anchor="end" font-family="Inter, system-ui, sans-serif" font-size="28" font-weight="900" font-style="italic" letter-spacing="0.5" fill="#ef4444">GARCÍA / RUIZ</text>
+        <text x="590" y="200" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="11" font-weight="900" letter-spacing="2" fill="rgba(255,255,255,0.55)">SET 1</text>
+        <text x="590" y="234" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="32" font-weight="900" fill="#ffffff">6 — 3</text>
+        <text x="680" y="200" font-family="Inter, system-ui, sans-serif" font-size="28" font-weight="900" font-style="italic" letter-spacing="0.5" fill="#af005f">CÁMARA / CASTAÑO</text>
+      </g>
+
+      <line x1="80" y1="270" x2="1100" y2="270" stroke="rgba(255,255,255,0.10)"/>
+
+      <!-- Stat rows -->
+      <g font-family="Inter, system-ui, sans-serif">
+        <!-- Row 1: Aces -->
+        <rect x="80" y="290" width="1020" height="48" rx="14" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.06)"/>
+        <text x="500" y="324" text-anchor="end" font-size="30" font-weight="900" fill="#ef4444">5</text>
+        <text x="590" y="320" text-anchor="middle" font-size="13" font-weight="700" letter-spacing="3" fill="rgba(255,255,255,0.65)">ACES</text>
+        <text x="680" y="324" font-size="30" font-weight="900" fill="rgba(255,255,255,0.85)">2</text>
+
+        <!-- Row 2: Dobles faltas -->
+        <rect x="80" y="346" width="1020" height="48" rx="14" fill="transparent" stroke="rgba(255,255,255,0.06)"/>
+        <text x="500" y="380" text-anchor="end" font-size="30" font-weight="900" fill="rgba(255,255,255,0.85)">1</text>
+        <text x="590" y="376" text-anchor="middle" font-size="13" font-weight="700" letter-spacing="3" fill="rgba(255,255,255,0.65)">DOBLES FALTAS</text>
+        <text x="680" y="380" font-size="30" font-weight="900" fill="#af005f">3</text>
+
+        <!-- Row 3: Winners -->
+        <rect x="80" y="402" width="1020" height="48" rx="14" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.06)"/>
+        <text x="500" y="436" text-anchor="end" font-size="30" font-weight="900" fill="#ef4444">12</text>
+        <text x="590" y="432" text-anchor="middle" font-size="13" font-weight="700" letter-spacing="3" fill="rgba(255,255,255,0.65)">WINNERS</text>
+        <text x="680" y="436" font-size="30" font-weight="900" fill="rgba(255,255,255,0.85)">8</text>
+
+        <!-- Row 4: Errores no forzados -->
+        <rect x="80" y="458" width="1020" height="48" rx="14" fill="transparent" stroke="rgba(255,255,255,0.06)"/>
+        <text x="500" y="492" text-anchor="end" font-size="30" font-weight="900" fill="rgba(255,255,255,0.85)">7</text>
+        <text x="590" y="488" text-anchor="middle" font-size="13" font-weight="700" letter-spacing="3" fill="rgba(255,255,255,0.65)">ERR. NO FORZADOS</text>
+        <text x="680" y="492" font-size="30" font-weight="900" fill="#af005f">11</text>
+
+        <!-- Row 5: % saque -->
+        <rect x="80" y="514" width="1020" height="48" rx="14" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.06)"/>
+        <text x="500" y="548" text-anchor="end" font-size="30" font-weight="900" fill="#ef4444">68%</text>
+        <text x="590" y="544" text-anchor="middle" font-size="13" font-weight="700" letter-spacing="3" fill="rgba(255,255,255,0.65)">% PUNTOS SAQUE</text>
+        <text x="680" y="548" font-size="30" font-weight="900" fill="rgba(255,255,255,0.85)">52%</text>
+
+        <!-- Row 6: % resto -->
+        <rect x="80" y="570" width="1020" height="48" rx="14" fill="transparent" stroke="rgba(255,255,255,0.06)"/>
+        <text x="500" y="604" text-anchor="end" font-size="30" font-weight="900" fill="rgba(255,255,255,0.85)">42%</text>
+        <text x="590" y="600" text-anchor="middle" font-size="13" font-weight="700" letter-spacing="3" fill="rgba(255,255,255,0.65)">% PUNTOS RESTO</text>
+        <text x="680" y="604" font-size="30" font-weight="900" fill="#af005f">36%</text>
+
+        <!-- Row 7: Breaks ganados -->
+        <rect x="80" y="626" width="1020" height="48" rx="14" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.06)"/>
+        <text x="500" y="660" text-anchor="end" font-size="30" font-weight="900" fill="#ef4444">3/5</text>
+        <text x="590" y="656" text-anchor="middle" font-size="13" font-weight="700" letter-spacing="3" fill="rgba(255,255,255,0.65)">BREAKS GANADOS / TOTAL</text>
+        <text x="680" y="660" font-size="30" font-weight="900" fill="rgba(255,255,255,0.85)">1/4</text>
+
+        <!-- Row 8: Breaks salvados -->
+        <rect x="80" y="682" width="1020" height="48" rx="14" fill="transparent" stroke="rgba(255,255,255,0.06)"/>
+        <text x="500" y="716" text-anchor="end" font-size="30" font-weight="900" fill="rgba(255,255,255,0.85)">3/4</text>
+        <text x="590" y="712" text-anchor="middle" font-size="13" font-weight="700" letter-spacing="3" fill="rgba(255,255,255,0.65)">BREAKS SALVADOS / FACED</text>
+        <text x="680" y="716" font-size="30" font-weight="900" fill="rgba(255,255,255,0.85)">2/5</text>
+
+        <!-- Row 9: Puntos totales -->
+        <rect x="80" y="738" width="1020" height="48" rx="14" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.06)"/>
+        <text x="500" y="772" text-anchor="end" font-size="30" font-weight="900" fill="#ef4444">42</text>
+        <text x="590" y="768" text-anchor="middle" font-size="13" font-weight="700" letter-spacing="3" fill="rgba(255,255,255,0.65)">PUNTOS TOTALES</text>
+        <text x="680" y="772" font-size="30" font-weight="900" fill="rgba(255,255,255,0.85)">31</text>
+      </g>
+    </g>
+
+    <!-- Bottom dual accents -->
+    <rect x="0" y="877" width="401" height="3" fill="#00e0c6"/>
+    <rect x="779" y="877" width="401" height="3" fill="#ff7b61"/>
+  </g>
+</svg>
