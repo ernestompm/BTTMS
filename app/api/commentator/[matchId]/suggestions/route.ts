@@ -191,10 +191,11 @@ Genera ahora las 5 sugerencias en español, numeradas del 1 al 5.`
   // Llamar a un proveedor concreto. Devuelve { ok, text, status, errText }.
   async function callProvider(p: Provider): Promise<{ ok: boolean, text?: string, status?: number, errText?: string }> {
     if (p.name === 'gemini') {
-      // Modelo configurable via env GEMINI_MODEL. Default 'gemini-3.1-flash'.
-      // Si tu cuenta no tiene acceso a este modelo, sobrescribe la env var
-      // con otro disponible (gemini-2.5-flash, gemini-2.0-flash, etc.).
-      const model = process.env.GEMINI_MODEL ?? 'gemini-3.1-flash'
+      // Default 'gemini-3.1-flash-lite-preview' — multimodal mas economico
+      // y rapido de Google, gratis en free tier. 1M tokens input, 65K output.
+      // Configurable via env GEMINI_MODEL si quieres usar otro
+      // (gemini-2.5-flash, gemini-2.0-flash, etc.).
+      const model = process.env.GEMINI_MODEL ?? 'gemini-3.1-flash-lite-preview'
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${p.key}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
