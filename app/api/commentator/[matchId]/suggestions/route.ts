@@ -191,7 +191,10 @@ Genera ahora las 5 sugerencias en español, numeradas del 1 al 5.`
   // Llamar a un proveedor concreto. Devuelve { ok, text, status, errText }.
   async function callProvider(p: Provider): Promise<{ ok: boolean, text?: string, status?: number, errText?: string }> {
     if (p.name === 'gemini') {
-      const model = process.env.GEMINI_MODEL ?? 'gemini-2.0-flash'
+      // gemini-2.5-flash es el flash actual, gratis (15 RPM / 1500 RPD).
+      // Si quieres mas req/min usa gemini-2.0-flash-lite (30 RPM gratis).
+      // Configurable via env GEMINI_MODEL.
+      const model = process.env.GEMINI_MODEL ?? 'gemini-2.5-flash'
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${p.key}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
