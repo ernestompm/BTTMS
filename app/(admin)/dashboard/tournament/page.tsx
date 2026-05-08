@@ -270,6 +270,7 @@ export default function TournamentPage() {
                       tour: '#10b981',
                       pacific: '#5fc4cc',
                       broadcast: '#00e0c6',
+                      championship: '#f57c00',
                     } as any)[(cfg as any).graphics_style ?? 'classic'],
                     color: '#0e1c29',
                   }}>
@@ -278,7 +279,7 @@ export default function TournamentPage() {
           </label>
           <select value={(cfg as any).graphics_style ?? 'classic'}
             onChange={async (e) => {
-              const newStyle = e.target.value as 'classic' | 'tour' | 'pacific' | 'broadcast'
+              const newStyle = e.target.value as 'classic' | 'tour' | 'pacific' | 'broadcast' | 'championship'
               const newCfg = { ...cfg, graphics_style: newStyle }
               setTournament((t) => t ? { ...t, scoreboard_config: newCfg } : t)
               await supabase.from('tournaments').update({ scoreboard_config: newCfg }).eq('id', TOURNAMENT_ID)
@@ -289,6 +290,7 @@ export default function TournamentPage() {
             <option value="tour">Tour (WTA broadcast — navy compacto)</option>
             <option value="pacific">Pacific (sunset beach — turquesa/coral, premium)</option>
             <option value="broadcast">Broadcast (live TV — skewed, sheen, dual cyan/coral)</option>
+            <option value="championship">Championship (premium ATP/WTA — navy + naranja, F1: solo Scorebug)</option>
           </select>
           <p className="text-gray-500 text-xs mt-1">
             Afecta a TODOS los gráficos del overlay vMix. <strong className="text-yellow-300">Tras cambiar, refresca panel operador y fuente del navegador en vMix.</strong>

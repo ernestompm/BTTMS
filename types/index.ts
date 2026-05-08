@@ -45,8 +45,11 @@ export interface ScoreboardConfig {
    *  - 'broadcast' : Live TV broadcast (cards skewed -8deg, sheen sweep,
    *                  pill cells, italic uppercase, dual cyan+coral accents,
    *                  speed lines decorativas, vibe deportivo dinamico)
+   *  - 'championship': Premium ATP/WTA TV (navy glassy + naranja saturado,
+   *                  filas finas, banderas pequeñas, logos solo en gráficos
+   *                  grandes — F1 entrega solo Scorebug)
    *  Afecta a TODOS los gráficos del overlay. */
-  graphics_style?: 'classic' | 'tour' | 'pacific' | 'broadcast'
+  graphics_style?: 'classic' | 'tour' | 'pacific' | 'broadcast' | 'championship'
   /** Overrides puntuales de tamaños para que el director ajuste sin tocar
    *  código. Cada componente lee aquí valores opcionales y aplica el default
    *  si no existen. Editable desde /dashboard/graphics-editor. */

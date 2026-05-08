@@ -260,12 +260,13 @@ export function OperatorPanel({ session, initialMatch, tournament, rules, allMat
             STREAMING · OPERADOR
             {/* Skin badge — para que el operador sepa qué estilo está aplicado */}
             {(() => {
-              const skin = ((tournament as any)?.scoreboard_config?.graphics_style ?? 'classic') as 'classic'|'tour'|'pacific'|'broadcast'
+              const skin = ((tournament as any)?.scoreboard_config?.graphics_style ?? 'classic') as 'classic'|'tour'|'pacific'|'broadcast'|'championship'
               const styles = {
-                classic:   { bg: '#ef4444', label: 'CLÁSICO' },
-                tour:      { bg: '#10b981', label: 'TOUR' },
-                pacific:   { bg: '#5fc4cc', label: 'PACIFIC' },
-                broadcast: { bg: '#00e0c6', label: 'BROADCAST' },
+                classic:      { bg: '#ef4444', label: 'CLÁSICO' },
+                tour:         { bg: '#10b981', label: 'TOUR' },
+                pacific:      { bg: '#5fc4cc', label: 'PACIFIC' },
+                broadcast:    { bg: '#00e0c6', label: 'BROADCAST' },
+                championship: { bg: '#f57c00', label: 'CHAMPIONSHIP' },
               }
               const s = styles[skin] ?? styles.classic
               return (

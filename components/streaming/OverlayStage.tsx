@@ -39,6 +39,9 @@ import {
   RefereeLowerThirdBroadcast, StatsPanelBroadcast, ResultsGridBroadcast, BracketViewBroadcast,
   CoinTossBroadcast, AwardsPodiumBroadcast,
 } from './graphics-broadcast'
+// CHAMPIONSHIP skin — F1 entrega solo Scorebug; el resto de gráficos siguen
+// usando el skin classic hasta que lleguen las fases F2/F3.
+import { ScorebugChampionship } from './graphics-championship'
 import { deriveLiveFlag } from '@/lib/streaming/flags'
 
 // ─── StageCanvas ────────────────────────────────────────────────────────────
@@ -83,8 +86,8 @@ export function StageCanvas({ match, tournament, allMatches, referee, mainSponso
   const awardsData = (d('awards_podium') as any) ?? null
   const tickerActive = v('stats_ticker')
   const tickerStat = tickerActive ? ((d('stats_ticker') as any)?.stat ?? 'aces') : null
-  // Skin selector — 'classic' | 'tour' | 'pacific' | 'broadcast'
-  const skin: 'classic' | 'tour' | 'pacific' | 'broadcast' = (tournament?.scoreboard_config?.graphics_style ?? 'classic')
+  // Skin selector — 'classic' | 'tour' | 'pacific' | 'broadcast' | 'championship'
+  const skin: 'classic' | 'tour' | 'pacific' | 'broadcast' | 'championship' = (tournament?.scoreboard_config?.graphics_style ?? 'classic')
 
   // Helper: enruta cada grafico al render adecuado segun el skin
   // (classic / tour / pacific). Asi el switch de skin afecta a TODOS.
@@ -152,10 +155,11 @@ export function StageCanvas({ match, tournament, allMatches, referee, mainSponso
         : skin === 'tour'    ? <RefereeLowerThirdTour      visible={vis} referee={referee} tournament={tournament}/>
                              : <RefereeLowerThird         visible={vis} referee={referee} tournament={tournament}/> }</Presence>
       <Presence show={v('scorebug')}            exitMs={500}>{(vis) =>
-        skin === 'broadcast' ? <ScorebugBroadcast visible={vis} match={match} tournament={tournament} tickerStat={tickerStat}/>
-        : skin === 'pacific' ? <ScorebugPacific   visible={vis} match={match} tournament={tournament} tickerStat={tickerStat}/>
-        : skin === 'tour'    ? <ScorebugTour      visible={vis} match={match} tournament={tournament} tickerStat={tickerStat}/>
-                             : <Scorebug         visible={vis} match={match} tournament={tournament} flag={flag} tickerStat={tickerStat}/> }</Presence>
+        skin === 'championship' ? <ScorebugChampionship visible={vis} match={match} tournament={tournament} tickerStat={tickerStat}/>
+        : skin === 'broadcast'  ? <ScorebugBroadcast    visible={vis} match={match} tournament={tournament} tickerStat={tickerStat}/>
+        : skin === 'pacific'    ? <ScorebugPacific      visible={vis} match={match} tournament={tournament} tickerStat={tickerStat}/>
+        : skin === 'tour'       ? <ScorebugTour         visible={vis} match={match} tournament={tournament} tickerStat={tickerStat}/>
+                                : <Scorebug             visible={vis} match={match} tournament={tournament} flag={flag} tickerStat={tickerStat}/> }</Presence>
     </>
   )
 }
