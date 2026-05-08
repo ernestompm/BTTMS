@@ -47,7 +47,7 @@ export interface ScoreboardConfig {
    *                  speed lines decorativas, vibe deportivo dinamico)
    *  - 'championship': Premium ATP/WTA TV (navy glassy + naranja saturado,
    *                  filas finas, banderas pequeñas, logos solo en gráficos
-   *                  grandes — F1 entrega solo Scorebug)
+   *                  grandes — los 14 componentes implementados)
    *  Afecta a TODOS los gráficos del overlay. */
   graphics_style?: 'classic' | 'tour' | 'pacific' | 'broadcast' | 'championship'
   /** Overrides puntuales de tamaños para que el director ajuste sin tocar

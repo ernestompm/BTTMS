@@ -290,7 +290,7 @@ export default function TournamentPage() {
             <option value="tour">Tour (WTA broadcast — navy compacto)</option>
             <option value="pacific">Pacific (sunset beach — turquesa/coral, premium)</option>
             <option value="broadcast">Broadcast (live TV — skewed, sheen, dual cyan/coral)</option>
-            <option value="championship">Championship (premium ATP/WTA — navy + naranja, F1: solo Scorebug)</option>
+            <option value="championship">Championship (premium ATP/WTA — navy + naranja saturado)</option>
           </select>
           <p className="text-gray-500 text-xs mt-1">
             Afecta a TODOS los gráficos del overlay vMix. <strong className="text-yellow-300">Tras cambiar, refresca panel operador y fuente del navegador en vMix.</strong>
