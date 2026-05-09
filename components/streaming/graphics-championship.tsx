@@ -241,30 +241,17 @@ export function ScorebugChampionship({ visible, match, tournament, tickerStat }:
   const showTicker = !!tickerStat && !!match.stats
   const tickerLabel = tickerStat ? (STAT_LABELS[tickerStat] ?? tickerStat.toUpperCase()) : ''
 
-  const setColW = 44
-  const gameColW = 58
-  const nameColW = isDoubles ? 270 : 290
-  const flagColW = 64
-  const totalW = flagColW + nameColW + setColW * setCount + gameColW
+  // Sin banderas, sin subtitle (país/ciudad). Solo: dot saque + nombre + sets + game.
+  const setColW = 46
+  const gameColW = 60
+  const nameColW = isDoubles ? 280 : 300
+  const serveColW = 32
+  const totalW = serveColW + nameColW + setColW * setCount + gameColW
 
   function teamPlayers(t: 1 | 2): any[] {
     const e = t === 1 ? match.entry1 : match.entry2
     if (!e) return []
     return [e.player1, isDoubles ? e.player2 : null].filter(Boolean)
-  }
-  function teamSubtitle(t: 1 | 2): string {
-    const e = t === 1 ? match?.entry1 : match?.entry2
-    const players = teamPlayers(t)
-    if (!players.length) return ''
-    const seed = e?.seed ? `${e.seed}.` : ''
-    if (isDoubles) {
-      const nats = Array.from(new Set(players.map((p: any) => p.nationality).filter(Boolean)))
-      return nats.length === 1 ? `${seed}${countryName(nats[0])}` : seed
-    }
-    const p = players[0]
-    const city = p.birth_city ? String(p.birth_city).toUpperCase() : ''
-    const country = countryName(p.nationality)
-    return `${seed}${[city, country].filter(Boolean).join(', ')}`.trim()
   }
 
   return (
@@ -275,11 +262,9 @@ export function ScorebugChampionship({ visible, match, tournament, tickerStat }:
     }}>
       {[1, 2].map((tn) => {
         const team = tn as 1 | 2
-        const players = teamPlayers(team)
         const sets = setsFor(score, team).slice(0, setCount)
         const pt = gamePoint(score, team)
         const isServing = serving === team
-        const subtitle = teamSubtitle(team)
         const tickerVal = showTicker ? statValue(match.stats, tickerStat!, team) : null
         // Naranja en el nombre si lleva ventaja en el último set
         const isLeading = lastWinner === team
@@ -287,43 +272,30 @@ export function ScorebugChampionship({ visible, match, tournament, tickerStat }:
         return (
           <div key={team} style={{
             display: 'grid',
-            gridTemplateColumns: `${flagColW}px ${nameColW}px ${Array(setCount).fill(`${setColW}px`).join(' ')} ${gameColW}px`,
+            gridTemplateColumns: `${serveColW}px ${nameColW}px ${Array(setCount).fill(`${setColW}px`).join(' ')} ${gameColW}px`,
             alignItems: 'stretch',
             borderTop: team === 2 ? `1px solid ${CH.hairline}` : 'none',
-            minHeight: subtitle ? 52 : 44,
+            minHeight: 50,
           }}>
-            {/* serve dot + flag */}
+            {/* serve dot solo */}
             <div style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'flex-start',
-              gap: 7, padding: '0 8px 0 12px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
               <span aria-hidden style={{
-                width: 8, height: 8, borderRadius: '50%',
+                width: 10, height: 10, borderRadius: '50%',
                 background: isServing ? CH.serve : 'transparent',
-                boxShadow: isServing ? `0 0 10px ${CH.serve}` : 'none',
+                boxShadow: isServing ? `0 0 12px ${CH.serve}` : 'none',
                 flex: 'none',
                 animation: isServing ? 'sgSrvPulse 1.6s infinite' : 'none',
               }}/>
-              {isDoubles ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 1, flex: 'none' }}>
-                  {players.slice(0, 2).map((p: any, i: number) => (
-                    <img key={i} src={flagPath(p?.nationality)} alt=""
-                      style={{ width: 26, height: 16, borderRadius: 1, objectFit: 'cover' }}/>
-                  ))}
-                </div>
-              ) : (
-                <img src={flagPath(players[0]?.nationality)} alt=""
-                  style={{ width: 32, height: 21, borderRadius: 1, objectFit: 'cover', flex: 'none' }}/>
-              )}
             </div>
 
-            {/* nombre + subtitle */}
+            {/* nombre */}
             <div style={{
-              display: 'flex', flexDirection: 'column', justifyContent: 'center',
-              padding: '4px 8px 4px 0', minWidth: 0,
+              display: 'flex', alignItems: 'center', padding: '4px 14px 4px 6px', minWidth: 0,
             }}>
               <span style={{
-                fontSize: 23,
+                fontSize: 26,
                 fontWeight: 800,
                 fontStyle: 'italic',
                 letterSpacing: '.02em',
@@ -334,18 +306,6 @@ export function ScorebugChampionship({ visible, match, tournament, tickerStat }:
               }}>
                 {teamShortName(match, team)}
               </span>
-              {subtitle && (
-                <span style={{
-                  fontSize: 12,
-                  fontWeight: 600,
-                  letterSpacing: '.06em',
-                  color: CH.muted,
-                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                  marginTop: 2,
-                }}>
-                  {subtitle}
-                </span>
-              )}
             </div>
 
             {/* set cells */}
@@ -487,7 +447,9 @@ export function BigScoreboardChampionship({ visible, match, tournament, sponsor,
 
   return (
     <div style={{
-      position: 'absolute', bottom: 70, left: '50%', transform: 'translateX(-50%)', width: 1240,
+      // Centrado por píxel calculado (stage 1920) — left:50% + transform se rompe
+      // porque animStyle sobreescribe el transform.
+      position: 'absolute', bottom: 70, left: 340, width: 1240,
       ...cardStyleLg, fontFamily: FONT,
       ...animStyle(visible, 'sgInU', 'sgOutU', 700),
     }}>
@@ -529,27 +491,34 @@ export function MatchPresentationChampionship({ visible, match, tournament }: {
       ...animStyle(visible, 'sgInF', 'sgOutF', 750),
     }}>
       {/* SIN scrim de fondo — el video respira detrás. Solo card flotante. */}
-      <div style={{ width: 1480, ...cardStyleLg }}>
+      <div style={{ width: 1500, ...cardStyleLg }}>
+        {/* Header: nombre del torneo arriba y fase MUY grande debajo */}
         <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '22px 36px', borderBottom: `1px solid ${CH.hairline}`,
+          padding: '32px 36px 24px', textAlign: 'center', borderBottom: `1px solid ${CH.hairline}`,
         }}>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: '.34em', color: CH.muted }}>
-              {tournament?.name?.toUpperCase()}
-            </span>
-            <span style={{ fontSize: 32, fontWeight: 900, color: CH.orange, letterSpacing: '.08em', marginTop: 4, textShadow: TS_HARD }}>
-              {roundLabel(match.round)} · {CATEGORY_LABELS[match.category as Category]?.toUpperCase()}
-            </span>
+          <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '.40em', color: CH.muted }}>
+            {tournament?.name?.toUpperCase()}
           </div>
-          <LogoBar tournament={tournament} height={56} gap={22}/>
+          <div style={{
+            fontSize: 56, fontWeight: 900, fontStyle: 'italic',
+            color: CH.orange, letterSpacing: '.10em', marginTop: 8,
+            textShadow: '0 4px 20px rgba(245,124,0,.50)', lineHeight: 1.0,
+          }}>
+            {roundLabel(match.round)}
+          </div>
+          {match.category && (
+            <div style={{ fontSize: 16, fontWeight: 800, letterSpacing: '.32em', color: CH.text, marginTop: 8 }}>
+              {CATEGORY_LABELS[match.category as Category]?.toUpperCase()}
+            </div>
+          )}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 140px 1fr', alignItems: 'stretch', minHeight: 280 }}>
+        {/* Cuerpo: jugador 1 / VS / jugador 2 */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px 1fr', alignItems: 'stretch', minHeight: 320 }}>
           <PresoTeamSimple match={match} team={1}/>
           <div style={{
             display: 'grid', placeItems: 'center',
-            fontSize: 64, fontWeight: 900, color: CH.orange, letterSpacing: '.04em',
-            fontStyle: 'italic', textShadow: '0 4px 16px rgba(245,124,0,.45)',
+            fontSize: 80, fontWeight: 900, color: CH.orange, letterSpacing: '.04em',
+            fontStyle: 'italic', textShadow: '0 6px 24px rgba(245,124,0,.55)',
           }}>VS</div>
           <PresoTeamSimple match={match} team={2}/>
         </div>
@@ -565,24 +534,27 @@ function PresoTeamSimple({ match, team }: { match: any, team: 1 | 2 }) {
   const textAlign: 'left' | 'right' = team === 1 ? 'left' : 'right'
   return (
     <div style={{
-      display: 'flex', flexDirection: 'column', gap: 18, justifyContent: 'center',
-      alignItems: align, padding: '36px 42px', textAlign,
+      display: 'flex', flexDirection: 'column', gap: 22, justifyContent: 'center',
+      alignItems: align, padding: '36px 48px', textAlign,
     }}>
-      {/* banderas grandes */}
-      <div style={{ display: 'flex', flexDirection: team === 1 ? 'row' : 'row-reverse', gap: 10 }}>
+      {/* nombres: first_name pequeño, apellido GRANDE, ambos en la misma línea
+          vertical (con un pequeño gap). Si son dobles, dos bloques apilados. */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {players.map((p: any, i: number) => (
-          <img key={i} src={flagPath(p?.nationality)} alt=""
-            style={{ width: 76, height: 50, objectFit: 'cover', borderRadius: 3, border: '1px solid rgba(255,255,255,.22)', boxShadow: '0 6px 24px rgba(0,0,0,.40)' }}/>
-        ))}
-      </div>
-      {/* nombres completos — uno por línea para que se lean */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {players.map((p: any, i: number) => (
-          <div key={i} style={{
-            fontSize: 56, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.02em',
-            color: CH.text, lineHeight: 1.0, textShadow: TS_HARD,
-          }}>
-            {fullPlayerName(p)}
+          <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: align, lineHeight: 1.0 }}>
+            <span style={{
+              fontSize: 28, fontWeight: 700, fontStyle: 'italic',
+              letterSpacing: '.06em', color: CH.muted, textShadow: TS_SOFT,
+            }}>
+              {(p?.first_name ?? '').toUpperCase()}
+            </span>
+            <span style={{
+              fontSize: 78, fontWeight: 900, fontStyle: 'italic',
+              letterSpacing: '.02em', color: CH.text, marginTop: 4,
+              textShadow: TS_HARD,
+            }}>
+              {(p?.last_name ?? '').toUpperCase()}
+            </span>
           </div>
         ))}
       </div>
@@ -615,7 +587,7 @@ export function PlayerBioChampionship({ visible, player, team, category, tournam
     <div style={{
       position: 'absolute',
       [isLeft ? 'left' : 'right']: 60,
-      bottom: 200,
+      bottom: 70,
       width: 540,
       ...cardStyleLg, fontFamily: FONT,
       ...animStyle(visible, isLeft ? 'sgInR' : 'sgInL', isLeft ? 'sgOutR' : 'sgOutL', 700),
@@ -735,7 +707,9 @@ export function StatsPanelChampionship({ visible, match, tournament, scope }: {
 
   return (
     <div style={{
-      position: 'absolute', top: 80, left: '50%', transform: 'translateX(-50%)', width: 1180,
+      // Stage 1920 → centrado por píxel calculado (left:50%+translate se rompe
+      // por el transform del animStyle).
+      position: 'absolute', top: 80, left: 370, width: 1180,
       ...cardStyleLg, fontFamily: FONT,
       ...animStyle(visible, 'sgInD', 'sgOutD', 700),
     }}>
@@ -884,10 +858,11 @@ function ResultRow({ match, team, isWinner }: { match: any, team: 1 | 2, isWinne
 // ════════════════════════════════════════════════════════════════════════════
 // 07 · BRACKET — cada partido como CUADRO independiente, claro y separado
 // ════════════════════════════════════════════════════════════════════════════
+// Empieza desde cuartos (R32 y R16 quedan fuera del bracket por decision visual).
 const BRACKET_ORDER: Array<{ key: string, label: string }> = [
-  { key: 'R32', label: '1/16' }, { key: 'R16', label: 'OCTAVOS' },
-  { key: 'QF', label: 'CUARTOS DE FINAL' }, { key: 'SF', label: 'SEMIFINAL' },
-  { key: 'F', label: 'FINAL' },
+  { key: 'QF', label: 'CUARTOS DE FINAL' },
+  { key: 'SF', label: 'SEMIFINAL' },
+  { key: 'F',  label: 'FINAL' },
 ]
 export function BracketViewChampionship({ visible, matches, highlightMatchId, tournament, category }: {
   visible: boolean, matches: any[], highlightMatchId?: string | null, tournament: Tournament | null, category?: string,
@@ -1060,23 +1035,30 @@ export function CoinTossChampionship({ visible, match, tournament }: {
   const choice = match.coin_toss_choice ?? 'SAQUE'
   return (
     <div style={{
-      position: 'absolute', bottom: 70, right: 60, width: 540,
+      position: 'absolute', bottom: 70, right: 60, width: 660,
       ...cardStyleLg, fontFamily: FONT, pointerEvents: 'none',
       ...animStyle(visible, 'sgInL', 'sgOutL', 650),
     }}>
       {/* accent stripe naranja arriba */}
-      <div style={{ height: 6, background: `linear-gradient(90deg, ${CH.orange} 0%, ${CH.orangeDk} 100%)` }}/>
-      <div style={{ padding: '20px 24px' }}>
-        <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: '.32em', color: CH.muted }}>
+      <div style={{ height: 8, background: `linear-gradient(90deg, ${CH.orange} 0%, ${CH.orangeDk} 100%)` }}/>
+      <div style={{ padding: '24px 32px' }}>
+        <div style={{ fontSize: 16, fontWeight: 800, letterSpacing: '.36em', color: CH.muted }}>
           SORTEO
         </div>
-        <div style={{ fontSize: 30, fontWeight: 900, fontStyle: 'italic', color: CH.orange, marginTop: 6, letterSpacing: '.04em', textShadow: TS_HARD, lineHeight: 1.05 }}>
+        <div style={{
+          fontSize: 50, fontWeight: 900, fontStyle: 'italic', color: CH.orange,
+          marginTop: 8, letterSpacing: '.03em', textShadow: TS_HARD, lineHeight: 1.0,
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+        }}>
           {teamShortName(match, winnerTeam)}
         </div>
-        <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: '.18em', color: CH.muted, marginTop: 10 }}>
+        <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: '.22em', color: CH.muted, marginTop: 16 }}>
           ELIGE
         </div>
-        <div style={{ fontSize: 26, fontWeight: 900, color: CH.text, marginTop: 2, letterSpacing: '.06em', textShadow: TS_HARD }}>
+        <div style={{
+          fontSize: 44, fontWeight: 900, color: CH.text, marginTop: 4,
+          letterSpacing: '.06em', textShadow: TS_HARD, lineHeight: 1.0,
+        }}>
           {String(choice).toUpperCase()}
         </div>
       </div>
@@ -1105,40 +1087,90 @@ export function TournamentIntroChampionship({ visible, tournament }: {
       pointerEvents: 'none',
       ...animStyle(visible, 'sgInZ', 'sgOutZ', 800),
     }}>
-      <div style={{ width: 1280, ...cardStyleLg }}>
-        {/* accent superior */}
-        <div style={{ height: 8, background: `linear-gradient(90deg, ${CH.orange} 0%, ${CH.orangeLt} 50%, ${CH.orange} 100%)` }}/>
+      <div style={{ width: 1320, ...cardStyleLg, position: 'relative' }}>
+        {/* Orbes decorativos de fondo (naranja translúcido, da volumen) */}
+        <div aria-hidden style={{
+          position: 'absolute', top: -120, left: -120, width: 380, height: 380, borderRadius: '50%',
+          background: `radial-gradient(circle, ${hexAlpha(CH.orange, .35)} 0%, transparent 70%)`,
+          filter: 'blur(40px)', pointerEvents: 'none',
+        }}/>
+        <div aria-hidden style={{
+          position: 'absolute', bottom: -160, right: -100, width: 460, height: 460, borderRadius: '50%',
+          background: `radial-gradient(circle, ${hexAlpha(CH.orange, .26)} 0%, transparent 70%)`,
+          filter: 'blur(50px)', pointerEvents: 'none',
+        }}/>
+        {/* Líneas decorativas diagonales sutiles arriba-izquierda */}
+        <div aria-hidden style={{
+          position: 'absolute', top: 30, left: 30, width: 80, height: 4,
+          background: `linear-gradient(90deg, ${CH.orange}, transparent)`, borderRadius: 2,
+        }}/>
+        <div aria-hidden style={{
+          position: 'absolute', top: 44, left: 30, width: 50, height: 3,
+          background: `linear-gradient(90deg, ${hexAlpha(CH.orange, .55)}, transparent)`, borderRadius: 2,
+        }}/>
+        <div aria-hidden style={{
+          position: 'absolute', bottom: 30, right: 30, width: 80, height: 4,
+          background: `linear-gradient(270deg, ${CH.orange}, transparent)`, borderRadius: 2,
+        }}/>
+        <div aria-hidden style={{
+          position: 'absolute', bottom: 44, right: 30, width: 50, height: 3,
+          background: `linear-gradient(270deg, ${hexAlpha(CH.orange, .55)}, transparent)`, borderRadius: 2,
+        }}/>
 
-        <div style={{ padding: '52px 56px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 28, textAlign: 'center' }}>
+        {/* accent superior con shimmer animado */}
+        <div style={{
+          height: 10,
+          background: `linear-gradient(90deg, ${CH.orangeDk} 0%, ${CH.orangeLt} 50%, ${CH.orangeDk} 100%)`,
+          position: 'relative', overflow: 'hidden',
+        }}>
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,.45) 50%, transparent 100%)',
+            animation: 'sgSheen 4.2s ease-in-out infinite',
+            transform: 'translateX(-110%)',
+          }}/>
+        </div>
+
+        <div style={{ padding: '60px 60px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 26, textAlign: 'center', position: 'relative', zIndex: 1 }}>
           {tournament.logo_url && (
             <img src={tournament.logo_url} alt=""
-              style={{ maxHeight: 140, objectFit: 'contain', filter: 'drop-shadow(0 12px 32px rgba(0,0,0,.50))' }}/>
+              style={{ maxHeight: 160, objectFit: 'contain', filter: 'drop-shadow(0 16px 36px rgba(0,0,0,.55))' }}/>
           )}
 
-          <div style={{ height: 4, width: 140, background: CH.orange, borderRadius: 2, boxShadow: `0 0 20px ${CH.orangeGlow}` }}/>
+          {/* Triple tick decorativo (líneas de longitud variable) */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+            <div style={{ height: 4, width: 180, background: CH.orange, borderRadius: 2, boxShadow: `0 0 24px ${CH.orangeGlow}` }}/>
+            <div style={{ height: 3, width: 100, background: hexAlpha(CH.orange, .65), borderRadius: 2 }}/>
+            <div style={{ height: 2, width: 60, background: hexAlpha(CH.orange, .40), borderRadius: 2 }}/>
+          </div>
 
           <div style={{
-            fontSize: 72, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.04em',
-            color: CH.text, lineHeight: 1.0, textShadow: TS_HARD,
+            fontSize: 80, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.04em',
+            color: CH.text, lineHeight: .95, textShadow: TS_HARD,
           }}>
             {tournament.name?.toUpperCase()}
           </div>
 
           {(tournament.venue_name || tournament.venue_city) && (
-            <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: '.20em', color: CH.orange, textShadow: TS_HARD }}>
+            <div style={{
+              fontSize: 30, fontWeight: 900, letterSpacing: '.22em', color: CH.orange,
+              textShadow: '0 4px 16px rgba(245,124,0,.45)', display: 'flex', alignItems: 'center', gap: 18,
+            }}>
+              <span style={{ width: 24, height: 2, background: CH.orange, opacity: .6 }}/>
               {[tournament.venue_name, tournament.venue_city].filter(Boolean).join(' · ').toUpperCase()}
+              <span style={{ width: 24, height: 2, background: CH.orange, opacity: .6 }}/>
             </div>
           )}
 
           {dateRange && (
-            <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: '.28em', color: CH.muted }}>
+            <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '.32em', color: CH.muted }}>
               {dateRange}
             </div>
           )}
 
-          <div style={{ height: 1, width: '60%', background: CH.hairline, margin: '8px 0' }}/>
+          <div style={{ height: 1, width: '70%', background: `linear-gradient(90deg, transparent 0%, ${hexAlpha('#ffffff', .25)} 50%, transparent 100%)`, margin: '4px 0' }}/>
 
-          <LogoBar tournament={tournament} height={56} gap={32}/>
+          <LogoBar tournament={tournament} height={60} gap={36}/>
         </div>
       </div>
     </div>
@@ -1154,24 +1186,22 @@ export function VenueCardChampionship({ visible, tournament }: {
   if (!tournament) return null
   return (
     <div style={{
-      position: 'absolute', bottom: 110, left: '50%', transform: 'translateX(-50%)',
-      width: 1000, ...cardStyleLg, fontFamily: FONT, pointerEvents: 'none',
+      // Centrado por píxel (stage 1920) — sin LogoBar y más compacto.
+      position: 'absolute', bottom: 110, left: 600, width: 720,
+      ...cardStyleLg, fontFamily: FONT, pointerEvents: 'none',
       ...animStyle(visible, 'sgInU', 'sgOutU', 650),
     }}>
-      <div style={{ height: 8, background: `linear-gradient(90deg, ${CH.orange} 0%, ${CH.orangeDk} 100%)` }}/>
-      <div style={{ padding: '26px 32px', display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'center', gap: 18 }}>
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <span style={{ fontSize: 14, fontWeight: 800, letterSpacing: '.32em', color: CH.muted }}>SEDE</span>
-          <span style={{ fontSize: 44, fontWeight: 900, fontStyle: 'italic', color: CH.text, letterSpacing: '.04em', marginTop: 4, textShadow: TS_HARD, lineHeight: 1.05 }}>
-            {tournament.venue_name?.toUpperCase()}
-          </span>
-          {tournament.venue_city && (
-            <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: '.18em', color: CH.orange, marginTop: 4, textShadow: TS_HARD }}>
-              {tournament.venue_city.toUpperCase()}
-            </span>
-          )}
+      <div style={{ height: 6, background: `linear-gradient(90deg, ${CH.orange} 0%, ${CH.orangeDk} 100%)` }}/>
+      <div style={{ padding: '22px 28px', textAlign: 'center' }}>
+        <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: '.36em', color: CH.muted }}>SEDE</span>
+        <div style={{ fontSize: 38, fontWeight: 900, fontStyle: 'italic', color: CH.text, letterSpacing: '.04em', marginTop: 4, textShadow: TS_HARD, lineHeight: 1.05 }}>
+          {tournament.venue_name?.toUpperCase()}
         </div>
-        <LogoBar tournament={tournament} height={48} gap={20}/>
+        {tournament.venue_city && (
+          <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '.22em', color: CH.orange, marginTop: 4, textShadow: TS_HARD }}>
+            {tournament.venue_city.toUpperCase()}
+          </div>
+        )}
       </div>
     </div>
   )
