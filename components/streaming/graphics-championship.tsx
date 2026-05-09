@@ -272,7 +272,24 @@ export function ScorebugChampionship({ visible, match, tournament, flag, tickerS
     }}>
       {[1, 2].map((tn) => {
         const team = tn as 1 | 2
-        const sets = setsFor(score, team).slice(0, setCount)
+        const k = team === 1 ? 't1' : 't2'
+        // Construye el array de celdas: sets completados + el set en juego
+        // (games ganados ahora mismo, o tiebreak si está activo). Sin esto,
+        // la celda del set en curso se quedaba como '–' y nunca veías el
+        // marcador subir cuando ganabas un game.
+        const sets: Array<number | null> = []
+        const completedSets = score?.sets ?? []
+        for (let i = 0; i < completedSets.length && sets.length < setCount; i++) {
+          sets.push(completedSets[i][k] ?? null)
+        }
+        if (inProgress && sets.length < setCount) {
+          sets.push(
+            score?.super_tiebreak_active || score?.tiebreak_active
+              ? (score?.tiebreak_score?.[k] ?? 0)
+              : (score?.current_set?.[k] ?? 0)
+          )
+        }
+        while (sets.length < setCount) sets.push(null)
         const pt = gamePoint(score, team)
         const isServing = serving === team
         const tickerVal = showTicker ? statValue(match.stats, tickerStat!, team) : null
