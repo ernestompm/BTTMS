@@ -14,7 +14,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { data: appUser } = await service.from('app_users').select('role').eq('id', user.id).single()
   if (!appUser) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const { data: match } = await service.from('matches').select('status,judge_id').eq('id', matchId).single()
+  const { data: match } = await service.from('matches').select('status,judge_id,broadcast_active').eq('id', matchId).single()
   if (!match) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   if (appUser.role === 'judge' && match.judge_id !== user.id) {
@@ -37,7 +37,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }).eq('id', matchId).select('*').single()
 
   if (updated) {
-    pushBroadcastEvent(updated.tournament_id, matchId, 'match_retired', { retired_team: team, reason })
+    if (match.broadcast_active) {
+      pushBroadcastEvent(updated.tournament_id, matchId, 'match_retired', { retired_team: team, reason })
+    }
     try { await advanceWinnerToNextRound(service, matchId) } catch (e) { console.error('advance failed', e) }
   }
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabase, createServiceSupabase } from '@/lib/supabase-server'
+import { pushBroadcastEvent } from '@/lib/broadcast-push'
 
 function isValidFullName(name: string | null | undefined): boolean {
   if (!name) return false
@@ -21,7 +22,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'Nombre y apellidos obligatorios (mínimo 2 palabras de 2+ caracteres)' }, { status: 400 })
   }
 
-  const { data: match } = await service.from('matches').select('status,judge_id').eq('id', matchId).single()
+  const { data: match } = await service.from('matches').select('status,judge_id,broadcast_active').eq('id', matchId).single()
   if (!match) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   if (match.status !== 'scheduled') return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
 
@@ -30,6 +31,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     judge_on_court_at: new Date().toISOString(),
     judge_name: judgeName,
   }).eq('id', matchId).select('*').single()
+
+  if (match.broadcast_active && updated) {
+    pushBroadcastEvent(updated.tournament_id, matchId, 'judge_on_court', { judge_name: judgeName })
+  }
 
   return NextResponse.json(updated)
 }

@@ -58,7 +58,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     .eq('id', matchId).select('*').single()
 
   if (updatedMatch) {
-    pushBroadcastEvent(updatedMatch.tournament_id, matchId, 'match_finished')
+    // Solo dispara push si el partido estaba activo en broadcast antes del
+    // finish — coherente con el resto de rutas. (En finish ponemos
+    // broadcast_active=false, así que comprobamos el valor previo del match.)
+    if (match.broadcast_active) {
+      pushBroadcastEvent(updatedMatch.tournament_id, matchId, 'match_finished')
+    }
     // Auto-advance JS — independiente del trigger SQL 018. Coloca al ganador
     // en el slot correspondiente del siguiente partido del cuadro.
     try { await advanceWinnerToNextRound(service, matchId) } catch (e) { console.error('advance failed', e) }

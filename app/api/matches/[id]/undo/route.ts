@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabase, createServiceSupabase } from '@/lib/supabase-server'
+import { pushBroadcastEvent } from '@/lib/broadcast-push'
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: matchId } = await params
@@ -53,6 +54,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     status: restoredStatus,
     finished_at: restoredStatus === 'in_progress' ? null : match.finished_at,
   }).eq('id', matchId).select('*').single()
+
+  if (match.broadcast_active && updatedMatch) {
+    pushBroadcastEvent(updatedMatch.tournament_id, matchId, 'point_undone', {
+      restored_serving_team: restoredServingTeam,
+    })
+  }
 
   return NextResponse.json(updatedMatch)
 }

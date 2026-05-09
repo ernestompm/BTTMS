@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabase, createServiceSupabase } from '@/lib/supabase-server'
 import { INITIAL_SCORE } from '@/lib/score-engine'
 import { emptyStats } from '@/lib/stats-engine'
+import { pushBroadcastEvent } from '@/lib/broadcast-push'
 import type { ScoringSystem } from '@/types'
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -42,6 +43,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     score: initialScore,
     stats: initialStats,
   }).eq('id', matchId).select('*').single()
+
+  if (match.broadcast_active && updatedMatch) {
+    pushBroadcastEvent(updatedMatch.tournament_id, matchId, 'warmup_started', {
+      toss_winner: toss_winner ?? null,
+      toss_choice: toss_choice ?? null,
+      serving_team: serving_team ?? 1,
+    })
+  }
 
   return NextResponse.json(updatedMatch)
 }
