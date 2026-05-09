@@ -321,26 +321,19 @@ function formatScore(score: Score | null, serving: 1 | 2, isFinal: boolean) {
     current_set_number: sets.length + (inProgressMatch(score) ? 1 : 0),
     current_set: { t1: currentSet.t1 ?? 0, t2: currentSet.t2 ?? 0 },
 
-    // Game actualmente en juego: índice 0-3 + display "0|15|30|40|AD|ORO".
-    // Se devuelve null cuando hay tiebreak/super tiebreak activo — durante
-    // un TB no existe el concepto de "game" en curso, los puntos van en
-    // tiebreak.score. Tampoco existe cuando el match está finished.
-    current_game: (tbActive || stbActive || score.match_status === 'finished') ? null : {
-      t1: currentGame.t1 ?? 0,
-      t2: currentGame.t2 ?? 0,
-      t1_display: gameDisplay(score, 1),
-      t2_display: gameDisplay(score, 2),
+    // Punto/game actualmente en juego — UNA SOLA fuente para los puntos,
+    // sea game normal, tiebreak o super tiebreak.
+    //   phase = 'game'           → t1/t2 = "0" | "15" | "30" | "40" | "AD" | "ORO"
+    //   phase = 'tiebreak'       → t1/t2 = "0" | "1" | "2" | "3" | "4" ...
+    //   phase = 'super_tiebreak' → t1/t2 = "0" | "1" | "2" ... (super TB a 10)
+    // null cuando match terminado (no hay game en curso).
+    current_game: score.match_status === 'finished' ? null : {
+      t1: gameDisplay(score, 1),
+      t2: gameDisplay(score, 2),
+      phase: stbActive ? 'super_tiebreak' : (tbActive ? 'tiebreak' : 'game'),
       deuce: !!score.deuce,
       advantage_team: score.advantage_team ?? null,
     },
-
-    // Tiebreak / Super Tiebreak agrupados. Es la fuente de verdad para
-    // los puntos durante un TB — current_game no aplica entonces.
-    tiebreak: (tbActive || stbActive) ? {
-      active: true,
-      type: stbActive ? 'super_tiebreak' : 'tiebreak',
-      score: { t1: tbScore.t1 ?? 0, t2: tbScore.t2 ?? 0 },
-    } : { active: false, type: null, score: { t1: 0, t2: 0 } },
 
     scoring_system: score.scoring_system,
     match_status: score.match_status ?? 'in_progress',
@@ -365,14 +358,19 @@ function inProgressMatch(score: Score): boolean {
   return score.match_status === 'in_progress'
 }
 
+/**
+ * Devuelve el valor para mostrar en el marcador de current_game.
+ *  - Game normal:                 "0" | "15" | "30" | "40"
+ *  - Game con ventaja (raro):     "AD" en el equipo con ventaja, "40" en el otro
+ *  - Punto de oro (40-40 beach):  "40" en ambos (el flag golden_point lo indica)
+ *  - Tiebreak / Super TB:         "0" | "1" | "2" | "3" | ...
+ */
 function gameDisplay(score: Score, team: 1 | 2): string {
   if (score.super_tiebreak_active || score.tiebreak_active) {
     return String(score.tiebreak_score?.[team === 1 ? 't1' : 't2'] ?? 0)
   }
   if (score.deuce) {
-    if (score.advantage_team === team) return 'AD'
-    if (score.advantage_team) return '40'
-    return 'ORO'
+    return score.advantage_team === team ? 'AD' : '40'
   }
   const idx = score.current_game?.[team === 1 ? 't1' : 't2'] ?? 0
   return PTS_DISPLAY[idx] ?? '0'
