@@ -1,0 +1,1308 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BTTMS — Championship Skin Preview (Dreamweaver)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,400;0,600;0,700;0,800;0,900;1,400;1,700;1,800;1,900&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════
+   PALETA DE COLORES — edita aquí para cambiar todo
+   ═══════════════════════════════════════════════ */
+:root {
+  --orange:       #f57c00;
+  --orange-dk:    #d96a00;
+  --orange-lt:    #ff9d3d;
+  --orange-glow:  rgba(245,124,0,.40);
+  --navy:         #0a3c5e;
+  --navy-dk:      #062236;
+  --navy-mid:     #1a5a87;
+  --white:        #ffffff;
+  --text:         rgba(255,255,255,.98);
+  --muted:        rgba(255,255,255,.74);
+  --muted-soft:   rgba(255,255,255,.55);
+  --serve:        #ffd54f;
+  --hairline:     rgba(255,255,255,.14);
+  --stroke:       rgba(255,255,255,.18);
+
+  /* Tipografía */
+  --font: 'Barlow Condensed', 'Inter', system-ui, sans-serif;
+
+  /* Sombras */
+  --ts-hard: 0 2px 4px rgba(0,0,0,.65), 0 4px 16px rgba(0,0,0,.40);
+  --ts-soft: 0 1px 2px rgba(0,0,0,.45);
+}
+
+/* ═══════════════════════════════════════════════
+   CHROME DEL PREVIEWER — no editar
+   ═══════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #0f172a;
+  color: #94a3b8;
+  font-family: system-ui, sans-serif;
+  font-size: 14px;
+}
+
+/* Barra de escala fija arriba */
+#toolbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+  background: #0f172a;
+  border-bottom: 1px solid #1e293b;
+  display: flex; align-items: center; gap: 20px;
+  padding: 10px 24px;
+}
+#toolbar h1 { color: var(--orange); font-size: 15px; font-weight: 700; letter-spacing: .06em; white-space: nowrap; }
+#toolbar label { color: #94a3b8; font-size: 12px; font-weight: 600; letter-spacing: .08em; }
+#scale-slider { width: 180px; accent-color: var(--orange); }
+#scale-val { color: #fff; font-weight: 700; min-width: 44px; }
+#toc { display: flex; gap: 10px; flex-wrap: wrap; margin-left: auto; }
+#toc a {
+  font-size: 11px; font-weight: 700; letter-spacing: .06em;
+  color: #64748b; text-decoration: none; padding: 4px 10px;
+  border: 1px solid #1e293b; border-radius: 4px;
+  transition: all .15s;
+}
+#toc a:hover { color: var(--orange); border-color: var(--orange); }
+
+/* Página de stages */
+#main { margin-top: 56px; padding: 32px 24px; display: flex; flex-direction: column; gap: 48px; }
+
+.stage-wrap { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.stage-label {
+  align-self: flex-start;
+  font-family: var(--font);
+  font-size: 13px; font-weight: 800; letter-spacing: .22em;
+  color: var(--orange); text-transform: uppercase;
+}
+.stage-label small { color: #475569; font-weight: 600; font-size: 11px; letter-spacing: .12em; margin-left: 10px; }
+
+/* Stage 1920×1080, escalado */
+.stage {
+  width: 1920px; height: 1080px;
+  position: relative;
+  background: #1a3347;
+  background-image:
+    linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
+  background-size: 80px 80px;
+  overflow: hidden;
+  flex-shrink: 0;
+  transform-origin: top left;
+  /* video placeholder */
+  border: 1px solid rgba(255,255,255,.08);
+}
+/* Pseudo-video de fondo (color de playa) */
+.stage::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at 70% 40%, rgba(20,80,120,.55) 0%, transparent 60%),
+    radial-gradient(ellipse at 20% 70%, rgba(10,50,80,.40) 0%, transparent 55%);
+  pointer-events: none;
+}
+.stage::after {
+  content: 'VIDEO';
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  font-family: var(--font);
+  font-size: 60px; font-weight: 900; letter-spacing: .30em;
+  color: rgba(255,255,255,.04);
+  pointer-events: none;
+}
+
+/* ═══════════════════════════════════════════════
+   ANIMACIONES (simplificadas para preview estático)
+   ═══════════════════════════════════════════════ */
+@keyframes srvPulse {
+  0%,100% { opacity:1; transform:scale(1); }
+  50% { opacity:.6; transform:scale(1.3); }
+}
+@keyframes sgSheen {
+  0% { transform:translateX(-110%); }
+  100% { transform:translateX(110%); }
+}
+@keyframes tickerScroll {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+
+/* ═══════════════════════════════════════════════
+   CARD BASE
+   ═══════════════════════════════════════════════ */
+.card {
+  background: linear-gradient(180deg, rgba(15,55,84,.62) 0%, rgba(7,28,45,.72) 100%);
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
+  backdrop-filter: blur(28px) saturate(1.20);
+  -webkit-backdrop-filter: blur(28px) saturate(1.20);
+  box-shadow: 0 24px 64px rgba(0,0,0,.50), inset 0 1px 0 rgba(255,255,255,.12);
+  overflow: hidden;
+  font-family: var(--font);
+}
+.card-lg {
+  background: linear-gradient(180deg, rgba(15,55,84,.62) 0%, rgba(7,28,45,.72) 100%);
+  border: 1px solid var(--stroke);
+  border-radius: 16px;
+  backdrop-filter: blur(28px) saturate(1.20);
+  -webkit-backdrop-filter: blur(28px) saturate(1.20);
+  box-shadow: 0 32px 90px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.14);
+  overflow: hidden;
+  font-family: var(--font);
+}
+.accent-bar { height:8px; background:linear-gradient(90deg, var(--orange) 0%, var(--orange-dk) 100%); }
+.accent-bar-sm { height:6px; background:linear-gradient(90deg, var(--orange) 0%, var(--orange-dk) 100%); }
+.hairline { height:1px; background:var(--hairline); }
+
+/* ═══════════════════════════════════════════════
+   01 · SCOREBUG
+   ═══════════════════════════════════════════════ */
+.scorebug {
+  position: absolute;
+  top: 36px; left: 36px;
+  width: 488px; /* serveCol(32) + nameCol(300) + set*2(46*2) + game(60) + 4px borders */
+}
+.scorebug-row {
+  display: grid;
+  grid-template-columns: 32px 300px 46px 46px 60px;
+  align-items: stretch;
+  min-height: 50px;
+}
+.scorebug-row + .scorebug-row { border-top: 1px solid var(--hairline); }
+.serve-cell { display:flex; align-items:center; justify-content:center; }
+.serve-dot {
+  width:10px; height:10px; border-radius:50%;
+  background:var(--serve);
+  box-shadow: 0 0 12px var(--serve);
+  animation: srvPulse 1.6s infinite;
+}
+.serve-dot-empty { width:10px; height:10px; border-radius:50%; background:transparent; }
+.name-cell {
+  display:flex; align-items:center;
+  padding: 4px 14px 4px 6px;
+}
+.player-name {
+  font-size:26px; font-weight:800; font-style:italic; letter-spacing:.02em;
+  color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  line-height:1.05; text-shadow:var(--ts-hard);
+}
+.player-name.leading { color:var(--orange); }
+.set-cell {
+  display:grid; place-items:center;
+  border-left:1px solid var(--hairline);
+  font-size:26px; font-weight:800; font-variant-numeric:tabular-nums;
+}
+.set-cell.played { background:rgba(255,255,255,.92); color:#0e2236; }
+.set-cell.current { background:var(--orange); color:#fff; box-shadow:inset 0 -3px 0 var(--orange-dk); }
+.set-cell.empty { background:rgba(255,255,255,.05); color:var(--muted-soft); }
+.game-cell {
+  display:grid; place-items:center;
+  border-left:1px solid var(--hairline);
+  background:rgba(7,28,45,.85); color:var(--text);
+  font-size:26px; font-weight:800; font-variant-numeric:tabular-nums;
+  text-shadow:var(--ts-hard);
+}
+
+/* ═══════════════════════════════════════════════
+   02 · BIG SCOREBOARD
+   ═══════════════════════════════════════════════ */
+.big-scoreboard {
+  position: absolute;
+  bottom: 70px; left: 340px; width: 1240px;
+}
+.big-sb-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding: 12px 26px; border-bottom:1px solid var(--hairline);
+  background:rgba(0,0,0,.18);
+}
+.big-sb-header-label {
+  font-size:18px; font-weight:800; letter-spacing:.32em; color:var(--text);
+}
+.big-sb-row {
+  display:grid; grid-template-columns:1fr 110px;
+  min-height:78px; align-items:stretch;
+}
+.big-sb-row.winner {
+  background:linear-gradient(90deg, rgba(245,124,0,.92) 0%, rgba(217,106,0,.92) 100%);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.16);
+}
+.big-sb-row.loser {
+  background:linear-gradient(90deg, rgba(15,55,84,.62) 0%, rgba(10,40,62,.72) 100%);
+}
+.big-sb-inner {
+  display:flex; align-items:center; gap:18px; padding:0 22px;
+}
+.serve-dot-lg {
+  width:14px; height:14px; border-radius:50%;
+  background:var(--serve);
+  box-shadow:0 0 14px var(--serve);
+  animation: srvPulse 1.6s infinite;
+  flex-shrink:0;
+}
+.serve-dot-lg-empty {
+  width:14px; height:14px; border-radius:50%;
+  background:rgba(255,255,255,.10);
+  border:1.5px solid rgba(255,255,255,.30);
+  flex-shrink:0;
+}
+.flag-img {
+  width:50px; height:33px; border-radius:2px; object-fit:cover;
+  border:1px solid rgba(255,255,255,.20); flex-shrink:0;
+}
+.big-name {
+  font-size:32px; font-weight:800; font-style:italic; letter-spacing:.02em;
+  color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  line-height:1.05; text-shadow:var(--ts-hard); flex:1;
+}
+.big-sets-won {
+  display:grid; place-items:center;
+  border-left:1px solid rgba(255,255,255,.18);
+  font-size:56px; font-weight:900;
+  font-variant-numeric:tabular-nums;
+}
+.big-sets-won.winner { background:#fff; color:var(--orange-dk); }
+.big-sets-won.loser  { background:rgba(255,255,255,.10); color:var(--text); text-shadow:var(--ts-hard); }
+.big-sb-footer {
+  text-align:right; padding:6px 18px 8px;
+  font-size:14px; font-weight:800; letter-spacing:.20em; color:var(--muted);
+  background:rgba(0,0,0,.20);
+}
+
+/* ═══════════════════════════════════════════════
+   03 · MATCH PRESENTATION
+   ═══════════════════════════════════════════════ */
+.match-preso {
+  position:absolute; inset:0;
+  display:grid; place-items:center;
+}
+.match-preso-card { width:1500px; }
+.match-preso-header {
+  padding:32px 36px 24px; text-align:center;
+  border-bottom:1px solid var(--hairline);
+}
+.match-preso-tour {
+  font-size:18px; font-weight:800; letter-spacing:.40em; color:var(--muted);
+}
+.match-preso-round {
+  font-size:56px; font-weight:900; font-style:italic;
+  color:var(--orange); letter-spacing:.10em; margin-top:8px;
+  text-shadow:0 4px 20px rgba(245,124,0,.50); line-height:1.0;
+}
+.match-preso-cat {
+  font-size:16px; font-weight:800; letter-spacing:.32em; color:var(--text); margin-top:8px;
+}
+.match-preso-body {
+  display:grid; grid-template-columns:1fr 160px 1fr;
+  align-items:stretch; min-height:320px;
+}
+.vs-col {
+  display:grid; place-items:center;
+  font-size:80px; font-weight:900; color:var(--orange);
+  letter-spacing:.04em; font-style:italic;
+  text-shadow:0 6px 24px rgba(245,124,0,.55);
+}
+.preso-team { display:flex; flex-direction:column; gap:22px; justify-content:center; padding:36px 48px; }
+.preso-team.left { align-items:flex-start; text-align:left; }
+.preso-team.right { align-items:flex-end; text-align:right; }
+.preso-firstname { font-size:28px; font-weight:700; font-style:italic; letter-spacing:.06em; color:var(--muted); text-shadow:var(--ts-soft); }
+.preso-lastname { font-size:78px; font-weight:900; font-style:italic; letter-spacing:.02em; color:var(--text); margin-top:4px; text-shadow:var(--ts-hard); }
+
+/* ═══════════════════════════════════════════════
+   04 · PLAYER BIO
+   ═══════════════════════════════════════════════ */
+.player-bio {
+  position:absolute; bottom:70px; left:60px;
+  width:540px;
+}
+.bio-photo-placeholder {
+  width:130px; height:130px; border-radius:10px;
+  background:rgba(255,255,255,.06);
+  display:grid; place-items:center; flex-shrink:0;
+  border:1px solid rgba(255,255,255,.10);
+  font-size:40px;
+}
+.bio-header { display:flex; gap:18px; align-items:center; padding:24px 26px; }
+.bio-cat { font-size:13px; font-weight:800; letter-spacing:.28em; color:var(--muted); }
+.bio-firstname { font-size:36px; font-weight:900; font-style:italic; color:var(--text); line-height:1.02; margin-top:4px; text-shadow:var(--ts-hard); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.bio-lastname { font-size:36px; font-weight:900; font-style:italic; color:var(--text); line-height:1.02; text-shadow:var(--ts-hard); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.bio-nat { font-size:16px; font-weight:800; letter-spacing:.10em; color:var(--orange); margin-top:6px; }
+.bio-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; padding:0 26px 24px; }
+.bio-field-label { font-size:12px; font-weight:800; letter-spacing:.24em; color:var(--muted); }
+.bio-field-value { font-size:24px; font-weight:800; color:var(--text); margin-top:3px; text-shadow:var(--ts-soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+/* ═══════════════════════════════════════════════
+   05 · STATS PANEL
+   ═══════════════════════════════════════════════ */
+.stats-panel {
+  position:absolute; top:80px; left:370px; width:1180px;
+}
+.stats-header {
+  display:grid; grid-template-columns:200px 1fr 200px;
+  align-items:center; padding:18px 26px;
+  border-bottom:1px solid var(--hairline);
+}
+.stats-title { text-align:center; }
+.stats-title-main { font-size:26px; font-weight:900; letter-spacing:.20em; color:var(--text); text-shadow:var(--ts-hard); }
+.stats-title-time { font-size:16px; font-weight:800; letter-spacing:.22em; color:var(--muted); margin-top:4px; }
+.stats-name-header {
+  padding:18px 26px;
+  color:#fff; display:flex; flex-direction:column; gap:4px;
+}
+.stats-name-header.left  { align-items:flex-start; background:linear-gradient(90deg,  rgba(245,124,0,.85) 0%, rgba(217,106,0,.65) 100%); }
+.stats-name-header.right { align-items:flex-end;   background:linear-gradient(270deg, rgba(245,124,0,.85) 0%, rgba(217,106,0,.65) 100%); }
+.stats-name-header.left.no-win  { align-items:flex-start; background:linear-gradient(180deg, rgba(15,55,84,.55) 0%, rgba(10,40,62,.65) 100%); }
+.stats-name-header.right.no-win { align-items:flex-end;   background:linear-gradient(180deg, rgba(15,55,84,.55) 0%, rgba(10,40,62,.65) 100%); }
+.stats-lead-label { font-size:11px; font-weight:800; letter-spacing:.30em; opacity:.92; color:#fff; }
+.stats-short-name { font-size:32px; font-weight:900; font-style:italic; letter-spacing:.02em; text-shadow:var(--ts-hard); line-height:1.05; color:#fff; }
+.stats-names-row { display:grid; grid-template-columns:1fr 1fr; }
+.stat-row {
+  display:grid; grid-template-columns:1fr 2fr 1fr;
+  align-items:center; padding:16px 26px;
+  border-top:1px solid var(--hairline);
+}
+.stat-row.alt { background:rgba(255,255,255,.02); }
+.stat-val { font-size:26px; font-weight:900; color:var(--text); font-variant-numeric:tabular-nums; text-shadow:var(--ts-hard); }
+.stat-val.best { font-size:32px; color:var(--orange); text-shadow:0 0 18px var(--orange-glow), var(--ts-hard); }
+.stat-val.left { text-align:left; }
+.stat-val.right { text-align:right; }
+.stat-label { text-align:center; font-size:18px; font-weight:800; letter-spacing:.20em; color:var(--muted); }
+
+/* ═══════════════════════════════════════════════
+   06 · RESULTS GRID
+   ═══════════════════════════════════════════════ */
+.results-grid {
+  position:absolute; top:80px; right:60px; width:760px;
+}
+.results-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:16px 24px; border-bottom:1px solid var(--hairline);
+}
+.results-title { font-size:20px; font-weight:900; letter-spacing:.24em; color:var(--text); }
+.result-match { display:grid; grid-template-columns:120px 1fr; border-top:1px solid var(--hairline); }
+.result-round {
+  display:grid; place-items:center; background:rgba(0,0,0,.22);
+  font-size:13px; font-weight:800; letter-spacing:.22em; color:var(--muted);
+}
+.result-row {
+  display:grid; grid-template-columns:1fr 42px 42px 42px;
+  align-items:center; padding:10px 18px; color:#fff;
+}
+.result-row.winner { background:linear-gradient(90deg, var(--orange) 0%, var(--orange-dk) 100%); box-shadow:inset 0 0 0 1px rgba(255,255,255,.16); }
+.result-row.loser  { background:rgba(15,55,84,.40); }
+.result-row + .result-row { border-top:1px solid rgba(255,255,255,.10); }
+.result-name { font-size:16px; font-weight:800; letter-spacing:.04em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-shadow:var(--ts-soft); }
+.result-set { font-size:18px; font-weight:900; font-variant-numeric:tabular-nums; text-align:center; text-shadow:var(--ts-soft); }
+
+/* ═══════════════════════════════════════════════
+   07 · BRACKET
+   ═══════════════════════════════════════════════ */
+.bracket {
+  position:absolute; inset:0;
+  display:grid; place-items:center;
+}
+.bracket-card { width:1700px; }
+.bracket-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:20px 32px; border-bottom:1px solid var(--hairline);
+}
+.bracket-tour-name { font-size:26px; font-weight:900; letter-spacing:.24em; color:var(--text); text-shadow:var(--ts-hard); }
+.bracket-round-headers {
+  display:grid; /* set by inline style */
+  padding:14px 18px; background:rgba(0,0,0,.22); gap:16px;
+}
+.bracket-round-label { text-align:center; font-size:15px; font-weight:900; letter-spacing:.26em; color:var(--orange); text-shadow:var(--ts-hard); }
+.bracket-columns { display:grid; gap:16px; padding:20px; }
+.bracket-col { display:flex; flex-direction:column; justify-content:space-around; gap:12px; }
+.bracket-match {
+  border-radius:8px; overflow:hidden;
+  background:rgba(15,55,84,.40);
+  border:1px solid rgba(255,255,255,.12);
+  box-shadow:0 4px 16px rgba(0,0,0,.32);
+}
+.bracket-match.highlight {
+  border-color:var(--orange);
+  box-shadow:0 0 24px var(--orange-glow), 0 4px 16px rgba(0,0,0,.32);
+}
+.bracket-row {
+  display:grid; grid-template-columns:1fr 32px 32px 32px;
+  align-items:center; padding:10px 14px; color:#fff;
+}
+.bracket-row.winner { background:linear-gradient(90deg, var(--orange) 0%, var(--orange-dk) 100%); }
+.bracket-divider { height:1px; background:rgba(255,255,255,.10); }
+.bracket-pname { font-size:15px; font-weight:800; letter-spacing:.02em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-shadow:var(--ts-soft); }
+.bracket-set { font-size:16px; font-weight:900; font-variant-numeric:tabular-nums; text-align:center; text-shadow:var(--ts-soft); }
+
+/* ═══════════════════════════════════════════════
+   08 · WEATHER
+   ═══════════════════════════════════════════════ */
+.weather {
+  position:absolute; top:80px; right:60px; width:380px;
+}
+.weather-inner { padding:22px; display:flex; flex-direction:column; gap:12px; }
+.weather-loc { font-size:13px; font-weight:800; letter-spacing:.28em; color:var(--muted); }
+.weather-main { display:flex; align-items:center; gap:16px; }
+.weather-icon { font-size:84px; line-height:1; filter:drop-shadow(0 4px 12px rgba(0,0,0,.40)); }
+.weather-temp { font-size:76px; font-weight:900; color:var(--orange); line-height:1; font-variant-numeric:tabular-nums; text-shadow:var(--ts-hard); }
+.weather-feels { font-size:14px; font-weight:800; color:var(--muted); letter-spacing:.10em; margin-top:2px; }
+.weather-condition { font-size:18px; font-weight:800; letter-spacing:.06em; color:var(--text); text-transform:uppercase; }
+.weather-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.weather-row-label { font-size:11px; font-weight:800; letter-spacing:.24em; color:var(--muted); }
+.weather-row-value { font-size:20px; font-weight:800; color:var(--text); margin-top:2px; text-shadow:var(--ts-soft); }
+
+/* ═══════════════════════════════════════════════
+   09 · COIN TOSS
+   ═══════════════════════════════════════════════ */
+.coin-toss {
+  position:absolute; bottom:70px; right:60px; width:660px;
+}
+.ct-inner { padding:24px 32px; }
+.ct-label { font-size:16px; font-weight:800; letter-spacing:.36em; color:var(--muted); }
+.ct-winner { font-size:50px; font-weight:900; font-style:italic; color:var(--orange); margin-top:8px; letter-spacing:.03em; text-shadow:var(--ts-hard); line-height:1.0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ct-elige { font-size:18px; font-weight:700; letter-spacing:.22em; color:var(--muted); margin-top:16px; }
+.ct-choice { font-size:44px; font-weight:900; color:var(--text); margin-top:4px; letter-spacing:.06em; text-shadow:var(--ts-hard); line-height:1.0; }
+
+/* ═══════════════════════════════════════════════
+   10 · TOURNAMENT INTRO
+   ═══════════════════════════════════════════════ */
+.tournament-intro {
+  position:absolute; inset:0;
+  display:grid; place-items:center;
+}
+.ti-card { width:1320px; position:relative; overflow:visible !important; }
+.ti-orb1 {
+  position:absolute; top:-120px; left:-120px; width:380px; height:380px; border-radius:50%;
+  background:radial-gradient(circle, rgba(245,124,0,.35) 0%, transparent 70%);
+  filter:blur(40px); pointer-events:none;
+}
+.ti-orb2 {
+  position:absolute; bottom:-160px; right:-100px; width:460px; height:460px; border-radius:50%;
+  background:radial-gradient(circle, rgba(245,124,0,.26) 0%, transparent 70%);
+  filter:blur(50px); pointer-events:none;
+}
+.ti-deco-tl1 { position:absolute; top:30px; left:30px; width:80px; height:4px; background:linear-gradient(90deg, var(--orange), transparent); border-radius:2px; }
+.ti-deco-tl2 { position:absolute; top:44px; left:30px; width:50px; height:3px; background:linear-gradient(90deg, rgba(245,124,0,.55), transparent); border-radius:2px; }
+.ti-deco-br1 { position:absolute; bottom:30px; right:30px; width:80px; height:4px; background:linear-gradient(270deg, var(--orange), transparent); border-radius:2px; }
+.ti-deco-br2 { position:absolute; bottom:44px; right:30px; width:50px; height:3px; background:linear-gradient(270deg, rgba(245,124,0,.55), transparent); border-radius:2px; }
+.ti-sheen-bar {
+  height:10px; position:relative; overflow:hidden;
+  background:linear-gradient(90deg, var(--orange-dk) 0%, var(--orange-lt) 50%, var(--orange-dk) 100%);
+}
+.ti-sheen-bar::after {
+  content:'';
+  position:absolute; inset:0;
+  background:linear-gradient(90deg, transparent 0%, rgba(255,255,255,.45) 50%, transparent 100%);
+  animation:sgSheen 4.2s ease-in-out infinite;
+  transform:translateX(-110%);
+}
+.ti-body { padding:60px; display:flex; flex-direction:column; align-items:center; gap:26px; text-align:center; position:relative; z-index:1; }
+.ti-logo { max-height:160px; object-fit:contain; filter:drop-shadow(0 16px 36px rgba(0,0,0,.55)); }
+.ti-ticks { display:flex; flex-direction:column; align-items:center; gap:4px; }
+.ti-tick1 { height:4px; width:180px; background:var(--orange); border-radius:2px; box-shadow:0 0 24px var(--orange-glow); }
+.ti-tick2 { height:3px; width:100px; background:rgba(245,124,0,.65); border-radius:2px; }
+.ti-tick3 { height:2px; width:60px; background:rgba(245,124,0,.40); border-radius:2px; }
+.ti-name {
+  font-size:80px; font-weight:900; font-style:italic; letter-spacing:.04em;
+  color:var(--text); line-height:.95; text-shadow:var(--ts-hard);
+}
+.ti-venue {
+  font-size:30px; font-weight:900; letter-spacing:.22em; color:var(--orange);
+  text-shadow:0 4px 16px rgba(245,124,0,.45);
+  display:flex; align-items:center; gap:18px;
+}
+.ti-venue-dash { width:24px; height:2px; background:var(--orange); opacity:.6; }
+.ti-date { font-size:22px; font-weight:800; letter-spacing:.32em; color:var(--muted); }
+.ti-hr { height:1px; width:70%; background:linear-gradient(90deg, transparent 0%, rgba(255,255,255,.25) 50%, transparent 100%); margin:4px 0; }
+
+/* ═══════════════════════════════════════════════
+   11 · VENUE CARD
+   ═══════════════════════════════════════════════ */
+.venue-card {
+  position:absolute; bottom:110px; left:600px; width:720px;
+}
+.vc-inner { padding:22px 28px; text-align:center; }
+.vc-label { font-size:13px; font-weight:800; letter-spacing:.36em; color:var(--muted); }
+.vc-name { font-size:38px; font-weight:900; font-style:italic; color:var(--text); letter-spacing:.04em; margin-top:4px; text-shadow:var(--ts-hard); line-height:1.05; }
+.vc-city { font-size:18px; font-weight:800; letter-spacing:.22em; color:var(--orange); margin-top:4px; text-shadow:var(--ts-hard); }
+
+/* ═══════════════════════════════════════════════
+   12 · REFEREE LOWER THIRD
+   ═══════════════════════════════════════════════ */
+.referee-lt {
+  position:absolute; bottom:90px; left:60px; width:580px;
+}
+.ref-inner { display:grid; grid-template-columns:8px 1fr; }
+.ref-stripe { background:linear-gradient(180deg, var(--orange) 0%, var(--orange-dk) 100%); }
+.ref-content { padding:16px 22px; }
+.ref-label { font-size:12px; font-weight:800; letter-spacing:.30em; color:var(--muted); }
+.ref-name { font-size:30px; font-weight:900; font-style:italic; color:var(--text); letter-spacing:.02em; margin-top:4px; text-shadow:var(--ts-hard); line-height:1.05; }
+.ref-fed { font-size:14px; font-weight:800; letter-spacing:.18em; color:var(--orange); text-shadow:var(--ts-hard); }
+
+/* ═══════════════════════════════════════════════
+   13 · AWARDS PODIUM
+   ═══════════════════════════════════════════════ */
+.awards {
+  position:absolute; inset:0;
+  display:grid; place-items:center;
+}
+.awards-card { width:1280px; }
+.awards-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:20px 32px; border-bottom:1px solid var(--hairline);
+}
+.awards-title { font-size:26px; font-weight:900; letter-spacing:.24em; color:var(--text); text-shadow:var(--ts-hard); }
+.awards-body { padding:24px; display:flex; flex-direction:column; gap:14px; }
+.podium-row {
+  display:grid; grid-template-columns:90px 1fr;
+  color:#fff; border-radius:10px; overflow:hidden;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.18), inset 0 -2px 0 rgba(0,0,0,.20), 0 6px 24px rgba(0,0,0,.32);
+}
+.podium-row.rank1 { background:linear-gradient(90deg, var(--orange) 0%, var(--orange-dk) 100%); }
+.podium-row.rank2 { background:linear-gradient(90deg, rgba(245,124,0,.55) 0%, rgba(217,106,0,.50) 100%); }
+.podium-row.rank3 { background:linear-gradient(90deg, rgba(15,55,84,.55) 0%, rgba(10,40,62,.55) 100%); }
+.podium-rank { display:grid; place-items:center; font-size:52px; font-weight:900; font-style:italic; text-shadow:var(--ts-hard); }
+.podium-info { padding:18px 24px; border-left:1px solid rgba(255,255,255,.18); }
+.podium-label { font-size:13px; font-weight:800; letter-spacing:.28em; opacity:.92; }
+.podium-name { font-size:32px; font-weight:900; font-style:italic; letter-spacing:.04em; margin-top:4px; text-shadow:var(--ts-hard); line-height:1.05; }
+
+/* ═══════════════════════════════════════════════
+   14 · STATS TICKER (lower-third horizontal)
+   ═══════════════════════════════════════════════ */
+.stats-ticker {
+  position:absolute; bottom:0; left:0; right:0;
+  height:48px;
+  background:linear-gradient(90deg, rgba(10,60,94,.96) 0%, rgba(7,28,45,.98) 100%);
+  border-top:3px solid var(--orange);
+  display:flex; align-items:center; overflow:hidden;
+}
+.ticker-badge {
+  flex-shrink:0; padding:0 20px; height:100%;
+  background:var(--orange);
+  display:flex; align-items:center;
+  font-size:14px; font-weight:900; letter-spacing:.26em; color:#fff;
+  text-shadow:0 1px 2px rgba(0,0,0,.40);
+}
+.ticker-track { flex:1; overflow:hidden; position:relative; }
+.ticker-scroll {
+  display:flex; gap:60px; align-items:center;
+  white-space:nowrap;
+  animation: tickerScroll 22s linear infinite;
+}
+.ticker-item { display:flex; align-items:center; gap:10px; }
+.ticker-stat-label { font-size:13px; font-weight:800; letter-spacing:.22em; color:var(--muted); }
+.ticker-sep { color:var(--orange); font-size:18px; font-weight:900; }
+.ticker-p1 { font-size:18px; font-weight:900; color:var(--orange); font-variant-numeric:tabular-nums; }
+.ticker-p2 { font-size:18px; font-weight:900; color:var(--text); font-variant-numeric:tabular-nums; }
+
+/* Logo bar helper */
+.logo-bar { display:flex; align-items:center; gap:18px; }
+.logo-bar img { height:36px; object-fit:contain; opacity:.94; }
+.logo-bar .logo-sep { width:1px; height:22px; background:rgba(255,255,255,.20); }
+</style>
+</head>
+<body>
+
+<!-- ═══════ TOOLBAR ═══════ -->
+<div id="toolbar">
+  <h1>⚡ BTTMS · CHAMPIONSHIP SKIN</h1>
+  <label>ESCALA</label>
+  <input type="range" id="scale-slider" min="20" max="100" value="42" step="1">
+  <span id="scale-val">42%</span>
+  <nav id="toc">
+    <a href="#s01">01 SCOREBUG</a>
+    <a href="#s02">02 BIG SCOREBOARD</a>
+    <a href="#s03">03 MATCH PRESO</a>
+    <a href="#s04">04 PLAYER BIO</a>
+    <a href="#s05">05 STATS PANEL</a>
+    <a href="#s06">06 RESULTS GRID</a>
+    <a href="#s07">07 BRACKET</a>
+    <a href="#s08">08 WEATHER</a>
+    <a href="#s09">09 COIN TOSS</a>
+    <a href="#s10">10 TOUR INTRO</a>
+    <a href="#s11">11 VENUE CARD</a>
+    <a href="#s12">12 REFEREE LT</a>
+    <a href="#s13">13 AWARDS</a>
+    <a href="#s14">14 TICKER</a>
+  </nav>
+</div>
+
+<div id="main">
+
+<!-- ══════════════════════════════════════════════════
+     01 · SCOREBUG
+     ══════════════════════════════════════════════════ -->
+<div class="stage-wrap" id="s01">
+  <div class="stage-label">01 · SCOREBUG <small>top-left compacto · 488×100px</small></div>
+  <div class="stage">
+    <div class="scorebug card">
+      <!-- Fila 1: PIROS (sirviendo, va ganando) -->
+      <div class="scorebug-row">
+        <div class="serve-cell"><span class="serve-dot"></span></div>
+        <div class="name-cell"><span class="player-name leading">Z.PIROS</span></div>
+        <div class="set-cell played">7</div>
+        <div class="set-cell played">6</div>
+        <div class="game-cell">40</div>
+      </div>
+      <!-- Fila 2: RODIONOV -->
+      <div class="scorebug-row">
+        <div class="serve-cell"><span class="serve-dot-empty"></span></div>
+        <div class="name-cell"><span class="player-name">J.RODIONOV</span></div>
+        <div class="set-cell played">5</div>
+        <div class="set-cell played">2</div>
+        <div class="game-cell">30</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     02 · BIG SCOREBOARD
+     ══════════════════════════════════════════════════ -->
+<div class="stage-wrap" id="s02">
+  <div class="stage-label">02 · BIG SCOREBOARD <small>bottom lower-third · 1240px ancho</small></div>
+  <div class="stage">
+    <div class="big-scoreboard card-lg">
+      <div class="big-sb-header">
+        <span class="big-sb-header-label">FINAL</span>
+        <div class="logo-bar">
+          <!-- Aquí irían los logos del torneo/RFET -->
+          <span style="font-family:var(--font); font-size:16px; font-weight:800; letter-spacing:.20em; color:var(--muted);">RFET · BTTMS</span>
+        </div>
+      </div>
+      <!-- PIROS — ganando — naranja -->
+      <div class="big-sb-row winner">
+        <div class="big-sb-inner">
+          <span class="serve-dot-lg"></span>
+          <img class="flag-img" src="https://flagcdn.com/w80/hu.png" alt="HUN">
+          <span class="big-name">ZSOMBOR PIROS</span>
+        </div>
+        <div class="big-sets-won winner">2</div>
+      </div>
+      <div class="hairline"></div>
+      <!-- RODIONOV — perdiendo — navy -->
+      <div class="big-sb-row loser">
+        <div class="big-sb-inner">
+          <span class="serve-dot-lg-empty"></span>
+          <img class="flag-img" src="https://flagcdn.com/w80/de.png" alt="GER">
+          <span class="big-name">JÜRGEN RODIONOV</span>
+        </div>
+        <div class="big-sets-won loser">0</div>
+      </div>
+      <div class="big-sb-footer">1H 23'</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     03 · MATCH PRESENTATION
+     ══════════════════════════════════════════════════ -->
+<div class="stage-wrap" id="s03">
+  <div class="stage-label">03 · MATCH PRESENTATION <small>fullscreen overlay · card flotante centrado</small></div>
+  <div class="stage">
+    <div class="match-preso">
+      <div class="match-preso-card card-lg">
+        <div class="match-preso-header">
+          <div class="match-preso-tour">CAMPEONATO DE ESPAÑA ABSOLUTO DE TENIS PLAYA</div>
+          <div class="match-preso-round">FINAL</div>
+          <div class="match-preso-cat">INDIVIDUAL MASCULINO</div>
+        </div>
+        <div class="match-preso-body">
+          <!-- Equipo 1 -->
+          <div class="preso-team left">
+            <div>
+              <div class="preso-firstname">ZSOMBOR</div>
+              <div class="preso-lastname">PIROS</div>
+            </div>
+          </div>
+          <!-- VS -->
+          <div class="vs-col">VS</div>
+          <!-- Equipo 2 -->
+          <div class="preso-team right">
+            <div style="text-align:right">
+              <div class="preso-firstname" style="text-align:right">JÜRGEN</div>
+              <div class="preso-lastname" style="text-align:right">RODIONOV</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     04 · PLAYER BIO (izquierda)
+     ══════════════════════════════════════════════════ -->
+<div class="stage-wrap" id="s04">
+  <div class="stage-label">04 · PLAYER BIO <small>bottom-left · 540px · campos vacíos ocultos</small></div>
+  <div class="stage">
+    <div class="player-bio card-lg">
+      <div class="accent-bar"></div>
+      <div class="bio-header">
+        <div class="bio-photo-placeholder">🎾</div>
+        <div style="display:flex; flex-direction:column; justify-content:center; min-width:0; flex:1;">
+          <span class="bio-cat">INDIVIDUAL MASCULINO</span>
+          <div class="bio-firstname">ZSOMBOR</div>
+          <div class="bio-lastname">PIROS</div>
+          <div class="bio-nat">HUNGRÍA</div>
+        </div>
+      </div>
+      <div class="hairline" style="margin:0 26px;"></div>
+      <div class="bio-grid">
+        <div>
+          <div class="bio-field-label">EDAD</div>
+          <div class="bio-field-value">26 AÑOS</div>
+        </div>
+        <div>
+          <div class="bio-field-label">ALTURA</div>
+          <div class="bio-field-value">188 CM</div>
+        </div>
+        <div>
+          <div class="bio-field-label">LATERALIDAD</div>
+          <div class="bio-field-value">DIESTRO</div>
+        </div>
+        <div>
+          <div class="bio-field-label">RANKING ITF</div>
+          <div class="bio-field-value">#12</div>
+        </div>
+        <div>
+          <div class="bio-field-label">RANKING RFET</div>
+          <div class="bio-field-value">#2</div>
+        </div>
+        <div>
+          <div class="bio-field-label">CIUDAD</div>
+          <div class="bio-field-value">BUDAPEST</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     05 · STATS PANEL
+     ══════════════════════════════════════════════════ -->
+<div class="stage-wrap" id="s05">
+  <div class="stage-label">05 · STATS PANEL <small>centrado · 1180px · mejor valor en naranja</small></div>
+  <div class="stage">
+    <div class="stats-panel card-lg">
+      <div class="stats-header">
+        <span></span>
+        <div class="stats-title">
+          <div class="stats-title-main">ESTADÍSTICAS DEL PARTIDO</div>
+          <div class="stats-title-time">1H 23M</div>
+        </div>
+        <div style="display:flex; justify-content:flex-end;">
+          <span style="font-family:var(--font); font-size:14px; font-weight:800; letter-spacing:.20em; color:var(--muted);">RFET</span>
+        </div>
+      </div>
+      <div class="stats-names-row">
+        <div class="stats-name-header left">
+          <span class="stats-lead-label">▲ ÚLTIMO SET</span>
+          <span class="stats-short-name">Z.PIROS</span>
+        </div>
+        <div class="stats-name-header right no-win">
+          <span class="stats-short-name">J.RODIONOV</span>
+        </div>
+      </div>
+      <div class="stat-row alt">
+        <span class="stat-val best left">5</span>
+        <span class="stat-label">ACES</span>
+        <span class="stat-val right">2</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-val left">3</span>
+        <span class="stat-label">FALTAS DE SAQUE</span>
+        <span class="stat-val best right">1</span>
+      </div>
+      <div class="stat-row alt">
+        <span class="stat-val best left">68%</span>
+        <span class="stat-label">% PUNTOS DE SAQUE</span>
+        <span class="stat-val right">54%</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-val best left">46%</span>
+        <span class="stat-label">% PUNTOS AL RESTO</span>
+        <span class="stat-val right">32%</span>
+      </div>
+      <div class="stat-row alt">
+        <span class="stat-val best left">4/6</span>
+        <span class="stat-label">PUNTOS DE BREAK GANADOS</span>
+        <span class="stat-val right">1/4</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-val best left">64</span>
+        <span class="stat-label">PUNTOS TOTALES</span>
+        <span class="stat-val right">38</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     06 · RESULTS GRID
+     ══════════════════════════════════════════════════ -->
+<div class="stage-wrap" id="s06">
+  <div class="stage-label">06 · RESULTS GRID <small>top-right · 760px · ganadores en naranja</small></div>
+  <div class="stage">
+    <div class="results-grid card-lg">
+      <div class="results-header">
+        <span class="results-title">RESULTADOS</span>
+        <span style="font-family:var(--font); font-size:13px; font-weight:800; letter-spacing:.22em; color:var(--muted);">RFET 2026</span>
+      </div>
+      <!-- QF 1 -->
+      <div class="result-match">
+        <div class="result-round">CUARTOS</div>
+        <div>
+          <div class="result-row winner">
+            <span class="result-name">Z.PIROS</span>
+            <span class="result-set">6</span><span class="result-set">7</span><span class="result-set"></span>
+          </div>
+          <div class="result-row loser">
+            <span class="result-name">M.DÍAZ MADRIGAL</span>
+            <span class="result-set">3</span><span class="result-set">5</span><span class="result-set"></span>
+          </div>
+        </div>
+      </div>
+      <!-- QF 2 -->
+      <div class="result-match">
+        <div class="result-round">CUARTOS</div>
+        <div>
+          <div class="result-row winner">
+            <span class="result-name">J.RODIONOV</span>
+            <span class="result-set">6</span><span class="result-set">6</span><span class="result-set"></span>
+          </div>
+          <div class="result-row loser">
+            <span class="result-name">A.HERNÁNDEZ BLANCO</span>
+            <span class="result-set">4</span><span class="result-set">2</span><span class="result-set"></span>
+          </div>
+        </div>
+      </div>
+      <!-- SF 1 -->
+      <div class="result-match">
+        <div class="result-round">SEMI</div>
+        <div>
+          <div class="result-row winner">
+            <span class="result-name">Z.PIROS</span>
+            <span class="result-set">6</span><span class="result-set">4</span><span class="result-set">6</span>
+          </div>
+          <div class="result-row loser">
+            <span class="result-name">C.FERNÁNDEZ RUIZ</span>
+            <span class="result-set">3</span><span class="result-set">6</span><span class="result-set">2</span>
+          </div>
+        </div>
+      </div>
+      <!-- SF 2 -->
+      <div class="result-match">
+        <div class="result-round">SEMI</div>
+        <div>
+          <div class="result-row winner">
+            <span class="result-name">J.RODIONOV</span>
+            <span class="result-set">7</span><span class="result-set">6</span><span class="result-set"></span>
+          </div>
+          <div class="result-row loser">
+            <span class="result-name">P.GÓMEZ SERRANO</span>
+            <span class="result-set">5</span><span class="result-set">4</span><span class="result-set"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     07 · BRACKET (QF → SF → F)
+     ══════════════════════════════════════════════════ -->
+<div class="stage-wrap" id="s07">
+  <div class="stage-label">07 · BRACKET VIEW <small>fullscreen · desde cuartos de final</small></div>
+  <div class="stage">
+    <div class="bracket">
+      <div class="bracket-card card-lg">
+        <div class="bracket-header">
+          <span class="bracket-tour-name">CAMPEONATO DE ESPAÑA ABSOLUTO DE TENIS PLAYA</span>
+          <span style="font-family:var(--font); font-size:14px; font-weight:800; letter-spacing:.22em; color:var(--muted);">RFET 2026 · MARBELLA</span>
+        </div>
+        <!-- Round labels (3 cols) -->
+        <div class="bracket-round-headers" style="grid-template-columns:repeat(3,1fr);">
+          <div class="bracket-round-label">CUARTOS DE FINAL</div>
+          <div class="bracket-round-label">SEMIFINAL</div>
+          <div class="bracket-round-label">FINAL</div>
+        </div>
+        <!-- Columnas -->
+        <div class="bracket-columns" style="grid-template-columns:repeat(3,1fr);">
+          <!-- QF -->
+          <div class="bracket-col" style="gap:24px;">
+            <div class="bracket-match">
+              <div class="bracket-row winner">
+                <span class="bracket-pname">Z.PIROS</span>
+                <span class="bracket-set">6</span><span class="bracket-set">7</span><span class="bracket-set"></span>
+              </div>
+              <div class="bracket-divider"></div>
+              <div class="bracket-row">
+                <span class="bracket-pname">M.DÍAZ MADRIGAL</span>
+                <span class="bracket-set">3</span><span class="bracket-set">5</span><span class="bracket-set"></span>
+              </div>
+            </div>
+            <div class="bracket-match">
+              <div class="bracket-row winner">
+                <span class="bracket-pname">C.FERNÁNDEZ RUIZ</span>
+                <span class="bracket-set">6</span><span class="bracket-set">6</span><span class="bracket-set"></span>
+              </div>
+              <div class="bracket-divider"></div>
+              <div class="bracket-row">
+                <span class="bracket-pname">I.SÁNCHEZ MORENO</span>
+                <span class="bracket-set">1</span><span class="bracket-set">4</span><span class="bracket-set"></span>
+              </div>
+            </div>
+            <div class="bracket-match">
+              <div class="bracket-row winner">
+                <span class="bracket-pname">P.GÓMEZ SERRANO</span>
+                <span class="bracket-set">6</span><span class="bracket-set">6</span><span class="bracket-set"></span>
+              </div>
+              <div class="bracket-divider"></div>
+              <div class="bracket-row">
+                <span class="bracket-pname">R.MARTÍNEZ CANO</span>
+                <span class="bracket-set">4</span><span class="bracket-set">3</span><span class="bracket-set"></span>
+              </div>
+            </div>
+            <div class="bracket-match">
+              <div class="bracket-row winner">
+                <span class="bracket-pname">J.RODIONOV</span>
+                <span class="bracket-set">6</span><span class="bracket-set">6</span><span class="bracket-set"></span>
+              </div>
+              <div class="bracket-divider"></div>
+              <div class="bracket-row">
+                <span class="bracket-pname">A.HERNÁNDEZ BLANCO</span>
+                <span class="bracket-set">4</span><span class="bracket-set">2</span><span class="bracket-set"></span>
+              </div>
+            </div>
+          </div>
+          <!-- SF -->
+          <div class="bracket-col" style="gap:80px; justify-content:space-around;">
+            <div class="bracket-match">
+              <div class="bracket-row winner">
+                <span class="bracket-pname">Z.PIROS</span>
+                <span class="bracket-set">6</span><span class="bracket-set">4</span><span class="bracket-set">6</span>
+              </div>
+              <div class="bracket-divider"></div>
+              <div class="bracket-row">
+                <span class="bracket-pname">C.FERNÁNDEZ RUIZ</span>
+                <span class="bracket-set">3</span><span class="bracket-set">6</span><span class="bracket-set">2</span>
+              </div>
+            </div>
+            <div class="bracket-match">
+              <div class="bracket-row winner">
+                <span class="bracket-pname">J.RODIONOV</span>
+                <span class="bracket-set">7</span><span class="bracket-set">6</span><span class="bracket-set"></span>
+              </div>
+              <div class="bracket-divider"></div>
+              <div class="bracket-row">
+                <span class="bracket-pname">P.GÓMEZ SERRANO</span>
+                <span class="bracket-set">5</span><span class="bracket-set">4</span><span class="bracket-set"></span>
+              </div>
+            </div>
+          </div>
+          <!-- F (EN JUEGO — highlight) -->
+          <div class="bracket-col" style="justify-content:center;">
+            <div class="bracket-match highlight">
+              <div class="bracket-row winner">
+                <span class="bracket-pname">Z.PIROS</span>
+                <span class="bracket-set">7</span><span class="bracket-set">6</span><span class="bracket-set">·</span>
+              </div>
+              <div class="bracket-divider"></div>
+              <div class="bracket-row">
+                <span class="bracket-pname">J.RODIONOV</span>
+                <span class="bracket-set">5</span><span class="bracket-set">2</span><span class="bracket-set">·</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     08 · WEATHER
+     ══════════════════════════════════════════════════ -->
+<div class="stage-wrap" id="s08">
+  <div class="stage-label">08 · WEATHER <small>top-right · 380px</small></div>
+  <div class="stage">
+    <div class="weather card-lg">
+      <div class="weather-inner">
+        <div class="weather-loc">CLIMA · MARBELLA</div>
+        <div class="weather-main">
+          <span class="weather-icon">☀️</span>
+          <div>
+            <div class="weather-temp">28°</div>
+            <div class="weather-feels">SENS. 30°</div>
+          </div>
+        </div>
+        <div class="weather-condition">SOLEADO</div>
+        <div class="hairline"></div>
+        <div class="weather-grid">
+          <div>
+            <div class="weather-row-label">VIENTO</div>
+            <div class="weather-row-value">14 KM/H S</div>
+          </div>
+          <div>
+            <div class="weather-row-label">HUMEDAD</div>
+            <div class="weather-row-value">62%</div>
+          </div>
+          <div>
+            <div class="weather-row-label">UV</div>
+            <div class="weather-row-value">8</div>
+          </div>
+          <div>
+            <div class="weather-row-label">PREVISIÓN</div>
+            <div class="weather-row-value">☀️ DESPEJADO</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     09 · COIN TOSS
+     ══════════════════════════════════════════════════ -->
+<div class="stage-wrap" id="s09">
+  <div class="stage-label">09 · COIN TOSS / SORTEO <small>bottom-right · 660px</small></div>
+  <div class="stage">
+    <div class="coin-toss card-lg">
+      <div class="accent-bar"></div>
+      <div class="ct-inner">
+        <div class="ct-label">SORTEO</div>
+        <div class="ct-winner">ZSOMBOR PIROS</div>
+        <div class="ct-elige">ELIGE</div>
+        <div class="ct-choice">SAQUE</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     10 · TOURNAMENT INTRO
+     ══════════════════════════════════════════════════ -->
+<div class="stage-wrap" id="s10">
+  <div class="stage-label">10 · TOURNAMENT INTRO <small>fullscreen · card centrado 1320px</small></div>
+  <div class="stage">
+    <div class="tournament-intro">
+      <div class="ti-card card-lg">
+        <!-- Orbes -->
+        <div class="ti-orb1"></div>
+        <div class="ti-orb2"></div>
+        <!-- Líneas decorativas -->
+        <div class="ti-deco-tl1"></div>
+        <div class="ti-deco-tl2"></div>
+        <div class="ti-deco-br1"></div>
+        <div class="ti-deco-br2"></div>
+        <!-- Barra shimmer superior -->
+        <div class="ti-sheen-bar"></div>
+        <!-- Cuerpo -->
+        <div class="ti-body">
+          <!-- Logo (placeholder) -->
+          <div style="background:rgba(255,255,255,.06); border-radius:8px; padding:20px 40px; font-family:var(--font); font-size:22px; font-weight:800; color:var(--orange); letter-spacing:.20em;">LOGO TORNEO</div>
+          <!-- Triple tick -->
+          <div class="ti-ticks">
+            <div class="ti-tick1"></div>
+            <div class="ti-tick2"></div>
+            <div class="ti-tick3"></div>
+          </div>
+          <!-- Nombre -->
+          <div class="ti-name">CAMPEONATO DE ESPAÑA<br>ABSOLUTO DE TENIS PLAYA</div>
+          <!-- Sede -->
+          <div class="ti-venue">
+            <span class="ti-venue-dash"></span>
+            PISTAS MUNICIPALES MARBELLA · MARBELLA
+            <span class="ti-venue-dash"></span>
+          </div>
+          <!-- Fecha -->
+          <div class="ti-date">8–10 MAYO 2026</div>
+          <!-- Línea separadora -->
+          <div class="ti-hr"></div>
+          <!-- Logos (placeholder) -->
+          <div class="logo-bar">
+            <span style="font-family:var(--font); font-size:16px; font-weight:800; letter-spacing:.20em; color:var(--muted-soft);">RFET</span>
+            <span class="logo-sep"></span>
+            <span style="font-family:var(--font); font-size:16px; font-weight:800; letter-spacing:.20em; color:var(--muted-soft);">BTTMS</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     11 · VENUE CARD
+     ══════════════════════════════════════════════════ -->
+<div class="stage-wrap" id="s11">
+  <div class="stage-label">11 · VENUE CARD <small>bottom-center · 720px</small></div>
+  <div class="stage">
+    <div class="venue-card card-lg">
+      <div class="accent-bar-sm"></div>
+      <div class="vc-inner">
+        <div class="vc-label">SEDE</div>
+        <div class="vc-name">PISTAS MUNICIPALES DE MARBELLA</div>
+        <div class="vc-city">MARBELLA</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     12 · REFEREE LOWER THIRD
+     ══════════════════════════════════════════════════ -->
+<div class="stage-wrap" id="s12">
+  <div class="stage-label">12 · REFEREE LOWER THIRD <small>bottom-left · 580px</small></div>
+  <div class="stage">
+    <div class="referee-lt card">
+      <div class="ref-inner">
+        <div class="ref-stripe"></div>
+        <div class="ref-content">
+          <div class="ref-label">JUEZ ÁRBITRO</div>
+          <div class="ref-name">ANTONIO GARCÍA MOLINA</div>
+          <div class="ref-fed">FEDERACIÓN ANDALUZA DE TENIS</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     13 · AWARDS PODIUM
+     ══════════════════════════════════════════════════ -->
+<div class="stage-wrap" id="s13">
+  <div class="stage-label">13 · AWARDS PODIUM / PALMARÉS <small>fullscreen · 1280px centrado</small></div>
+  <div class="stage">
+    <div class="awards">
+      <div class="awards-card card-lg">
+        <div class="awards-header">
+          <span class="awards-title">PALMARÉS</span>
+          <span style="font-family:var(--font); font-size:14px; font-weight:800; letter-spacing:.22em; color:var(--muted);">RFET 2026 · MARBELLA</span>
+        </div>
+        <div class="awards-body">
+          <div class="podium-row rank1">
+            <div class="podium-rank">1</div>
+            <div class="podium-info">
+              <div class="podium-label">CAMPEÓN</div>
+              <div class="podium-name">ZSOMBOR PIROS</div>
+            </div>
+          </div>
+          <div class="podium-row rank2">
+            <div class="podium-rank">2</div>
+            <div class="podium-info">
+              <div class="podium-label">SUBCAMPEÓN</div>
+              <div class="podium-name">JÜRGEN RODIONOV</div>
+            </div>
+          </div>
+          <div class="podium-row rank3">
+            <div class="podium-rank">3</div>
+            <div class="podium-info">
+              <div class="podium-label">TERCERO</div>
+              <div class="podium-name">CARLOS FERNÁNDEZ RUIZ</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     14 · STATS TICKER
+     ══════════════════════════════════════════════════ -->
+<div class="stage-wrap" id="s14">
+  <div class="stage-label">14 · STATS TICKER <small>bottom full-width · 48px</small></div>
+  <div class="stage">
+    <div class="stats-ticker">
+      <div class="ticker-badge">📊 EN JUEGO</div>
+      <div class="ticker-track">
+        <div class="ticker-scroll">
+          <!-- Ítem 1 -->
+          <div class="ticker-item">
+            <span class="ticker-stat-label">ACES</span>
+            <span class="ticker-sep">·</span>
+            <span class="ticker-p1">PIROS 5</span>
+            <span style="color:var(--hairline); margin:0 4px;">|</span>
+            <span class="ticker-p2">RODIONOV 2</span>
+          </div>
+          <!-- Ítem 2 -->
+          <div class="ticker-item">
+            <span class="ticker-stat-label">% SAQUE</span>
+            <span class="ticker-sep">·</span>
+            <span class="ticker-p1">PIROS 68%</span>
+            <span style="color:var(--hairline); margin:0 4px;">|</span>
+            <span class="ticker-p2">RODIONOV 54%</span>
+          </div>
+          <!-- Ítem 3 -->
+          <div class="ticker-item">
+            <span class="ticker-stat-label">BREAKS</span>
+            <span class="ticker-sep">·</span>
+            <span class="ticker-p1">PIROS 4/6</span>
+            <span style="color:var(--hairline); margin:0 4px;">|</span>
+            <span class="ticker-p2">RODIONOV 1/4</span>
+          </div>
+          <!-- Ítem 4 -->
+          <div class="ticker-item">
+            <span class="ticker-stat-label">PTS TOTALES</span>
+            <span class="ticker-sep">·</span>
+            <span class="ticker-p1">PIROS 64</span>
+            <span style="color:var(--hairline); margin:0 4px;">|</span>
+            <span class="ticker-p2">RODIONOV 38</span>
+          </div>
+          <!-- Ítem 5 -->
+          <div class="ticker-item">
+            <span class="ticker-stat-label">FALTAS SAQUE</span>
+            <span class="ticker-sep">·</span>
+            <span class="ticker-p1">PIROS 3</span>
+            <span style="color:var(--hairline); margin:0 4px;">|</span>
+            <span class="ticker-p2">RODIONOV 1</span>
+          </div>
+          <!-- Ítem 6 -->
+          <div class="ticker-item">
+            <span class="ticker-stat-label">% RESTO</span>
+            <span class="ticker-sep">·</span>
+            <span class="ticker-p1">PIROS 46%</span>
+            <span style="color:var(--hairline); margin:0 4px;">|</span>
+            <span class="ticker-p2">RODIONOV 32%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /#main -->
+
+<script>
+// Escala dinámica de los stages
+(function(){
+  const slider  = document.getElementById('scale-slider');
+  const valSpan = document.getElementById('scale-val');
+  const stages  = document.querySelectorAll('.stage');
+
+  function applyScale(pct){
+    const s = pct / 100;
+    stages.forEach(function(st){
+      st.style.transform = 'scale(' + s + ')';
+      // Reduce el hueco generado por el espacio del stage escalado
+      st.parentElement.style.height = (1080 * s + 60) + 'px';
+    });
+    valSpan.textContent = pct + '%';
+  }
+
+  slider.addEventListener('input', function(){ applyScale(parseInt(this.value)); });
+  applyScale(parseInt(slider.value));
+
+  // Ajuste automático al ancho de ventana si se pulsa "FIT"
+  window.fitStages = function(){
+    const w = window.innerWidth - 48;
+    const pct = Math.floor((w / 1920) * 100);
+    slider.value = Math.max(20, Math.min(100, pct));
+    applyScale(parseInt(slider.value));
+  };
+})();
+</script>
+
+</body>
+</html>
