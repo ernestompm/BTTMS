@@ -113,7 +113,15 @@ async function doPush(
         ? (tournament as any).broadcast_headers
         : {}
 
-    const body = JSON.stringify({ ...payload, event, _context: extraContext ?? {} })
+    // v3.0: event y context van dentro de meta para no contaminar la raíz.
+    const body = JSON.stringify({
+      ...payload,
+      meta: {
+        ...(payload as any).meta,
+        event,
+        context: extraContext ?? {},
+      },
+    })
     const headers = {
       'Content-Type': 'application/json',
       ...(tournament.broadcast_api_key ? { 'X-API-Key': tournament.broadcast_api_key } : {}),
