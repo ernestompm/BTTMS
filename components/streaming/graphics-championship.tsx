@@ -426,7 +426,7 @@ export function BigScoreboardChampionship({ visible, match, tournament, sponsor,
           )}
           {/* nombre completo */}
           <span style={{
-            fontSize: 32, fontWeight: 800, fontStyle: 'italic', letterSpacing: '.02em',
+            fontSize: 44, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.02em',
             color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
             lineHeight: 1.05, textShadow: TS_HARD, flex: 1,
           }}>
@@ -454,13 +454,12 @@ export function BigScoreboardChampionship({ visible, match, tournament, sponsor,
       ...animStyle(visible, 'sgInU', 'sgOutU', 700),
     }}>
       <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '12px 26px', borderBottom: `1px solid ${CH.hairline}`, background: 'rgba(0,0,0,.18)',
+        display: 'flex', alignItems: 'center',
+        padding: '14px 26px', borderBottom: `1px solid ${CH.hairline}`, background: 'rgba(0,0,0,.18)',
       }}>
-        <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: '.32em', color: CH.text }}>
+        <span style={{ fontSize: 34, fontWeight: 900, letterSpacing: '.32em', color: CH.text }}>
           {headerLabel}
         </span>
-        <LogoBar tournament={tournament} sponsor={sponsor} height={32} gap={16}/>
       </div>
       <div>
         <Row team={1}/>
@@ -468,8 +467,9 @@ export function BigScoreboardChampionship({ visible, match, tournament, sponsor,
         <Row team={2}/>
       </div>
       <div style={{
-        textAlign: 'right', padding: '6px 18px 8px', fontSize: 14, fontWeight: 800,
-        letterSpacing: '.20em', color: CH.muted, background: 'rgba(0,0,0,.20)',
+        textAlign: 'right', padding: '10px 22px 12px', fontSize: 30, fontWeight: 900,
+        letterSpacing: '.20em', color: CH.text, background: 'rgba(0,0,0,.20)',
+        fontVariantNumeric: 'tabular-nums',
       }}>
         {fmtClockShort(elapsed)}
       </div>
@@ -496,7 +496,7 @@ export function MatchPresentationChampionship({ visible, match, tournament }: {
         <div style={{
           padding: '32px 36px 24px', textAlign: 'center', borderBottom: `1px solid ${CH.hairline}`,
         }}>
-          <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '.40em', color: CH.muted }}>
+          <div style={{ fontSize: 36, fontWeight: 900, letterSpacing: '.24em', color: CH.text, textShadow: TS_HARD }}>
             {tournament?.name?.toUpperCase()}
           </div>
           <div style={{
@@ -507,7 +507,7 @@ export function MatchPresentationChampionship({ visible, match, tournament }: {
             {roundLabel(match.round)}
           </div>
           {match.category && (
-            <div style={{ fontSize: 16, fontWeight: 800, letterSpacing: '.32em', color: CH.text, marginTop: 8 }}>
+            <div style={{ fontSize: 26, fontWeight: 900, letterSpacing: '.32em', color: CH.text, marginTop: 10, textShadow: TS_HARD }}>
               {CATEGORY_LABELS[match.category as Category]?.toUpperCase()}
             </div>
           )}
@@ -611,18 +611,18 @@ export function PlayerBioChampionship({ visible, player, team, category, tournam
           )}
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 0, flex: 1 }}>
             {category && (
-              <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: '.28em', color: CH.muted }}>
+              <span style={{ fontSize: 22, fontWeight: 900, letterSpacing: '.28em', color: CH.orange }}>
                 {CATEGORY_LABELS[category]?.toUpperCase()}
               </span>
             )}
-            <span style={{ fontSize: 36, fontWeight: 900, fontStyle: 'italic', color: CH.text, lineHeight: 1.02, marginTop: 4, textShadow: TS_HARD, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <span style={{ fontSize: 46, fontWeight: 900, fontStyle: 'italic', color: CH.text, lineHeight: 1.02, marginTop: 4, textShadow: TS_HARD, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {(player.first_name ?? '').toUpperCase()}
             </span>
-            <span style={{ fontSize: 36, fontWeight: 900, fontStyle: 'italic', color: CH.text, lineHeight: 1.02, textShadow: TS_HARD, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <span style={{ fontSize: 46, fontWeight: 900, fontStyle: 'italic', color: CH.text, lineHeight: 1.02, textShadow: TS_HARD, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {(player.last_name ?? '').toUpperCase()}
             </span>
             {player.nationality && (
-              <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: '.10em', color: CH.orange, marginTop: 6 }}>
+              <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: '.10em', color: CH.orange, marginTop: 8 }}>
                 {countryName(player.nationality)}
               </span>
             )}
@@ -631,12 +631,12 @@ export function PlayerBioChampionship({ visible, player, team, category, tournam
 
         {fields.length > 0 && (
           <>
-            <div style={{ height: 1, background: CH.hairline, margin: '20px 0 18px' }}/>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
+            <div style={{ height: 1, background: CH.hairline, margin: '22px 0 26px' }}/>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
               {fields.map((f, i) => (
                 <div key={i} style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                  <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: '.24em', color: CH.muted }}>{f.label}</span>
-                  <span style={{ fontSize: 24, fontWeight: 800, color: CH.text, marginTop: 3, textShadow: TS_SOFT, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <span style={{ fontSize: 20, fontWeight: 900, letterSpacing: '.24em', color: CH.orange }}>{f.label}</span>
+                  <span style={{ fontSize: 32, fontWeight: 900, color: CH.text, marginTop: 4, textShadow: TS_SOFT, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {f.value}
                   </span>
                 </div>
@@ -694,11 +694,11 @@ export function StatsPanelChampionship({ visible, match, tournament, scope }: {
         justifyContent: 'center', gap: 4,
       }}>
         {isLeader && (
-          <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.30em', opacity: .92 }}>
+          <span style={{ fontSize: 14, fontWeight: 800, letterSpacing: '.30em', opacity: .92 }}>
             ▲ ÚLTIMO SET
           </span>
         )}
-        <span style={{ fontSize: 32, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.02em', textShadow: TS_HARD, lineHeight: 1.05 }}>
+        <span style={{ fontSize: 42, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.02em', textShadow: TS_HARD, lineHeight: 1.05 }}>
           {teamShortName(match, team)}
         </span>
       </div>
@@ -707,27 +707,19 @@ export function StatsPanelChampionship({ visible, match, tournament, scope }: {
 
   return (
     <div style={{
-      // Stage 1920 → centrado por píxel calculado (left:50%+translate se rompe
-      // por el transform del animStyle).
-      position: 'absolute', top: 80, left: 370, width: 1180,
+      // Stage 1920×1080 → centrado por píxel calculado (left:50%+translate se rompe
+      // por el transform del animStyle). top:240 ≈ vertical centrado para card ~600px.
+      position: 'absolute', top: 240, left: 370, width: 1180,
       ...cardStyleLg, fontFamily: FONT,
       ...animStyle(visible, 'sgInD', 'sgOutD', 700),
     }}>
-      {/* Header con título centrado y logos */}
+      {/* Header con título centrado, sin logos */}
       <div style={{
-        display: 'grid', gridTemplateColumns: '200px 1fr 200px',
-        alignItems: 'center', padding: '18px 26px', borderBottom: `1px solid ${CH.hairline}`,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+        padding: '24px 26px', borderBottom: `1px solid ${CH.hairline}`,
       }}>
-        {tournament?.logo_url
-          ? <img src={tournament.logo_url} alt="" style={{ height: 42, objectFit: 'contain', justifySelf: 'start' }}/>
-          : <span/>}
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 26, fontWeight: 900, letterSpacing: '.20em', color: CH.text, textShadow: TS_HARD }}>{headerLabel}</div>
-          <div style={{ fontSize: 16, fontWeight: 800, letterSpacing: '.22em', color: CH.muted, marginTop: 4 }}>{fmtHHmm(elapsed)}</div>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <LogoBar tournament={tournament} height={36} gap={14}/>
-        </div>
+        <div style={{ fontSize: 42, fontWeight: 900, letterSpacing: '.20em', color: CH.text, textShadow: TS_HARD, textAlign: 'center' }}>{headerLabel}</div>
+        <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '.22em', color: CH.muted, marginTop: 6 }}>{fmtHHmm(elapsed)}</div>
       </div>
 
       {/* Headers de equipo */}
@@ -745,7 +737,7 @@ export function StatsPanelChampionship({ visible, match, tournament, scope }: {
             r.lowerIsBetter ? (v1 < v2 ? 1 : 2) : (v1 > v2 ? 1 : 2)
           )
           const valStyle = (isBest: boolean): React.CSSProperties => ({
-            fontSize: isBest ? 32 : 26,
+            fontSize: isBest ? 44 : 36,
             fontWeight: 900,
             color: isBest ? CH.orange : CH.text,
             fontVariantNumeric: 'tabular-nums',
@@ -755,7 +747,7 @@ export function StatsPanelChampionship({ visible, match, tournament, scope }: {
           return (
             <div key={i} style={{
               display: 'grid', gridTemplateColumns: '1fr 2fr 1fr',
-              alignItems: 'center', padding: '16px 26px',
+              alignItems: 'center', padding: '20px 26px',
               borderTop: `1px solid ${CH.hairline}`,
               background: i % 2 === 0 ? 'rgba(255,255,255,.02)' : 'transparent',
             }}>
@@ -763,7 +755,7 @@ export function StatsPanelChampionship({ visible, match, tournament, scope }: {
                 {r.get(stats?.t1)}
               </span>
               <span style={{
-                textAlign: 'center', fontSize: 18, fontWeight: 800,
+                textAlign: 'center', fontSize: 24, fontWeight: 800,
                 letterSpacing: '.20em', color: CH.muted,
               }}>
                 {r.label}
@@ -791,18 +783,17 @@ export function ResultsGridChampionship({ visible, matches, highlightMatchId, to
     .slice(0, 8)
   return (
     <div style={{
-      position: 'absolute', top: 80, right: 60, width: 760,
-      ...cardStyleLg, fontFamily: FONT,
+      position: 'absolute', top: 80, right: 60, width: 820,
+      ...cardStyleLg, fontFamily: FONT, paddingBottom: 18,
       ...animStyle(visible, 'sgInL', 'sgOutL', 700),
     }}>
       <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '16px 24px', borderBottom: `1px solid ${CH.hairline}`,
+        display: 'flex', alignItems: 'center',
+        padding: '20px 24px', borderBottom: `1px solid ${CH.hairline}`, marginBottom: 18,
       }}>
-        <span style={{ fontSize: 20, fontWeight: 900, letterSpacing: '.24em', color: CH.text }}>RESULTADOS</span>
-        <LogoBar tournament={tournament} height={28} gap={14}/>
+        <span style={{ fontSize: 30, fontWeight: 900, letterSpacing: '.24em', color: CH.text }}>RESULTADOS</span>
       </div>
-      <div>
+      <div style={{ padding: '0 18px' }}>
         {list.length === 0 && (
           <div style={{ padding: 26, color: CH.muted, fontSize: 16, fontWeight: 700 }}>Sin resultados todavía.</div>
         )}
@@ -811,13 +802,15 @@ export function ResultsGridChampionship({ visible, matches, highlightMatchId, to
           const winner: 1 | 2 = setsWonCount(m.score, 1) > setsWonCount(m.score, 2) ? 1 : 2
           return (
             <div key={m.id} style={{
-              display: 'grid', gridTemplateColumns: '120px 1fr',
-              borderTop: `1px solid ${CH.hairline}`,
+              display: 'grid', gridTemplateColumns: '160px 1fr',
+              marginBottom: 14, borderRadius: 10, overflow: 'hidden',
+              border: `1px solid ${isHL ? CH.orange : 'rgba(255,255,255,.10)'}`,
+              boxShadow: '0 6px 20px rgba(0,0,0,.32)',
               background: isHL ? 'rgba(245,124,0,.10)' : 'transparent',
             }}>
               <div style={{
-                display: 'grid', placeItems: 'center', background: 'rgba(0,0,0,.22)',
-                fontSize: 13, fontWeight: 800, letterSpacing: '.22em', color: CH.muted,
+                display: 'grid', placeItems: 'center', background: 'rgba(0,0,0,.32)',
+                fontSize: 18, fontWeight: 900, letterSpacing: '.22em', color: CH.orange,
               }}>
                 {ROUND_LABELS_SHORT_CH[m.round ?? ''] ?? (m.round ?? '')}
               </div>
@@ -836,18 +829,18 @@ function ResultRow({ match, team, isWinner }: { match: any, team: 1 | 2, isWinne
   const sets = setsFor(match.score as Score | null, team, 3)
   return (
     <div style={{
-      display: 'grid', gridTemplateColumns: '1fr 42px 42px 42px',
-      alignItems: 'center', padding: '10px 18px',
+      display: 'grid', gridTemplateColumns: '1fr 56px 56px 56px',
+      alignItems: 'center', padding: '14px 22px',
       background: isWinner ? `linear-gradient(90deg, ${CH.orange} 0%, ${CH.orangeDk} 100%)` : 'rgba(15,55,84,.40)',
       color: '#fff',
       borderTop: team === 2 ? '1px solid rgba(255,255,255,.10)' : 'none',
       boxShadow: isWinner ? 'inset 0 0 0 1px rgba(255,255,255,.16)' : 'none',
     }}>
-      <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: '.04em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textShadow: TS_SOFT }}>
+      <span style={{ fontSize: 24, fontWeight: 900, letterSpacing: '.04em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textShadow: TS_SOFT }}>
         {teamShortName(match, team)}
       </span>
       {sets.map((v, i) => (
-        <span key={i} style={{ fontSize: 18, fontWeight: 900, fontVariantNumeric: 'tabular-nums', textAlign: 'center', textShadow: TS_SOFT }}>
+        <span key={i} style={{ fontSize: 26, fontWeight: 900, fontVariantNumeric: 'tabular-nums', textAlign: 'center', textShadow: TS_SOFT }}>
           {v == null ? '' : v}
         </span>
       ))}
@@ -877,13 +870,12 @@ export function BracketViewChampionship({ visible, matches, highlightMatchId, to
     }}>
       <div style={{ width: 1700, ...cardStyleLg }}>
         <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          display: 'flex', alignItems: 'center',
           padding: '20px 32px', borderBottom: `1px solid ${CH.hairline}`,
         }}>
           <span style={{ fontSize: 26, fontWeight: 900, letterSpacing: '.24em', color: CH.text, textShadow: TS_HARD }}>
             {tournament?.name?.toUpperCase()}
           </span>
-          <LogoBar tournament={tournament} height={42} gap={20}/>
         </div>
 
         {/* Round headers */}
@@ -893,7 +885,7 @@ export function BracketViewChampionship({ visible, matches, highlightMatchId, to
         }}>
           {rounds.map(r => (
             <div key={r.key} style={{
-              textAlign: 'center', fontSize: 15, fontWeight: 900, letterSpacing: '.26em', color: CH.orange,
+              textAlign: 'center', fontSize: 24, fontWeight: 900, letterSpacing: '.26em', color: CH.orange,
               textShadow: TS_HARD,
             }}>{r.label}</div>
           ))}
@@ -943,16 +935,16 @@ function BracketRow({ match, team, isWinner }: { match: any, team: 1 | 2, isWinn
   const sets = setsFor(match.score as Score | null, team, 3)
   return (
     <div style={{
-      display: 'grid', gridTemplateColumns: '1fr 32px 32px 32px',
-      alignItems: 'center', padding: '10px 14px',
+      display: 'grid', gridTemplateColumns: '1fr 40px 40px 40px',
+      alignItems: 'center', padding: '12px 16px',
       background: isWinner ? `linear-gradient(90deg, ${CH.orange} 0%, ${CH.orangeDk} 100%)` : 'transparent',
       color: '#fff',
     }}>
-      <span style={{ fontSize: 15, fontWeight: 800, letterSpacing: '.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textShadow: TS_SOFT }}>
+      <span style={{ fontSize: 22, fontWeight: 900, letterSpacing: '.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textShadow: TS_SOFT }}>
         {teamShortName(match, team) || '—'}
       </span>
       {sets.map((v, i) => (
-        <span key={i} style={{ fontSize: 16, fontWeight: 900, fontVariantNumeric: 'tabular-nums', textAlign: 'center', textShadow: TS_SOFT }}>
+        <span key={i} style={{ fontSize: 22, fontWeight: 900, fontVariantNumeric: 'tabular-nums', textAlign: 'center', textShadow: TS_SOFT }}>
           {v == null ? '' : v}
         </span>
       ))}
@@ -984,26 +976,26 @@ export function WeatherChampionship({ visible, weather, tournament }: {
       position: 'absolute', top: 80, right: 60, width: 380, ...cardStyleLg, fontFamily: FONT,
       ...animStyle(visible, 'sgInL', 'sgOutL', 600),
     }}>
-      <div style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: '.28em', color: CH.muted }}>
+      <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 14, alignItems: 'center', textAlign: 'center' }}>
+        <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: '.28em', color: CH.muted }}>
           CLIMA · {weather.location?.toUpperCase()}
         </span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <span style={{ fontSize: 84, lineHeight: 1, filter: 'drop-shadow(0 4px 12px rgba(0,0,0,.40))' }}>{icon}</span>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontSize: 76, fontWeight: 900, color: CH.orange, lineHeight: 1, fontVariantNumeric: 'tabular-nums', textShadow: TS_HARD }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20, justifyContent: 'center' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <span style={{ fontSize: 92, fontWeight: 900, color: CH.orange, lineHeight: 1, fontVariantNumeric: 'tabular-nums', textShadow: TS_HARD }}>
               {Math.round(weather.temperature_c)}°
             </span>
-            <span style={{ fontSize: 14, fontWeight: 800, color: CH.muted, letterSpacing: '.10em', marginTop: 2 }}>
+            <span style={{ fontSize: 18, fontWeight: 800, color: CH.muted, letterSpacing: '.10em', marginTop: 4 }}>
               SENS. {Math.round(weather.feels_like_c)}°
             </span>
           </div>
         </div>
-        <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: '.06em', color: CH.text, textTransform: 'uppercase' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, fontSize: 32, fontWeight: 900, letterSpacing: '.10em', color: CH.text, textTransform: 'uppercase' }}>
+          <span style={{ fontSize: 48, lineHeight: 1, filter: 'drop-shadow(0 4px 12px rgba(0,0,0,.40))' }}>{icon}</span>
           {weather.condition}
-        </span>
-        <div style={{ height: 1, background: CH.hairline }}/>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+        </div>
+        <div style={{ height: 1, background: CH.hairline, width: '100%' }}/>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, width: '100%' }}>
           <WeatherRow label="VIENTO" value={`${Math.round(weather.wind_speed_kmh)} KM/H ${weather.wind_direction ?? ''}`}/>
           <WeatherRow label="HUMEDAD" value={`${weather.humidity_pct}%`}/>
           {weather.precipitation_mm_last_hour > 0 && (
@@ -1018,8 +1010,8 @@ export function WeatherChampionship({ visible, weather, tournament }: {
 function WeatherRow({ label, value }: { label: string, value: string }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
-      <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.24em', color: CH.muted }}>{label}</span>
-      <span style={{ fontSize: 20, fontWeight: 800, color: CH.text, marginTop: 2, textShadow: TS_SOFT }}>{value}</span>
+      <span style={{ fontSize: 14, fontWeight: 800, letterSpacing: '.24em', color: CH.muted }}>{label}</span>
+      <span style={{ fontSize: 26, fontWeight: 900, color: CH.text, marginTop: 4, textShadow: TS_SOFT }}>{value}</span>
     </div>
   )
 }
@@ -1041,25 +1033,32 @@ export function CoinTossChampionship({ visible, match, tournament }: {
     }}>
       {/* accent stripe naranja arriba */}
       <div style={{ height: 8, background: `linear-gradient(90deg, ${CH.orange} 0%, ${CH.orangeDk} 100%)` }}/>
-      <div style={{ padding: '24px 32px' }}>
-        <div style={{ fontSize: 16, fontWeight: 800, letterSpacing: '.36em', color: CH.muted }}>
+      <div style={{ padding: '26px 36px 30px' }}>
+        <div style={{ fontSize: 34, fontWeight: 900, letterSpacing: '.30em', color: CH.orange, lineHeight: 1.0 }}>
           SORTEO
         </div>
-        <div style={{
-          fontSize: 50, fontWeight: 900, fontStyle: 'italic', color: CH.orange,
-          marginTop: 8, letterSpacing: '.03em', textShadow: TS_HARD, lineHeight: 1.0,
-          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-        }}>
-          {teamShortName(match, winnerTeam)}
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 18, marginTop: 20 }}>
+          <span style={{ fontSize: 26, fontWeight: 800, letterSpacing: '.24em', color: CH.muted, textTransform: 'uppercase' }}>
+            GANA
+          </span>
+          <span style={{
+            fontSize: 50, fontWeight: 900, fontStyle: 'italic', color: CH.text,
+            letterSpacing: '.02em', textShadow: TS_HARD, lineHeight: 1.05,
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          }}>
+            {teamShortName(match, winnerTeam)}
+          </span>
         </div>
-        <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: '.22em', color: CH.muted, marginTop: 16 }}>
-          ELIGE
-        </div>
-        <div style={{
-          fontSize: 44, fontWeight: 900, color: CH.text, marginTop: 4,
-          letterSpacing: '.06em', textShadow: TS_HARD, lineHeight: 1.0,
-        }}>
-          {String(choice).toUpperCase()}
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 18, marginTop: 14 }}>
+          <span style={{ fontSize: 26, fontWeight: 800, letterSpacing: '.24em', color: CH.muted, textTransform: 'uppercase' }}>
+            ELIGE:
+          </span>
+          <span style={{
+            fontSize: 50, fontWeight: 900, color: CH.orange,
+            letterSpacing: '.04em', textShadow: TS_HARD, lineHeight: 1.05,
+          }}>
+            {String(choice).toUpperCase()}
+          </span>
         </div>
       </div>
     </div>
@@ -1088,33 +1087,16 @@ export function TournamentIntroChampionship({ visible, tournament }: {
       ...animStyle(visible, 'sgInZ', 'sgOutZ', 800),
     }}>
       <div style={{ width: 1320, ...cardStyleLg, position: 'relative' }}>
-        {/* Orbes decorativos de fondo (naranja translúcido, da volumen) */}
+        {/* Orbes decorativos contenidos dentro del card, muy difuminados */}
         <div aria-hidden style={{
-          position: 'absolute', top: -120, left: -120, width: 380, height: 380, borderRadius: '50%',
-          background: `radial-gradient(circle, ${hexAlpha(CH.orange, .35)} 0%, transparent 70%)`,
-          filter: 'blur(40px)', pointerEvents: 'none',
+          position: 'absolute', top: 80, left: 80, width: 380, height: 380, borderRadius: '50%',
+          background: `radial-gradient(circle, ${hexAlpha(CH.orange, .20)} 0%, transparent 75%)`,
+          filter: 'blur(90px)', pointerEvents: 'none',
         }}/>
         <div aria-hidden style={{
-          position: 'absolute', bottom: -160, right: -100, width: 460, height: 460, borderRadius: '50%',
-          background: `radial-gradient(circle, ${hexAlpha(CH.orange, .26)} 0%, transparent 70%)`,
-          filter: 'blur(50px)', pointerEvents: 'none',
-        }}/>
-        {/* Líneas decorativas diagonales sutiles arriba-izquierda */}
-        <div aria-hidden style={{
-          position: 'absolute', top: 30, left: 30, width: 80, height: 4,
-          background: `linear-gradient(90deg, ${CH.orange}, transparent)`, borderRadius: 2,
-        }}/>
-        <div aria-hidden style={{
-          position: 'absolute', top: 44, left: 30, width: 50, height: 3,
-          background: `linear-gradient(90deg, ${hexAlpha(CH.orange, .55)}, transparent)`, borderRadius: 2,
-        }}/>
-        <div aria-hidden style={{
-          position: 'absolute', bottom: 30, right: 30, width: 80, height: 4,
-          background: `linear-gradient(270deg, ${CH.orange}, transparent)`, borderRadius: 2,
-        }}/>
-        <div aria-hidden style={{
-          position: 'absolute', bottom: 44, right: 30, width: 50, height: 3,
-          background: `linear-gradient(270deg, ${hexAlpha(CH.orange, .55)}, transparent)`, borderRadius: 2,
+          position: 'absolute', bottom: 80, right: 80, width: 460, height: 460, borderRadius: '50%',
+          background: `radial-gradient(circle, ${hexAlpha(CH.orange, .16)} 0%, transparent 75%)`,
+          filter: 'blur(110px)', pointerEvents: 'none',
         }}/>
 
         {/* accent superior con shimmer animado */}
@@ -1168,9 +1150,6 @@ export function TournamentIntroChampionship({ visible, tournament }: {
             </div>
           )}
 
-          <div style={{ height: 1, width: '70%', background: `linear-gradient(90deg, transparent 0%, ${hexAlpha('#ffffff', .25)} 50%, transparent 100%)`, margin: '4px 0' }}/>
-
-          <LogoBar tournament={tournament} height={60} gap={36}/>
         </div>
       </div>
     </div>
@@ -1186,19 +1165,18 @@ export function VenueCardChampionship({ visible, tournament }: {
   if (!tournament) return null
   return (
     <div style={{
-      // Centrado por píxel (stage 1920) — sin LogoBar y más compacto.
-      position: 'absolute', bottom: 110, left: 600, width: 720,
+      // Lateral derecha, 2 líneas: nombre arriba (grande) + región/ciudad debajo.
+      position: 'absolute', bottom: 80, right: 60, width: 640,
       ...cardStyleLg, fontFamily: FONT, pointerEvents: 'none',
-      ...animStyle(visible, 'sgInU', 'sgOutU', 650),
+      ...animStyle(visible, 'sgInL', 'sgOutL', 650),
     }}>
       <div style={{ height: 6, background: `linear-gradient(90deg, ${CH.orange} 0%, ${CH.orangeDk} 100%)` }}/>
-      <div style={{ padding: '22px 28px', textAlign: 'center' }}>
-        <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: '.36em', color: CH.muted }}>SEDE</span>
-        <div style={{ fontSize: 38, fontWeight: 900, fontStyle: 'italic', color: CH.text, letterSpacing: '.04em', marginTop: 4, textShadow: TS_HARD, lineHeight: 1.05 }}>
+      <div style={{ padding: '18px 26px 22px', textAlign: 'left' }}>
+        <div style={{ fontSize: 42, fontWeight: 900, fontStyle: 'italic', color: CH.text, letterSpacing: '.03em', textShadow: TS_HARD, lineHeight: 1.05, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {tournament.venue_name?.toUpperCase()}
         </div>
         {tournament.venue_city && (
-          <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '.22em', color: CH.orange, marginTop: 4, textShadow: TS_HARD }}>
+          <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '.24em', color: CH.orange, marginTop: 4, textShadow: TS_HARD, lineHeight: 1.0 }}>
             {tournament.venue_city.toUpperCase()}
           </div>
         )}
@@ -1222,16 +1200,11 @@ export function RefereeLowerThirdChampionship({ visible, referee, tournament }: 
     }}>
       <div style={{ display: 'grid', gridTemplateColumns: '8px 1fr' }}>
         <div style={{ background: `linear-gradient(180deg, ${CH.orange} 0%, ${CH.orangeDk} 100%)` }}/>
-        <div style={{ padding: '16px 22px' }}>
-          <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: '.30em', color: CH.muted }}>JUEZ ÁRBITRO</span>
-          <div style={{ fontSize: 30, fontWeight: 900, fontStyle: 'italic', color: CH.text, letterSpacing: '.02em', marginTop: 4, textShadow: TS_HARD, lineHeight: 1.05 }}>
+        <div style={{ padding: '20px 26px' }}>
+          <span style={{ fontSize: 30, fontWeight: 900, letterSpacing: '.30em', color: CH.orange }}>JUEZ DE SILLA</span>
+          <div style={{ fontSize: 40, fontWeight: 900, fontStyle: 'italic', color: CH.text, letterSpacing: '.02em', marginTop: 6, textShadow: TS_HARD, lineHeight: 1.05 }}>
             {referee.full_name.toUpperCase()}
           </div>
-          {referee.federacion && (
-            <span style={{ fontSize: 14, fontWeight: 800, letterSpacing: '.18em', color: CH.orange, textShadow: TS_HARD }}>
-              {referee.federacion.toUpperCase()}
-            </span>
-          )}
         </div>
       </div>
     </div>
@@ -1252,31 +1225,30 @@ export function AwardsPodiumChampionship({ visible, data, tournament }: {
   ].filter(i => i.data)
   return (
     <div style={{
-      position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontFamily: FONT,
+      position: 'absolute', left: 60, bottom: 60, width: 760, fontFamily: FONT,
       pointerEvents: 'none',
-      ...animStyle(visible, 'sgInZ', 'sgOutZ', 800),
+      ...animStyle(visible, 'sgInR', 'sgOutR', 800),
     }}>
-      <div style={{ width: 1280, ...cardStyleLg }}>
+      <div style={{ ...cardStyleLg }}>
         <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '20px 32px', borderBottom: `1px solid ${CH.hairline}`,
+          display: 'flex', alignItems: 'center',
+          padding: '22px 28px', borderBottom: `1px solid ${CH.hairline}`,
         }}>
-          <span style={{ fontSize: 26, fontWeight: 900, letterSpacing: '.24em', color: CH.text, textShadow: TS_HARD }}>PALMARÉS</span>
-          <LogoBar tournament={tournament} height={42} gap={20}/>
+          <span style={{ fontSize: 36, fontWeight: 900, letterSpacing: '.24em', color: CH.orange, textShadow: TS_HARD }}>PALMARÉS</span>
         </div>
-        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ padding: '16px 18px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
           {items.map((it, i) => (
             <div key={i} style={{
-              display: 'grid', gridTemplateColumns: '90px 1fr',
-              background: it.bg, color: '#fff', borderRadius: 10, overflow: 'hidden',
-              boxShadow: 'inset 0 1px 0 rgba(255,255,255,.18), inset 0 -2px 0 rgba(0,0,0,.20), 0 6px 24px rgba(0,0,0,.32)',
+              display: 'grid', gridTemplateColumns: '70px 1fr',
+              background: it.bg, color: '#fff', borderRadius: 8, overflow: 'hidden',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,.18), inset 0 -2px 0 rgba(0,0,0,.20), 0 4px 16px rgba(0,0,0,.32)',
             }}>
-              <div style={{ display: 'grid', placeItems: 'center', fontSize: 52, fontWeight: 900, fontStyle: 'italic', textShadow: TS_HARD }}>
+              <div style={{ display: 'grid', placeItems: 'center', fontSize: 42, fontWeight: 900, fontStyle: 'italic', textShadow: TS_HARD, lineHeight: 1 }}>
                 {it.rank}
               </div>
-              <div style={{ padding: '18px 24px', borderLeft: '1px solid rgba(255,255,255,.18)' }}>
-                <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: '.28em', opacity: .92 }}>{it.label}</span>
-                <div style={{ fontSize: 32, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.04em', marginTop: 4, textShadow: TS_HARD, lineHeight: 1.05 }}>
+              <div style={{ padding: '10px 22px 12px', borderLeft: '1px solid rgba(255,255,255,.18)' }}>
+                <span style={{ fontSize: 26, fontWeight: 900, letterSpacing: '.28em', opacity: .95 }}>{it.label}</span>
+                <div style={{ fontSize: 30, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.04em', marginTop: 2, textShadow: TS_HARD, lineHeight: 1.05 }}>
                   {Array.isArray(it.data?.players)
                     ? it.data.players.map((p: any) => firstSurname(p).toUpperCase()).join(' / ')
                     : (it.data?.label ?? '')}
