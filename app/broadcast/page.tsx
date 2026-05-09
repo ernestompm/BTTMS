@@ -122,17 +122,27 @@ export default function BroadcastPage() {
   }
 
   async function toggleBroadcast(matchId: string, activate: boolean) {
-    if (activate) {
-      await supabase.from('matches').update({ broadcast_active: false })
-        .eq('tournament_id', TOURNAMENT_ID).neq('id', matchId)
-      await supabase.from('matches').update({ broadcast_active: true }).eq('id', matchId)
-      setActiveMatchId(matchId)
-    } else {
-      await supabase.from('matches').update({ broadcast_active: false }).eq('id', matchId)
-      setActiveMatchId(null)
+    // Va por API para que dispare un push inmediato al endpoint
+    // (broadcast_started con el snapshot actual o broadcast_stopped).
+    // Si fuéramos directo a Supabase no se enviaría nada hasta que
+    // ocurriera un evento del match.
+    try {
+      const res = await fetch(`/api/matches/${matchId}/broadcast`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active: activate }),
+      })
+      if (!res.ok) {
+        addLog(`Error toggle broadcast: ${res.status}`, res.status)
+        return
+      }
+      if (activate) setActiveMatchId(matchId)
+      else setActiveMatchId(null)
+      addLog(activate ? `Partido activado: ${matchId.slice(0, 8)}` : 'Broadcast desactivado', '—')
+      loadMatches()
+    } catch (e: any) {
+      addLog(`Error de red en toggle: ${e?.message ?? ''}`, 'error')
     }
-    addLog(activate ? `Partido activado: ${matchId.slice(0, 8)}` : 'Broadcast desactivado', '—')
-    loadMatches()
   }
 
   function parseHeaders(): Record<string, string> | null {
