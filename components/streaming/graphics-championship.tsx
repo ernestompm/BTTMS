@@ -863,13 +863,16 @@ export function StatsPanelChampionship({ visible, match, tournament, scope }: {
       ...animStyle(visible, 'sgInD', 'sgOutD', 700),
     }}>
     <div style={{ width: 1180, ...cardStyleLg }}>
-      {/* Header con título centrado, sin logos */}
+      {/* Header con título centrado y duración prominente con etiqueta naranja */}
       <div style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
         padding: '24px 26px', borderBottom: `1px solid ${CH.hairline}`,
       }}>
         <div style={{ fontSize: 42, fontWeight: 900, letterSpacing: '.20em', color: CH.text, textShadow: TS_HARD, textAlign: 'center' }}>{headerLabel}</div>
-        <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '.22em', color: CH.muted, marginTop: 6 }}>{fmtHHmm(elapsed)}</div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, marginTop: 8, fontVariantNumeric: 'tabular-nums' }}>
+          <span style={{ fontSize: 16, fontWeight: 900, letterSpacing: '.32em', color: CH.orange, textShadow: TS_HARD }}>DURACIÓN</span>
+          <span style={{ fontSize: 28, fontWeight: 900, letterSpacing: '.22em', color: CH.text, textShadow: TS_HARD }}>{fmtHHmm(elapsed)}</span>
+        </div>
       </div>
 
       {/* Headers de equipo */}
@@ -877,6 +880,68 @@ export function StatsPanelChampionship({ visible, match, tournament, scope }: {
         <NameHeader team={1}/>
         <NameHeader team={2}/>
       </div>
+
+      {/* Resultado del partido — centrado, una columna por set jugado o en juego.
+          Permite ver de un vistazo cómo va el match mientras se leen las stats. */}
+      {(() => {
+        const completed = score?.sets ?? []
+        type SetCell = { idx: number, t1: number, t2: number, current: boolean, isTb: boolean }
+        const cells: SetCell[] = []
+        for (let i = 0; i < completed.length && cells.length < 3; i++) {
+          cells.push({ idx: i + 1, t1: completed[i].t1, t2: completed[i].t2, current: false, isTb: false })
+        }
+        if (inProgress && cells.length < 3) {
+          const isTb = !!(score?.super_tiebreak_active || score?.tiebreak_active)
+          const t1 = isTb ? (score?.tiebreak_score?.t1 ?? 0) : (score?.current_set?.t1 ?? 0)
+          const t2 = isTb ? (score?.tiebreak_score?.t2 ?? 0) : (score?.current_set?.t2 ?? 0)
+          cells.push({ idx: cells.length + 1, t1, t2, current: true, isTb })
+        }
+        if (cells.length === 0) return null
+        return (
+          <div style={{
+            display: 'flex', justifyContent: 'center', gap: 60,
+            padding: '20px 26px', background: 'rgba(0,0,0,.22)',
+            borderTop: `1px solid ${CH.hairline}`, borderBottom: `1px solid ${CH.hairline}`,
+          }}>
+            {cells.map(s => (
+              <div key={s.idx} style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+              }}>
+                <span style={{
+                  fontSize: 16, fontWeight: 900, letterSpacing: '.30em',
+                  color: s.current ? CH.orange : CH.muted,
+                  textShadow: TS_HARD,
+                }}>
+                  {s.isTb ? 'SUPER TB' : `SET ${s.idx}`}
+                </span>
+                <div style={{
+                  display: 'flex', alignItems: 'baseline', gap: 16,
+                  fontSize: 56, fontWeight: 900, fontVariantNumeric: 'tabular-nums',
+                  textShadow: TS_HARD, lineHeight: 1,
+                }}>
+                  <span
+                    key={`a-${s.idx}-${s.t1}`}
+                    style={{
+                      animation: 'sgDigitIn 360ms cubic-bezier(.22,.9,.25,1) both',
+                      display: 'inline-block',
+                      color: s.current ? CH.orange : (!s.current && s.t1 > s.t2 ? CH.text : CH.mutedSoft),
+                    }}
+                  >{s.t1}</span>
+                  <span style={{ opacity: .35, fontSize: 36, fontWeight: 700 }}>—</span>
+                  <span
+                    key={`b-${s.idx}-${s.t2}`}
+                    style={{
+                      animation: 'sgDigitIn 360ms cubic-bezier(.22,.9,.25,1) both',
+                      display: 'inline-block',
+                      color: s.current ? CH.orange : (!s.current && s.t2 > s.t1 ? CH.text : CH.mutedSoft),
+                    }}
+                  >{s.t2}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      })()}
 
       {/* Filas de estadísticas — el mejor valor en naranja con glow */}
       <div>
