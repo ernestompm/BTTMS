@@ -321,8 +321,11 @@ function formatScore(score: Score | null, serving: 1 | 2, isFinal: boolean) {
     current_set_number: sets.length + (inProgressMatch(score) ? 1 : 0),
     current_set: { t1: currentSet.t1 ?? 0, t2: currentSet.t2 ?? 0 },
 
-    // Game actualmente en juego: índice 0-3 + display "0|15|30|40|ORO"
-    current_game: {
+    // Game actualmente en juego: índice 0-3 + display "0|15|30|40|AD|ORO".
+    // Se devuelve null cuando hay tiebreak/super tiebreak activo — durante
+    // un TB no existe el concepto de "game" en curso, los puntos van en
+    // tiebreak.score. Tampoco existe cuando el match está finished.
+    current_game: (tbActive || stbActive || score.match_status === 'finished') ? null : {
       t1: currentGame.t1 ?? 0,
       t2: currentGame.t2 ?? 0,
       t1_display: gameDisplay(score, 1),
@@ -331,7 +334,8 @@ function formatScore(score: Score | null, serving: 1 | 2, isFinal: boolean) {
       advantage_team: score.advantage_team ?? null,
     },
 
-    // Tiebreak / Super Tiebreak agrupados
+    // Tiebreak / Super Tiebreak agrupados. Es la fuente de verdad para
+    // los puntos durante un TB — current_game no aplica entonces.
     tiebreak: (tbActive || stbActive) ? {
       active: true,
       type: stbActive ? 'super_tiebreak' : 'tiebreak',
