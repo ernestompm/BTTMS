@@ -355,7 +355,8 @@ export function ScorebugChampionship({ visible, match, tournament, flag, tickerS
               )
             })}
 
-            {/* game / ticker cell */}
+            {/* game / ticker cell — el background y el valor cambian con
+                animación cuando se toggle entre punto y stat */}
             <div style={{
               display: 'grid', placeItems: 'center',
               background: showTicker
@@ -367,23 +368,43 @@ export function ScorebugChampionship({ visible, match, tournament, flag, tickerS
               fontStyle: showTicker ? 'italic' : 'normal',
               fontVariantNumeric: 'tabular-nums',
               textShadow: showTicker || tbActive ? 'none' : TS_HARD,
+              transition: 'background 400ms ease, color 400ms ease',
+              overflow: 'hidden',
             }}>
-              {showTicker ? tickerVal : pt}
+              {/* key cambia cuando se toggle stat/punto, lo que fuerza
+                  remontaje y dispara el keyframe sgDigitIn */}
+              <span
+                key={showTicker ? `s-${tickerStat}` : 'pt'}
+                style={{
+                  animation: 'sgDigitIn 360ms cubic-bezier(.22,.9,.25,1) both',
+                  display: 'inline-block',
+                }}
+              >
+                {showTicker ? tickerVal : pt}
+              </span>
             </div>
           </div>
         )
       })}
 
-      {showTicker && (
+      {/* Label de la stat — anima max-height + opacity igual que el flag pill,
+          en vez de aparecer/desaparecer de golpe */}
+      <div style={{
+        overflow: 'hidden',
+        maxHeight: showTicker ? 32 : 0,
+        transition: 'max-height 500ms cubic-bezier(.19,1,.22,1)',
+        background: 'rgba(0,0,0,.32)',
+        borderTop: showTicker ? `1px solid ${CH.hairline}` : 'none',
+      }}>
         <div style={{
           padding: '5px 12px 6px',
-          background: 'rgba(0,0,0,.32)',
-          borderTop: `1px solid ${CH.hairline}`,
           textAlign: 'right',
           fontSize: 11, fontWeight: 800, letterSpacing: '.22em',
           color: '#fbbf24',
+          opacity: showTicker ? 1 : 0,
+          transition: 'opacity 400ms ease',
         }}>{tickerLabel}</div>
-      )}
+      </div>
       {/* Flag pill: match point / set point / break point / championship point.
           Anima max-height + opacity para que no haya snap al montar/desmontar. */}
       <div style={{
