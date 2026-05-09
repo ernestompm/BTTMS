@@ -219,15 +219,6 @@ function statValue(stats: any, stat: string, team: 1 | 2): string | number {
   return v
 }
 
-// Colores de flag — match point (rojo), championship point (ámbar),
-// set point (morado), break point (cyan). Igual que el skin default.
-const FLAG_COLORS_CH: Record<string, string> = {
-  match_point: '#ef4444',
-  championship_point: '#f59e0b',
-  set_point: '#a855f7',
-  break_point: '#22d3ee',
-}
-
 export function ScorebugChampionship({ visible, match, tournament, flag, tickerStat }: {
   visible: boolean
   match: any
@@ -405,31 +396,27 @@ export function ScorebugChampionship({ visible, match, tournament, flag, tickerS
           transition: 'opacity 400ms ease',
         }}>{tickerLabel}</div>
       </div>
-      {/* Flag pill: match point / set point / break point / championship point.
-          Anima max-height + opacity para que no haya snap al montar/desmontar. */}
+      {/* Flag (match point / set point / break point / championship point):
+          texto naranja sobre el mismo fondo oscuro del card — sin pill ni
+          colores por tipo, ya destaca por sí solo. Anima max-height + opacity. */}
       <div style={{
         overflow: 'hidden',
         textAlign: 'right',
-        maxHeight: flag?.kind && flag?.label ? 46 : 0,
+        maxHeight: flag?.kind && flag?.label ? 36 : 0,
         transition: 'max-height 600ms cubic-bezier(.19,1,.22,1)',
         background: 'rgba(0,0,0,.32)',
         borderTop: flag?.kind && flag?.label ? `1px solid ${CH.hairline}` : 'none',
       }}>
-        <span style={{
-          display: 'inline-block',
-          padding: '5px 14px',
-          margin: 5,
-          background: flag?.kind ? (FLAG_COLORS_CH[flag.kind] ?? CH.orange) : CH.orange,
-          color: '#fff',
-          fontSize: 20, fontWeight: 900, letterSpacing: '.18em',
+        <div style={{
+          padding: '6px 14px 8px',
+          color: CH.orange,
+          fontSize: 16, fontWeight: 900, letterSpacing: '.22em',
           textTransform: 'uppercase', whiteSpace: 'nowrap',
-          borderRadius: 4,
           opacity: flag?.kind && flag?.label ? 1 : 0,
           transition: 'opacity 400ms ease',
-          boxShadow: '0 4px 12px rgba(0,0,0,.4)',
         }}>
           {flag?.label ?? ''}
-        </span>
+        </div>
       </div>
     </div>
   )
