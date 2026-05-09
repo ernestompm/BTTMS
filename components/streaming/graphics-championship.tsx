@@ -219,10 +219,20 @@ function statValue(stats: any, stat: string, team: 1 | 2): string | number {
   return v
 }
 
-export function ScorebugChampionship({ visible, match, tournament, tickerStat }: {
+// Colores de flag — match point (rojo), championship point (ámbar),
+// set point (morado), break point (cyan). Igual que el skin default.
+const FLAG_COLORS_CH: Record<string, string> = {
+  match_point: '#ef4444',
+  championship_point: '#f59e0b',
+  set_point: '#a855f7',
+  break_point: '#22d3ee',
+}
+
+export function ScorebugChampionship({ visible, match, tournament, flag, tickerStat }: {
   visible: boolean
   match: any
   tournament: Tournament | null
+  flag?: { kind: string | null, label: string } | null
   tickerStat?: string | null
 }) {
   if (!match) return null
@@ -357,6 +367,32 @@ export function ScorebugChampionship({ visible, match, tournament, tickerStat }:
           color: '#fbbf24',
         }}>{tickerLabel}</div>
       )}
+      {/* Flag pill: match point / set point / break point / championship point.
+          Anima max-height + opacity para que no haya snap al montar/desmontar. */}
+      <div style={{
+        overflow: 'hidden',
+        textAlign: 'right',
+        maxHeight: flag?.kind && flag?.label ? 46 : 0,
+        transition: 'max-height 600ms cubic-bezier(.19,1,.22,1)',
+        background: 'rgba(0,0,0,.32)',
+        borderTop: flag?.kind && flag?.label ? `1px solid ${CH.hairline}` : 'none',
+      }}>
+        <span style={{
+          display: 'inline-block',
+          padding: '5px 14px',
+          margin: 5,
+          background: flag?.kind ? (FLAG_COLORS_CH[flag.kind] ?? CH.orange) : CH.orange,
+          color: '#fff',
+          fontSize: 20, fontWeight: 900, letterSpacing: '.18em',
+          textTransform: 'uppercase', whiteSpace: 'nowrap',
+          borderRadius: 4,
+          opacity: flag?.kind && flag?.label ? 1 : 0,
+          transition: 'opacity 400ms ease',
+          boxShadow: '0 4px 12px rgba(0,0,0,.4)',
+        }}>
+          {flag?.label ?? ''}
+        </span>
+      </div>
     </div>
   )
 }
@@ -426,7 +462,7 @@ export function BigScoreboardChampionship({ visible, match, tournament, sponsor,
           )}
           {/* nombre completo */}
           <span style={{
-            fontSize: 44, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.02em',
+            fontSize: 38, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.02em',
             color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
             lineHeight: 1.05, textShadow: TS_HARD, flex: 1,
           }}>
@@ -502,7 +538,7 @@ export function MatchPresentationChampionship({ visible, match, tournament }: {
           <div style={{
             fontSize: 56, fontWeight: 900, fontStyle: 'italic',
             color: CH.orange, letterSpacing: '.10em', marginTop: 8,
-            textShadow: '0 4px 20px rgba(245,124,0,.50)', lineHeight: 1.0,
+            textShadow: TS_HARD, lineHeight: 1.0,
           }}>
             {roundLabel(match.round)}
           </div>
@@ -518,7 +554,7 @@ export function MatchPresentationChampionship({ visible, match, tournament }: {
           <div style={{
             display: 'grid', placeItems: 'center',
             fontSize: 80, fontWeight: 900, color: CH.orange, letterSpacing: '.04em',
-            fontStyle: 'italic', textShadow: '0 6px 24px rgba(245,124,0,.55)',
+            fontStyle: 'italic', textShadow: TS_HARD,
           }}>VS</div>
           <PresoTeamSimple match={match} team={2}/>
         </div>
@@ -707,12 +743,12 @@ export function StatsPanelChampionship({ visible, match, tournament, scope }: {
 
   return (
     <div style={{
-      // Stage 1920×1080 → centrado por píxel calculado (left:50%+translate se rompe
-      // por el transform del animStyle). top:240 ≈ vertical centrado para card ~600px.
-      position: 'absolute', top: 240, left: 370, width: 1180,
-      ...cardStyleLg, fontFamily: FONT,
+      // Centrado real con wrapper grid (mismo patrón que Bracket/Intro).
+      position: 'absolute', inset: 0, display: 'grid', placeItems: 'center',
+      fontFamily: FONT, pointerEvents: 'none',
       ...animStyle(visible, 'sgInD', 'sgOutD', 700),
     }}>
+    <div style={{ width: 1180, ...cardStyleLg }}>
       {/* Header con título centrado, sin logos */}
       <div style={{
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
@@ -767,6 +803,7 @@ export function StatsPanelChampionship({ visible, match, tournament, scope }: {
           )
         })}
       </div>
+    </div>
     </div>
   )
 }

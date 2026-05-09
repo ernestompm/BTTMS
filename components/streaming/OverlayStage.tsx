@@ -171,7 +171,7 @@ export function StageCanvas({ match, tournament, allMatches, referee, mainSponso
         : skin === 'tour'       ? <RefereeLowerThirdTour         visible={vis} referee={referee} tournament={tournament}/>
                                 : <RefereeLowerThird             visible={vis} referee={referee} tournament={tournament}/> }</Presence>
       <Presence show={v('scorebug')}            exitMs={500}>{(vis) =>
-        skin === 'championship' ? <ScorebugChampionship visible={vis} match={match} tournament={tournament} tickerStat={tickerStat}/>
+        skin === 'championship' ? <ScorebugChampionship visible={vis} match={match} tournament={tournament} flag={flag} tickerStat={tickerStat}/>
         : skin === 'broadcast'  ? <ScorebugBroadcast    visible={vis} match={match} tournament={tournament} tickerStat={tickerStat}/>
         : skin === 'pacific'    ? <ScorebugPacific      visible={vis} match={match} tournament={tournament} tickerStat={tickerStat}/>
         : skin === 'tour'       ? <ScorebugTour         visible={vis} match={match} tournament={tournament} tickerStat={tickerStat}/>
