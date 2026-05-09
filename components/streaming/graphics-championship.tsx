@@ -431,6 +431,7 @@ export function BigScoreboardChampionship({ visible, match, tournament, sponsor,
   if (!match) return null
   const score = match.score as Score | null
   const finished = score?.match_status === 'finished'
+  const inProgress = score?.match_status === 'in_progress'
   const elapsed = useTicker(match.started_at ?? null, match.finished_at ?? null)
   const sets1 = setsWonCount(score, 1)
   const sets2 = setsWonCount(score, 2)
@@ -440,15 +441,43 @@ export function BigScoreboardChampionship({ visible, match, tournament, sponsor,
   const headerLabel = finished ? roundLabel(match.round) : (roundLabel(match.round) || 'EN JUEGO')
   const isDoubles = match.match_type === 'doubles'
 
+  // Construye games por set incluyendo el set en juego (current_set / tiebreak)
+  const setsPlayed = score?.sets?.length ?? 0
+  const setCount = Math.max(1, Math.min(3, setsPlayed + (inProgress ? 1 : 0)))
+  const currentSetIdx = inProgress ? setsPlayed : -1
+  function gamesArray(team: 1 | 2): Array<number | null> {
+    const k = team === 1 ? 't1' : 't2'
+    const out: Array<number | null> = []
+    const completed = score?.sets ?? []
+    for (let i = 0; i < completed.length && out.length < setCount; i++) {
+      out.push(completed[i][k] ?? null)
+    }
+    if (inProgress && out.length < setCount) {
+      out.push(
+        score?.super_tiebreak_active || score?.tiebreak_active
+          ? (score?.tiebreak_score?.[k] ?? 0)
+          : (score?.current_set?.[k] ?? 0)
+      )
+    }
+    while (out.length < setCount) out.push(null)
+    return out
+  }
+
+  // Layout: name area | N x set cells | total sets won
+  const setColW = 100
+  const totalColW = 120
+  const gridCols = `1fr ${Array(setCount).fill(`${setColW}px`).join(' ')} ${totalColW}px`
+
   function Row({ team }: { team: 1 | 2 }) {
     const e = team === 1 ? match.entry1 : match.entry2
     const players = [e?.player1, isDoubles ? e?.player2 : null].filter(Boolean)
+    const games = gamesArray(team)
+    const otherGames = gamesArray(team === 1 ? 2 : 1)
     const setsWon = team === 1 ? sets1 : sets2
     const isLeader = leader === team
     const isServing = serving === team
 
-    // Cuando hay líder/ganador, su fila se enciende en naranja; la otra fila
-    // queda en navy translúcido. Sin diferenciación A/B.
+    // Líder/ganador tiene fondo naranja en su fila — sin diferenciación A/B.
     const rowBg = isLeader
       ? `linear-gradient(90deg, ${hexAlpha(CH.orange, .92)} 0%, ${hexAlpha(CH.orangeDk, .92)} 100%)`
       : `linear-gradient(90deg, rgba(15,55,84,.62) 0%, rgba(10,40,62,.72) 100%)`
@@ -457,13 +486,13 @@ export function BigScoreboardChampionship({ visible, match, tournament, sponsor,
 
     return (
       <div style={{
-        display: 'grid', gridTemplateColumns: '1fr 110px',
+        display: 'grid', gridTemplateColumns: gridCols,
         background: rowBg,
         boxShadow: isLeader ? 'inset 0 0 0 1px rgba(255,255,255,.16)' : 'none',
         minHeight: 78,
         alignItems: 'stretch',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 18, padding: '0 22px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 18, padding: '0 22px', minWidth: 0 }}>
           {/* serve indicator */}
           <span aria-hidden style={{
             width: 14, height: 14, borderRadius: '50%',
@@ -489,11 +518,43 @@ export function BigScoreboardChampionship({ visible, match, tournament, sponsor,
           <span style={{
             fontSize: 38, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.02em',
             color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-            lineHeight: 1.05, textShadow: TS_HARD, flex: 1,
+            lineHeight: 1.05, textShadow: TS_HARD, flex: 1, minWidth: 0,
           }}>
             {teamFullName(match, team)}
           </span>
         </div>
+        {/* Celdas de games por set */}
+        {games.map((g, i) => {
+          const isCurrent = i === currentSetIdx
+          const og = otherGames[i]
+          const wonSet = !isCurrent && g != null && og != null && g > og
+          const lostSet = !isCurrent && g != null && og != null && g < og
+          // Set actual: naranja con texto blanco, animado.
+          // Set ganado: blanco con texto navy-dark.
+          // Set perdido: transparente con texto desaturado.
+          const cellBg = isCurrent ? CH.orange : wonSet ? '#ffffff' : 'rgba(0,0,0,.20)'
+          const cellColor = isCurrent ? '#fff' : wonSet ? CH.orangeDk : (lostSet ? 'rgba(255,255,255,.55)' : CH.text)
+          return (
+            <div key={i} style={{
+              display: 'grid', placeItems: 'center',
+              borderLeft: '1px solid rgba(255,255,255,.18)',
+              background: cellBg,
+              color: cellColor,
+              fontSize: 50, fontWeight: 900, fontVariantNumeric: 'tabular-nums',
+              textShadow: isCurrent || wonSet ? 'none' : TS_HARD,
+              boxShadow: isCurrent ? `inset 0 -4px 0 ${CH.orangeDk}` : 'none',
+              transition: 'background 300ms ease, color 300ms ease',
+            }}>
+              <span
+                key={`${i}-${g ?? '-'}`}
+                style={{ animation: 'sgDigitIn 360ms cubic-bezier(.22,.9,.25,1) both', display: 'inline-block' }}
+              >
+                {g == null ? '–' : g}
+              </span>
+            </div>
+          )
+        })}
+        {/* Total sets ganados (col grande a la derecha) */}
         <div style={{
           display: 'grid', placeItems: 'center', borderLeft: '1px solid rgba(255,255,255,.18)',
           fontSize: 56, fontWeight: 900, color: numColor, background: numBg,
@@ -514,6 +575,9 @@ export function BigScoreboardChampionship({ visible, match, tournament, sponsor,
       ...cardStyleLg, fontFamily: FONT,
       ...animStyle(visible, 'sgInU', 'sgOutU', 700),
     }}>
+      {/* Strip de accent naranja superior — refuerza la línea visual del skin */}
+      <div style={{ height: 6, background: `linear-gradient(90deg, ${CH.orange} 0%, ${CH.orangeDk} 100%)` }}/>
+      {/* Header con título FINAL/EN JUEGO */}
       <div style={{
         display: 'flex', alignItems: 'center',
         padding: '14px 26px', borderBottom: `1px solid ${CH.hairline}`, background: 'rgba(0,0,0,.18)',
@@ -522,17 +586,42 @@ export function BigScoreboardChampionship({ visible, match, tournament, sponsor,
           {headerLabel}
         </span>
       </div>
+      {/* Header de columnas: SET 1 / SET 2 / SET 3 / SETS — todo en naranja */}
+      <div style={{
+        display: 'grid', gridTemplateColumns: gridCols,
+        background: 'rgba(0,0,0,.30)', borderBottom: `1px solid ${CH.hairline}`,
+      }}>
+        <div /> {/* hueco bajo el bloque de nombres */}
+        {Array(setCount).fill(0).map((_, i) => (
+          <div key={i} style={{
+            display: 'grid', placeItems: 'center', padding: '8px 0',
+            borderLeft: '1px solid rgba(255,255,255,.18)',
+            fontSize: 16, fontWeight: 900, letterSpacing: '.30em', color: CH.orange,
+            textShadow: TS_HARD,
+          }}>SET {i + 1}</div>
+        ))}
+        <div style={{
+          display: 'grid', placeItems: 'center', padding: '8px 0',
+          borderLeft: '1px solid rgba(255,255,255,.18)',
+          fontSize: 16, fontWeight: 900, letterSpacing: '.30em', color: CH.orange,
+          textShadow: TS_HARD,
+        }}>SETS</div>
+      </div>
       <div>
         <Row team={1}/>
         <div style={{ height: 1, background: CH.hairline }}/>
         <Row team={2}/>
       </div>
+      {/* Footer del cronómetro — con etiqueta DURACIÓN en naranja */}
       <div style={{
-        textAlign: 'right', padding: '10px 22px 12px', fontSize: 30, fontWeight: 900,
-        letterSpacing: '.20em', color: CH.text, background: 'rgba(0,0,0,.20)',
+        display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', gap: 16,
+        padding: '10px 22px 12px', background: 'rgba(0,0,0,.20)',
         fontVariantNumeric: 'tabular-nums',
       }}>
-        {fmtClockShort(elapsed)}
+        <span style={{ fontSize: 14, fontWeight: 900, letterSpacing: '.32em', color: CH.orange }}>DURACIÓN</span>
+        <span style={{ fontSize: 30, fontWeight: 900, letterSpacing: '.20em', color: CH.text }}>
+          {fmtClockShort(elapsed)}
+        </span>
       </div>
     </div>
   )
