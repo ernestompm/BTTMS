@@ -1,6 +1,7 @@
 import { createServiceSupabase } from './supabase-server'
 import { isBreakPoint, isSetPoint, isMatchPoint } from './score-engine'
-import type { Score } from '@/types'
+import { applyPointToStats, applyBreakPointStats, emptyStats } from './stats-engine'
+import type { Score, MatchStats } from '@/types'
 
 // ════════════════════════════════════════════════════════════════════════════
 // BTTMS v3.0 broadcast payload
@@ -58,6 +59,10 @@ export async function buildBroadcastPayload(tournamentId: string, matchId?: stri
   if (match?.id) {
     match.score = await reconcileScore(service, match.id, match.score)
   }
+
+  // Stats desglosadas por set — replay de los points filtrados por set_number.
+  // Solo cuando hay match (sin él no hay nada que computar).
+  const statsBySet = match?.id ? await computeStatsBySet(service, match.id) : []
 
   // Cuadro completo del match actual (si hay draw asignado)
   let drawEntries: any[] = []
@@ -119,7 +124,7 @@ export async function buildBroadcastPayload(tournamentId: string, matchId?: stri
       weather,
     },
     judge,
-    match: match ? formatMatch(match, /*includeBio*/ true) : null,
+    match: match ? formatMatch(match, /*includeBio*/ true, statsBySet) : null,
     draw: match?.draw_id ? {
       id: match.draw_id,
       category: match.category,
@@ -237,7 +242,7 @@ function ageFromDOB(dob: string): number | null {
   } catch { return null }
 }
 
-function formatMatch(m: any, includeBio: boolean) {
+function formatMatch(m: any, includeBio: boolean, statsBySet: Array<{ set_number: number, t1: any, t2: any }> = []) {
   const isFinal = m.round === 'F'
   const status = m.status as string
   const inProgress = status === 'in_progress'
@@ -281,7 +286,15 @@ function formatMatch(m: any, includeBio: boolean) {
       buildTeam(2, m.entry2, m.serving_team === 2, includeBio),
     ],
     score: formatScore(m.score, m.serving_team ?? 1, isFinal),
-    stats: m.stats ?? null,
+    // Stats reestructuradas:
+    //  - total: acumulado del partido completo (lo que antes era match.stats)
+    //  - by_set: array de stats reseteadas por set ({set_number, t1, t2})
+    // by_set se computa replayando los points por set (incluye set en juego
+    // con los puntos jugados hasta ahora).
+    stats: m.stats ? {
+      total: { t1: m.stats.t1, t2: m.stats.t2 },
+      by_set: statsBySet,
+    } : null,
     warnings: m.warnings ?? { t1: [], t2: [] },
     retire: (m.retired_team || m.retire_reason) ? {
       team: m.retired_team ?? null,
@@ -378,6 +391,58 @@ function gameDisplay(score: Score, team: 1 | 2): string {
 
 function isFlag(fn: () => boolean): boolean {
   try { return !!fn() } catch { return false }
+}
+
+/**
+ * Replay de los puntos del match agrupados por set para sacar stats
+ * desglosadas. Cada set se computa de cero (no es un acumulado, son
+ * las stats de ESE set en concreto). El set en juego incluye solo
+ * los puntos jugados hasta ahora.
+ *
+ * Nota de coste: lee todos los puntos del match (ordenados por
+ * sequence). En un partido típico < 200 puntos. Razonable para un
+ * push por evento, pero si se vuelve cuello de botella se puede
+ * cachear el snapshot al cierre de cada set.
+ */
+async function computeStatsBySet(
+  service: any,
+  matchId: string,
+): Promise<Array<{ set_number: number, t1: any, t2: any }>> {
+  const { data: points } = await service
+    .from('points')
+    .select('set_number, server_team, winner_team, point_type, shot_direction, score_before, is_break_point')
+    .eq('match_id', matchId)
+    .eq('is_undone', false)
+    .order('sequence', { ascending: true })
+
+  if (!points || points.length === 0) return []
+
+  const bySet = new Map<number, MatchStats>()
+
+  for (const p of points as any[]) {
+    const setN = p.set_number as number
+    if (setN == null) continue
+    let stats = bySet.get(setN) ?? emptyStats()
+    stats = applyPointToStats(stats, {
+      winnerTeam: p.winner_team,
+      serverTeam: p.server_team,
+      pointType: p.point_type,
+      shotDirection: p.shot_direction,
+      scoreBefore: p.score_before,
+    })
+    if (p.is_break_point) {
+      stats = applyBreakPointStats(stats, p.server_team, true, p.winner_team)
+    }
+    bySet.set(setN, stats)
+  }
+
+  return Array.from(bySet.entries())
+    .sort(([a], [b]) => a - b)
+    .map(([set_number, stats]) => ({
+      set_number,
+      t1: stats.t1,
+      t2: stats.t2,
+    }))
 }
 
 function buildTeam(side: 1 | 2, entry: any, serving: boolean, includeBio: boolean) {
