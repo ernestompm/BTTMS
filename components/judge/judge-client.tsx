@@ -937,8 +937,29 @@ export function JudgeClient({ initialMatch, userId, judgeName, timerConfig, adva
 
 // ── Sub-components ─────────────────────────────────────────────────
 function TopBar({ match, elapsed, saving, onFinish, isFinished, judgeName, isOnline, queuedCount }: any) {
+  // Estado para el menú de "Salir" — protege contra clic accidental durante
+  // un partido. Pregunta antes de abandonar la pantalla o cerrar sesión.
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  function confirmAndLeave() {
+    if (isFinished || confirm('¿Salir del partido? El marcador seguirá en directo, solo dejarás de verlo aquí.')) {
+      window.location.href = '/judge'
+    }
+  }
+
+  async function confirmAndLogout() {
+    if (isFinished || confirm('¿Cerrar sesión? Si el partido está en juego, dejarás de poder arbitrarlo.')) {
+      // POST a la ruta de signout — limpia cookies de sesión y redirige a /login
+      const form = document.createElement('form')
+      form.method = 'POST'
+      form.action = '/api/auth/signout'
+      document.body.appendChild(form)
+      form.submit()
+    }
+  }
+
   return (
-    <div className="flex items-center justify-between px-4 py-3 bg-gray-900 border-b border-gray-800 flex-shrink-0 gap-3">
+    <div className="flex items-center justify-between px-4 py-3 bg-gray-900 border-b border-gray-800 flex-shrink-0 gap-3 relative">
       <div className="flex items-center gap-2 min-w-0 flex-1">
         <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${isFinished ? 'bg-green-500' : 'bg-red-500 animate-pulse'}`} />
         <span className="text-white font-semibold truncate text-sm">{match.court?.name ?? '—'}</span>
@@ -966,6 +987,38 @@ function TopBar({ match, elapsed, saving, onFinish, isFinished, judgeName, isOnl
             className="h-8 px-3 bg-gray-800 hover:bg-red-900/50 rounded-lg text-gray-400 hover:text-red-300 font-bold text-xs border border-gray-700 transition-colors">
             FIN
           </button>
+        )}
+        {/* Menú "≡" — para volver a la lista o cerrar sesión sin perder
+            por error el partido. Protegido por confirm() si match en juego. */}
+        <button
+          onClick={() => setMenuOpen(v => !v)}
+          className="h-8 w-8 grid place-items-center bg-gray-800 hover:bg-gray-700 rounded-lg text-gray-400 hover:text-white border border-gray-700 text-base transition-colors"
+          title="Más opciones"
+        >
+          ⋮
+        </button>
+        {menuOpen && (
+          <>
+            {/* Backdrop para cerrar al hacer clic fuera */}
+            <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+            <div className="absolute right-3 top-14 z-50 w-56 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl overflow-hidden">
+              <button
+                onClick={() => { setMenuOpen(false); confirmAndLeave() }}
+                className="w-full flex items-center gap-2 px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white text-sm transition-colors"
+              >
+                <span>📋</span>
+                <span>Volver a partidos</span>
+              </button>
+              <div className="h-px bg-gray-800" />
+              <button
+                onClick={() => { setMenuOpen(false); confirmAndLogout() }}
+                className="w-full flex items-center gap-2 px-4 py-3 text-red-400 hover:bg-red-950/40 hover:text-red-300 text-sm transition-colors"
+              >
+                <span>🚪</span>
+                <span>Cerrar sesión</span>
+              </button>
+            </div>
+          </>
         )}
       </div>
     </div>

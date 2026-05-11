@@ -39,12 +39,26 @@ export default async function JudgeIndexPage() {
   return (
     <div className="min-h-screen bg-gray-950 p-4">
       <div className="max-w-lg mx-auto space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
             <h1 className="text-2xl font-bold text-white font-score">Arbitraje</h1>
-            <p className="text-gray-400 text-sm">{appUser.full_name} · {appUser.role.replace('_', ' ')}</p>
+            <p className="text-gray-400 text-sm truncate">{appUser.full_name} · {appUser.role.replace('_', ' ')}</p>
           </div>
-          <Link href="/dashboard" className="text-gray-500 hover:text-white text-sm">Panel →</Link>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {appUser.role !== 'judge' && (
+              <Link href="/dashboard" className="text-gray-500 hover:text-white text-sm">Panel →</Link>
+            )}
+            {/* POST a /api/auth/signout — funciona para todos los roles, incluido judge */}
+            <form action="/api/auth/signout" method="post">
+              <button
+                type="submit"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-red-900/50 border border-gray-700 hover:border-red-800 text-gray-300 hover:text-red-300 text-sm font-semibold transition-colors"
+              >
+                <span>🚪</span>
+                Salir
+              </button>
+            </form>
+          </div>
         </div>
 
         <p className="text-gray-500 text-xs">
