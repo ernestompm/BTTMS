@@ -719,6 +719,13 @@ export function JudgeClient({ initialMatch, userId, judgeName, timerConfig, adva
             <div key={i} className="w-9 text-center text-gray-700 text-[10px] font-bold uppercase tracking-wider">S{i + 1}</div>
           ))}
           <div className="w-11 text-center text-gray-600 text-[10px] font-bold uppercase tracking-wider">JUE</div>
+          {/* Columna TB — solo visible durante tiebreak / super tiebreak.
+              Muestra los puntos del TB (0, 1, 2, ... 5, 6, 7+). */}
+          {(isTB || isSuperTB) && (
+            <div className={`w-11 text-center text-[10px] font-bold uppercase tracking-wider ${isSuperTB ? 'text-amber-400' : 'text-blue-400'}`}>
+              {isSuperTB ? 'STB' : 'TB'}
+            </div>
+          )}
           <div className="w-7" />
         </div>
 
@@ -726,6 +733,7 @@ export function JudgeClient({ initialMatch, userId, judgeName, timerConfig, adva
           const name = t === 1 ? t1 : t2
           const sw = t === 1 ? setsWon1 : setsWon2
           const cs = t === 1 ? curSet1 : curSet2
+          const tbPts = score?.tiebreak_score?.[`t${t}`] ?? 0
           const isServing = serving === t
           const wc = t === 1 ? warnCount1 : warnCount2
           return (
@@ -741,6 +749,12 @@ export function JudgeClient({ initialMatch, userId, judgeName, timerConfig, adva
                 </div>
               ))}
               <div className="w-11 text-center font-score font-black text-2xl text-gray-300 tabular-nums">{cs}</div>
+              {/* Celda TB — solo visible durante tiebreak / super tiebreak */}
+              {(isTB || isSuperTB) && (
+                <div className={`w-11 text-center font-score font-black text-2xl tabular-nums ${isSuperTB ? 'text-amber-400' : 'text-blue-400'}`}>
+                  {tbPts}
+                </div>
+              )}
               <div className="w-7 flex flex-col items-center gap-1">
                 {isServing && <span className="w-2.5 h-2.5 rounded-full bg-orange-400 serving-pulse" />}
                 {wc > 0 && <span className="text-yellow-500 text-xs font-bold">⚠{wc}</span>}
