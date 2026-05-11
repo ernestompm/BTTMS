@@ -12,14 +12,6 @@ interface TossData {
   scoring_system?: string
 }
 
-const SCORING_OPTIONS: { value: ScoringSystem; label: string; sub: string }[] = [
-  { value: 'best_of_2_sets_super_tb', label: 'Dobles',       sub: '2 sets + Super TB a 10' },
-  { value: '7_games_tb',              label: 'Individual',    sub: '7 juegos + TB' },
-  { value: 'best_of_3_sets_tb',       label: '3 Sets',        sub: 'Mejor de 3 con TB' },
-  { value: 'short_sets',              label: 'Sets cortos',   sub: '4 juegos + TB' },
-  { value: 'pro_set',                 label: 'Pro Set',       sub: '1 set largo' },
-]
-
 function fullTeamName(entry: any): { line1: string; line2: string | null } {
   if (!entry) return { line1: 'Equipo', line2: null }
   const p1 = entry.player1 ? `${entry.player1.first_name} ${entry.player1.last_name}` : null
@@ -38,9 +30,11 @@ export function TossScreen({ match, onComplete, saving }: {
   const [servingTeam, setServingTeam] = useState<1 | 2 | null>(null)
   const [sideEntry1, setSideEntry1] = useState<'near' | 'far' | null>(null)
   const [serverId, setServerId] = useState<string | null>(null)
-  const [system, setSystem] = useState<ScoringSystem>(
-    (match.scoring_system ?? 'best_of_2_sets_super_tb') as ScoringSystem
-  )
+  // Sistema de puntuación: SIEMPRE el del match (configurado por el admin
+  // en la creación). Default = Dobles (best_of_2_sets_super_tb). El juez
+  // NO puede cambiarlo — si fuera el caso erróneo, el admin lo corrige
+  // en la página de configuración del partido.
+  const system: ScoringSystem = (match.scoring_system ?? 'best_of_2_sets_super_tb') as ScoringSystem
 
   const isDoubles = (match as any).match_type !== 'singles'
   const hasSecondPlayer = isDoubles && (match.entry1 as any)?.player2
@@ -53,6 +47,13 @@ export function TossScreen({ match, onComplete, saving }: {
   function handleFinish() {
     if (!tossWinner || !tossChoice || !servingTeam || !sideEntry1) return
     onComplete({ toss_winner: tossWinner, toss_choice: tossChoice, serving_team: servingTeam, side_entry1: sideEntry1, current_server_id: serverId, scoring_system: system })
+  }
+
+  // Va un paso atrás. Mantenemos los valores ya elegidos (al re-elegir se
+  // sobrescriben). Si el usuario quiere reset total, hay "Empezar de nuevo"
+  // en el resumen.
+  function stepBack() {
+    setStep(s => Math.max(1, s - 1))
   }
 
   // Reusable team button
@@ -71,16 +72,29 @@ export function TossScreen({ match, onComplete, saving }: {
   return (
     <div className="min-h-screen bg-gray-950 flex flex-col">
 
-      {/* Header */}
+      {/* Header con botón "Atrás" arriba a la izquierda (solo a partir del paso 2) */}
       <div className="bg-gray-900 px-6 py-5 border-b border-gray-800 flex-shrink-0">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-brand-red rounded-xl flex items-center justify-center text-white font-black text-xl font-score">
-            {step}
+        <div className="flex items-center gap-3">
+          {step > 1 ? (
+            <button onClick={stepBack}
+              className="flex-shrink-0 w-12 h-12 rounded-xl bg-gray-800 hover:bg-gray-700 active:scale-95 border border-gray-700 text-gray-300 hover:text-white transition-colors flex items-center justify-center text-lg font-bold"
+              title="Volver al paso anterior">
+              ←
+            </button>
+          ) : (
+            <div className="w-12 h-12 bg-brand-red rounded-xl flex items-center justify-center text-white font-black text-xl font-score">
+              {step}
+            </div>
+          )}
+          <div className="flex-1 min-w-0">
+            <p className="text-white font-bold text-lg truncate">Sorteo · {match.round ?? 'Partido'}</p>
+            <p className="text-gray-500 text-sm truncate">{(match as any).court?.name ?? ''}</p>
           </div>
-          <div>
-            <p className="text-white font-bold text-lg">Sorteo · {match.round ?? 'Partido'}</p>
-            <p className="text-gray-500 text-sm">{(match as any).court?.name ?? ''}</p>
-          </div>
+          {step > 1 && (
+            <div className="w-12 h-12 bg-brand-red rounded-xl flex items-center justify-center text-white font-black text-xl font-score flex-shrink-0">
+              {step}
+            </div>
+          )}
         </div>
         <div className="flex gap-1.5 mt-4">
           {Array.from({ length: totalSteps }).map((_, i) => (
@@ -203,19 +217,17 @@ export function TossScreen({ match, onComplete, saving }: {
                   <span className="text-green-400 font-bold text-sm">✓ Asignado</span>
                 </div>
               )}
-            </div>
-
-            {/* Scoring system selector */}
-            <div>
-              <p className="text-gray-400 text-xs uppercase tracking-widest mb-3">Sistema de puntuación</p>
-              <div className="grid grid-cols-1 gap-2">
-                {SCORING_OPTIONS.map(opt => (
-                  <button key={opt.value} onClick={() => setSystem(opt.value)}
-                    className={`flex items-center justify-between px-4 py-3 rounded-xl border transition-colors ${system === opt.value ? 'bg-brand-red/20 border-brand-red text-white' : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'}`}>
-                    <span className="font-bold">{opt.label}</span>
-                    <span className="text-xs text-gray-400">{opt.sub}</span>
-                  </button>
-                ))}
+              {/* Sistema de puntuación: solo informativo. Se configura en
+                  la página del partido. El juez NO lo cambia aquí. */}
+              <div className="flex justify-between pt-2 border-t border-gray-800">
+                <span className="text-gray-500 text-sm">Sistema</span>
+                <span className="text-gray-300 text-sm">
+                  {system === 'best_of_2_sets_super_tb' && 'Dobles · 2 sets + Super TB'}
+                  {system === '7_games_tb' && 'Individual · 7 juegos + TB'}
+                  {system === 'best_of_3_sets_tb' && '3 sets con TB'}
+                  {system === 'short_sets' && 'Sets cortos · 4 juegos + TB'}
+                  {system === 'pro_set' && 'Pro Set · 1 set largo'}
+                </span>
               </div>
             </div>
 

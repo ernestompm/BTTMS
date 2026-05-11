@@ -348,6 +348,14 @@ export function JudgeClient({ initialMatch, userId, judgeName, timerConfig, adva
   }
   async function handlePlayersArrived() { setSaving(true); await post('players-arrived');  setSaving(false) }
   async function handleWarmupComplete() { setSaving(true); await post('warmup-complete');  warmupTimer.stop(); setSaving(false) }
+  // Deshacer la fase actual. Vuelve un paso atrás en la cadena de
+  // estados (warmup → players_on_court → judge_on_court → scheduled).
+  // No se permite desde in_progress / finished — para eso está /undo.
+  async function handleRewindStatus(msg?: string) {
+    if (msg && !confirm(msg)) return
+    setSaving(true)
+    try { await post('rewind-status') } finally { setSaving(false) }
+  }
 
   async function handleTossComplete(data: any) {
     setSaving(true)
@@ -576,6 +584,14 @@ export function JudgeClient({ initialMatch, userId, judgeName, timerConfig, adva
           <button onClick={handleRetire.bind(null, 1, 'No presentación')} className="w-full py-3 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-400 font-bold text-sm transition-colors">
             No presentación / W.O.
           </button>
+          {/* Step back — anula la identificación del juez y vuelve a 'scheduled' */}
+          <button
+            onClick={() => handleRewindStatus('¿Volver atrás? Se borrará la identificación del juez y tendrás que volver a entrar como árbitro.')}
+            disabled={saving}
+            className="w-full py-3 rounded-xl bg-gray-900 hover:bg-gray-800 text-gray-500 hover:text-gray-300 font-medium text-sm transition-colors disabled:opacity-50"
+          >
+            ← Volver atrás (deshacer identificación)
+          </button>
         </div>
         <p className="text-gray-600 text-xs text-center">Confirma cuando ambas parejas estén en pista</p>
       </div>
@@ -604,9 +620,18 @@ export function JudgeClient({ initialMatch, userId, judgeName, timerConfig, adva
           style={{ background: 'linear-gradient(90deg,#f31948,#fc6f43)' }}>
           {saving ? '...' : 'INICIAR PARTIDO →'}
         </button>
-        <div className="flex gap-3 mt-2">
+        <div className="flex gap-3 mt-2 flex-wrap justify-center">
           <button onClick={() => setShowRetireModal(true)} className="px-4 py-2 rounded-xl bg-gray-800 hover:bg-red-900/50 text-gray-400 hover:text-red-300 font-bold text-xs transition-colors">
             Retirada / Lesión
+          </button>
+          {/* Step back — deshace el sorteo. Vuelve a la TossScreen
+              limpia y se puede empezar de nuevo. */}
+          <button
+            onClick={() => handleRewindStatus('¿Rehacer el sorteo? Se cancelará el calentamiento, se borrarán los datos del toss y volverá la pantalla del sorteo.')}
+            disabled={saving}
+            className="px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-gray-200 font-bold text-xs transition-colors disabled:opacity-50"
+          >
+            ← Rehacer sorteo
           </button>
         </div>
         {showRetireModal && (
