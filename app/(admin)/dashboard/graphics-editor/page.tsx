@@ -19,8 +19,9 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import type { Tournament } from '@/types'
+import { DEFAULT_TOURNAMENT_ID } from '@/lib/active-tournament'
 
-const TOURNAMENT_ID = '00000000-0000-0000-0000-000000000001'
+const TOURNAMENT_ID = DEFAULT_TOURNAMENT_ID
 
 interface MatchOption {
   id: string
@@ -78,6 +79,14 @@ export default function GraphicsEditorPage() {
     return ov[key] ?? DEFAULTS.venue_pre_match[key]
   }
 
+  // Debounce de guardado: el slider dispara setVal en cada pixel.
+  // Sin debounce hacíamos UPDATE + recarga iframe (~1500ms) decenas
+  // de veces por gesto → lag insoportable. Ahora:
+  //  - El UI optimista actualiza tournament en memoria (instantáneo)
+  //  - El UPDATE a BBDD + recarga iframe espera 300ms tras el último
+  //    movimiento del slider (mouseup natural).
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   async function setVal(key: keyof typeof DEFAULTS.venue_pre_match, value: number) {
     if (!tournament) return
     const newCfg = {
@@ -90,15 +99,21 @@ export default function GraphicsEditorPage() {
         },
       },
     }
+    // Update UI inmediatamente (visualizamos el cambio en sliders/labels).
     setTournament({ ...tournament, scoreboard_config: newCfg } as any)
+
+    // Debounce de la persistencia + recarga del iframe.
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     setSaving(true)
-    await supabase.from('tournaments').update({ scoreboard_config: newCfg }).eq('id', TOURNAMENT_ID)
-    setSaving(false)
-    setSavedFlash(true)
-    setTimeout(() => setSavedFlash(false), 800)
-    // Recarga el iframe para que aplique el nuevo valor (el SSR de
-    // /scoreboard lee tournament.scoreboard_config en cada render)
-    setIframeKey(k => k + 1)
+    saveTimerRef.current = setTimeout(async () => {
+      await supabase.from('tournaments').update({ scoreboard_config: newCfg }).eq('id', TOURNAMENT_ID)
+      setSaving(false)
+      setSavedFlash(true)
+      setTimeout(() => setSavedFlash(false), 800)
+      // Recarga el iframe para que aplique el nuevo valor (el SSR de
+      // /scoreboard lee tournament.scoreboard_config en cada render)
+      setIframeKey(k => k + 1)
+    }, 300)
   }
 
   async function resetSection() {

@@ -416,7 +416,24 @@ export function JudgeClient({ initialMatch, userId, judgeName, timerConfig, adva
     }
 
     if (!res.ok) {
-      // Preserve score, enqueue and let the drainer retry when possible
+      // 4xx: error del cliente, NO encolamos — reintentar pisaría la
+      // BBDD con un punto inválido (ej. match no in_progress, sin auth).
+      // Revertimos el optimistic update y avisamos.
+      // 5xx: error transitorio del server, SÍ encolamos para reintentar.
+      const isClientError = res.status >= 400 && res.status < 500
+      if (isClientError) {
+        // Roll back optimistic update
+        setMatch((m) => ({ ...m, score: prevScore as any, serving_team: servingTeamAtPress }))
+        // Intenta extraer mensaje en castellano del backend
+        let msg = 'Error ' + res.status
+        try {
+          const body = await res.json()
+          if (body?.error) msg = body.error
+        } catch {}
+        addToast(`✗ ${msg}`, 'red')
+        return
+      }
+      // 5xx — encolar y reintentar luego
       offlineQueue.enqueue({ winnerTeam: wt, pointType: 'winner', shotDirection: null })
       addToast(`ERROR ${res.status} — punto en cola`, 'orange')
       return

@@ -18,22 +18,24 @@ body {
   font-family: 'Barlow Condensed', sans-serif;
 }
 
-/* Instant feedback on all interactive elements */
+/* Interactive elements: cursor + transición sutil. El scale(.97) en
+   :active SOLO se aplica a botones con clase `btn-press` o
+   `active:scale-95` (Tailwind). Antes era global y rebotaba el
+   sidebar nav y los inputs de formulario, demasiado ruidoso. */
 button, a, [role="button"] {
-  transition: opacity 0.1s ease, transform 0.1s ease, background-color 0.15s ease, border-color 0.15s ease;
+  transition: opacity 0.1s ease, background-color 0.15s ease, border-color 0.15s ease;
   cursor: pointer;
 }
 button:active, a:active, [role="button"]:active {
-  transform: scale(0.97);
   opacity: 0.85;
 }
 button:disabled {
   cursor: not-allowed;
-  transform: none;
   opacity: 0.5;
 }
 
-/* Judge app button feedback */
+/* Botones grandes/táctiles (judge app, primarios de acción) usan
+   .btn-press o las clases Tailwind active:scale-95 para feedback de tap. */
 .btn-press:active {
   transform: scale(0.96);
   transition: transform 0.1s;

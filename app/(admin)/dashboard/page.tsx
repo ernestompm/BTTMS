@@ -73,8 +73,20 @@ export default async function DashboardPage() {
       <div>
         <h2 className="text-lg font-semibold text-white mb-3">Partidos en Juego</h2>
         {!matches || matches.length === 0 ? (
-          <div className="bg-gray-900 rounded-2xl p-6 border border-gray-800 text-center text-gray-500">
-            No hay partidos en curso ahora mismo
+          <div className="bg-gray-900 rounded-2xl p-8 border border-gray-800 text-center">
+            <div className="text-4xl mb-3">🎾</div>
+            <p className="text-white font-medium mb-1">No hay partidos en curso ahora mismo</p>
+            <p className="text-gray-500 text-sm mb-4">Programa partidos o ve al cuadro para empezar uno</p>
+            <div className="flex gap-2 justify-center flex-wrap">
+              <Link href="/dashboard/schedule"
+                className="bg-brand-red hover:bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">
+                📅 Ver horario
+              </Link>
+              <Link href="/dashboard/matches"
+                className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">
+                🎾 Todos los partidos
+              </Link>
+            </div>
           </div>
         ) : (
           <div className="space-y-3">
