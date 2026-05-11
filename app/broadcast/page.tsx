@@ -28,10 +28,8 @@ export default function BroadcastPage() {
   const [logs, setLogs] = useState<LogRow[]>([])
   const [activeMatchId, setActiveMatchId] = useState<string | null>(null)
   const [endpoint, setEndpoint] = useState('')
-  const [endpointStatic, setEndpointStatic] = useState('')
   const [apiKey, setApiKey] = useState('')
   const [method, setMethod] = useState<HttpMethod>('POST')
-  const [methodStatic, setMethodStatic] = useState<HttpMethod>('PUT')
   const [headersText, setHeadersText] = useState('')
   const [headersError, setHeadersError] = useState('')
   const [testing, setTesting] = useState(false)
@@ -106,10 +104,8 @@ export default function BroadcastPage() {
       .eq('id', TOURNAMENT_ID).single()
     if (data) {
       setEndpoint((data as any).broadcast_endpoint ?? '')
-      setEndpointStatic((data as any).broadcast_endpoint_static ?? '')
       setApiKey((data as any).broadcast_api_key ?? '')
       setMethod(((data as any).broadcast_method === 'PUT' ? 'PUT' : 'POST') as HttpMethod)
-      setMethodStatic(((data as any).broadcast_method_static === 'POST' ? 'POST' : 'PUT') as HttpMethod)
       const h = (data as any).broadcast_headers
       setHeadersText(h && typeof h === 'object' && Object.keys(h).length > 0 ? JSON.stringify(h, null, 2) : '')
     }
@@ -168,17 +164,15 @@ export default function BroadcastPage() {
     setSavingConfig(true); setSaveResult('')
     const { error } = await supabase.from('tournaments').update({
       broadcast_endpoint: endpoint || null,
-      broadcast_endpoint_static: endpointStatic || null,
       broadcast_api_key: apiKey || null,
       broadcast_method: method,
-      broadcast_method_static: methodStatic,
       broadcast_headers: parsedHeaders,
     }).eq('id', TOURNAMENT_ID)
     setSavingConfig(false)
     if (error) {
-      const missing = /broadcast_(method|headers|endpoint_static)/.test(error.message)
+      const missing = /broadcast_(method|headers)/.test(error.message)
       setSaveResult(missing
-        ? '✗ Falta migración. Ejecuta 013_broadcast_config.sql y 020_broadcast_static_endpoint.sql'
+        ? '✗ Falta migración 013. Ejecuta supabase/migrations/013_broadcast_config.sql'
         : `✗ ${error.message}`)
     } else {
       setSaveResult('✓ Guardado')
@@ -264,13 +258,10 @@ export default function BroadcastPage() {
               <h2 className="text-white font-semibold mb-4">Configuración del endpoint</h2>
               <div className="space-y-3">
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">
-                    Endpoint dinámico (score, stats, tiempos)
-                  </label>
+                  <label className="block text-sm text-gray-400 mb-1">URL del endpoint</label>
                   <input value={endpoint} onChange={(e) => setEndpoint(e.target.value)}
-                    placeholder="https://datastream.singular.live/datastreams/dinamico"
+                    placeholder="https://productora.tv/api/score"
                     className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-brand-red" />
-                  <p className="text-gray-600 text-xs mt-1">Recibe payload pequeño en cada punto · timeout 2s sin retry</p>
                 </div>
                 <div className="grid grid-cols-[110px_1fr] gap-3">
                   <div>
@@ -287,29 +278,6 @@ export default function BroadcastPage() {
                       placeholder="••••••••••••"
                       className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-brand-red" />
                   </div>
-                </div>
-                {/* Endpoint estático opcional */}
-                <div className="pt-3 border-t border-gray-800">
-                  <label className="block text-sm text-gray-400 mb-1">
-                    Endpoint estático <span className="text-gray-600">(opcional)</span>
-                  </label>
-                  <input value={endpointStatic} onChange={(e) => setEndpointStatic(e.target.value)}
-                    placeholder="https://datastream.singular.live/datastreams/estatico"
-                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-brand-red" />
-                  <p className="text-gray-600 text-xs mt-1">
-                    Tournament, teams, juez, weather, cuadro. Se envía solo al activar EN AIRE y al cambiar el estado del match. Vacío = todo va al endpoint dinámico (legacy).
-                  </p>
-                </div>
-                <div className="grid grid-cols-[110px_1fr] gap-3">
-                  <div>
-                    <label className="block text-sm text-gray-400 mb-1">Método estático</label>
-                    <select value={methodStatic} onChange={(e) => setMethodStatic(e.target.value as HttpMethod)}
-                      className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-brand-red">
-                      <option value="PUT">PUT</option>
-                      <option value="POST">POST</option>
-                    </select>
-                  </div>
-                  <div />
                 </div>
                 <div>
                   <label className="block text-sm text-gray-400 mb-1">

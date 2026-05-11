@@ -26,35 +26,15 @@ const PAYLOAD_VERSION = '3.0'
 const PTS_DISPLAY = ['0', '15', '30', '40']
 
 /**
- * Modos de payload:
- *  - 'lite' (default para point_scored): solo lo crítico para actualizar
- *    el scorebug — sin draw, sin stats_by_set. Reduce el tiempo de
- *    generación de ~1.5s a ~300ms en producción.
- *  - 'full' (broadcast_started, match_finished, warning, etc.): incluye
- *    el cuadro completo y las stats desglosadas por set.
- *  - 'static': datos que cambian raramente — tournament, teams, judge,
- *    weather, draw, rules. Para el endpoint estático configurable.
- *  - 'dynamic': datos que cambian en cada punto — score, stats, times,
- *    flags. Para el endpoint dinámico.
+ * Modos internos de payload — schema SIEMPRE el mismo. Solo cambia
+ * qué se carga de BBDD para optimizar latencia.
+ *  - 'lite' (point_scored / point_undone): salta stats_by_set y draw
+ *    (las queries más caras). Esos campos vienen como [] y null en
+ *    el JSON. ~300ms de generación.
+ *  - 'full' (resto de eventos): incluye todo, incluido stats_by_set
+ *    completo y draw entero. ~1s de generación.
  */
-export type PayloadMode = 'lite' | 'full' | 'static' | 'dynamic'
-
-/**
- * Payload ESTÁTICO — todo lo que NO cambia con cada punto.
- * Se envía solo al activar EN AIRE o cuando algo estructural cambia.
- * Singular Live cachea esto entre pushes dinámicos.
- */
-export async function buildStaticPayload(tournamentId: string, matchId?: string) {
-  return buildBroadcastPayload(tournamentId, matchId, 'static')
-}
-
-/**
- * Payload DINÁMICO — solo lo que SÍ cambia con cada punto (score,
- * stats, times, flags). Se envía en cada transición. Ligero (~3-5KB).
- */
-export async function buildDynamicPayload(tournamentId: string, matchId?: string) {
-  return buildBroadcastPayload(tournamentId, matchId, 'dynamic')
-}
+export type PayloadMode = 'lite' | 'full'
 
 export async function buildBroadcastPayload(
   tournamentId: string,
@@ -91,21 +71,14 @@ export async function buildBroadcastPayload(
   }
 
   // ── PASO 2: queries auxiliares ─────────────────────────────────────
-  // Tabla de qué carga cada modo:
-  //                  reconcile  judge  weather  by_set  draw
-  //   lite              ✗        ✗      ✗        ✗      ✗
-  //   dynamic           ✓        ✗      ✗        ✓      ✗
-  //   static            ✗        ✓      ✓        ✗      ✓
-  //   full              ✓        ✓      ✓        ✓      ✓
+  // En modo 'lite' (point_scored/point_undone) saltamos las queries más
+  // caras: stats_by_set (replay de todos los puntos) y draw (entries +
+  // todos los matches del cuadro). Esos campos salen en el JSON como []
+  // y null. El receptor sigue viendo el MISMO schema en todos los eventos.
+  // En modo 'full' cargamos todo en paralelo.
   const isLite = mode === 'lite'
-  const isDynamic = mode === 'dynamic'
-  const isStatic = mode === 'static'
-
-  const wantReconcile = mode === 'full' || isDynamic
-  const wantJudge = mode === 'full' || isStatic
-  const wantWeather = mode === 'full' || isStatic
-  const wantStatsBySet = mode === 'full' || isDynamic
-  const wantDraw = mode === 'full' || isStatic
+  const wantStatsBySet = !isLite
+  const wantDraw = !isLite
 
   let reconciledScore: any = match?.score ?? null
   let judge: any = null
@@ -114,31 +87,37 @@ export async function buildBroadcastPayload(
   let drawEntries: any[] = []
   let drawMatches: any[] = []
 
-  if (wantReconcile || wantJudge || wantWeather || wantStatsBySet || wantDraw) {
-    // Solo cargamos las queries que el modo necesita — paralelo.
-    const judgePromise = (wantJudge && match?.judge_id)
+  if (match) {
+    // Judge y weather siempre se cargan — son pequeños y el receptor
+    // espera que estén presentes en cada push (no quiero el caso "el
+    // juez aparece a null en el primer push y luego cambia").
+    const judgePromise = match?.judge_id
       ? service.from('app_users')
           .select('id, full_name, email, role').eq('id', match.judge_id).single()
           .then(({ data }: any) => data ? { id: data.id, name: data.full_name, role: data.role } : null)
       : Promise.resolve(null)
 
-    const weatherPromise = wantWeather ? (async () => {
+    const weatherPromise = (async () => {
       try {
         const { data } = await service.from('weather_cache')
           .select('data, updated_at').eq('tournament_id', tournamentId).maybeSingle()
         return data ? (data as any).data : null
       } catch { return null }
-    })() : Promise.resolve(null)
+    })()
 
-    const reconcilePromise = (wantReconcile && match?.id)
+    // Reconcile siempre — si match.score está corrupto, no queremos
+    // mandar datos malos al endpoint en NINGÚN evento.
+    const reconcilePromise = match.id
       ? reconcileScore(service, match.id, match.score)
-      : Promise.resolve(match?.score ?? null)
+      : Promise.resolve(match.score ?? null)
 
-    const statsBySetPromise = (wantStatsBySet && match?.id)
+    // by_set y draw solo en modo full. En lite quedan vacíos en el JSON
+    // pero el receptor sigue viendo las claves del schema.
+    const statsBySetPromise = wantStatsBySet
       ? computeStatsBySet(service, match.id, (match.score?.sets ?? []) as Array<{ t1: number, t2: number }>)
       : Promise.resolve([])
 
-    const drawPromise = (wantDraw && match?.draw_id)
+    const drawPromise = (wantDraw && match.draw_id)
       ? Promise.all([
           service.from('draw_entries').select(`*,
             player1:players!player1_id(*),
@@ -165,34 +144,12 @@ export async function buildBroadcastPayload(
 
   if (match?.id) match.score = reconciledScore
 
-  // Change pointers — el receptor compara estos hashes con los que
-  // tiene cacheados. Si static_hash difiere del último visto, debe
-  // refrescar el bloque estático (o esperar al próximo trigger
-  // estructural que se lo enviará automáticamente).
-  //
-  // IMPORTANTE: el hash se computa SOLO sobre tournament + match (con
-  // joins) que están disponibles tanto en static como en dynamic. Judge
-  // y weather NO entran al hash porque dynamic no los carga, y un hash
-  // distinto en cada modo rompería la comparación.
-  // - Cambios en judge → siempre disparan judge_on_court (STATIC_TRIGGER)
-  //   así que el receptor recibe un push estático sin necesitar hash.
-  // - Cambios en weather → si quieres detectarlos en tiempo real,
-  //   llama a /api/broadcast/refresh-static manualmente (TODO).
-  const staticHash = match ? computeStaticHash(match, tournament) : null
-  const matchUpdatedAt: string | null = match?.updated_at ?? null
-
   const meta = {
     version: PAYLOAD_VERSION,
     generated_at: new Date().toISOString(),
     tournament_id: tournamentId,
     match_id: match?.id ?? null,
     mode,
-    /** Hash determinista del bloque estático. Cuando cambia algo en
-     *  tournament/judge/teams/court/scoring_system/etc → cambia el
-     *  hash, y el receptor sabe que debe refrescar la caché. */
-    static_hash: staticHash,
-    /** Timestamp de la última modificación del match en BBDD. */
-    match_updated_at: matchUpdatedAt,
   }
 
   const tournamentBlock = {
@@ -216,86 +173,16 @@ export async function buildBroadcastPayload(
     weather,
   }
 
-  // ── STATIC payload — solo lo que NO cambia con cada punto ──────────
-  if (isStatic) {
-    return {
-      meta,
-      tournament: tournamentBlock,
-      judge,
-      match: match ? formatMatchStatic(match) : null,
-      draw: match?.draw_id ? {
-        id: match.draw_id,
-        category: match.category,
-        entries: drawEntries.map(formatEntry),
-        matches: drawMatches.map((m: any) => ({
-          ...formatMatch(m, /*includeBio*/ false),
-          is_current: m.id === match.id,
-        })),
-      } : null,
-    }
-  }
-
-  // ── DYNAMIC payload — el match en juego ────────────────────────────
-  // Incluye los campos "semi-estáticos" (juez, court, toss, server actual)
-  // dentro de match_summary porque pueden cambiar entre transiciones y
-  // queremos que vayan SIEMPRE frescos sin esperar a un push estático.
-  // El receptor puede usar match_summary directamente sin tocar la caché.
-  if (isDynamic) {
-    if (!match) return { meta, match: null }
-    const isFinal = match.round === 'F'
-    return {
-      meta,
-      match: {
-        id: match.id,
-        status: match.status,
-        broadcast_active: match.broadcast_active ?? false,
-        // Datos semi-estáticos que se actualizan en cada push — el receptor
-        // no necesita refrescar el bloque estático si solo cambia esto.
-        summary: {
-          category: match.category,
-          round: match.round,
-          is_final: isFinal,
-          type: match.match_type,
-          scoring_system: match.scoring_system,
-          court_name: match.court?.name ?? null,
-          judge_name: match.judge_name ?? null,
-          judge_id: match.judge_id ?? null,
-          toss_winner: match.toss_winner ?? null,
-          toss_choice: match.toss_choice ?? null,
-          side_entry1: match.side_entry1 ?? null,
-          serving_team: match.serving_team ?? null,
-          current_server_id: match.current_server_id ?? null,
-        },
-        times: {
-          scheduled_at: match.scheduled_at ?? null,
-          judge_on_court_at: match.judge_on_court_at ?? null,
-          players_on_court_at: match.players_on_court_at ?? null,
-          warmup_started_at: match.warmup_started_at ?? null,
-          started_at: match.started_at ?? null,
-          finished_at: match.finished_at ?? null,
-          elapsed_ms: match.started_at && !match.finished_at
-            ? Date.now() - new Date(match.started_at).getTime()
-            : (match.started_at && match.finished_at
-                ? new Date(match.finished_at).getTime() - new Date(match.started_at).getTime()
-                : 0),
-        },
-        score: formatScore(match.score, match.serving_team ?? 1, isFinal),
-        stats: match.stats ? {
-          total: { t1: match.stats.t1, t2: match.stats.t2 },
-          by_set: statsBySet,
-        } : null,
-        warnings: match.warnings ?? { t1: [], t2: [] },
-      },
-    }
-  }
-
-  // ── FULL / LITE payload — formato completo (backward compat) ──────
+  // ── Payload único v3.0 — schema completo siempre ──────────────────
+  // En lite mode by_set queda [] y draw queda null (queries más caras
+  // saltadas para hot-path point_scored/point_undone). El resto del
+  // JSON es siempre el mismo schema.
   return {
     meta,
     tournament: tournamentBlock,
     judge,
-    match: match ? formatMatch(match, /*includeBio*/ !isLite, statsBySet) : null,
-    draw: (!isLite && match?.draw_id) ? {
+    match: match ? formatMatch(match, /*includeBio*/ true, statsBySet) : null,
+    draw: (wantDraw && match?.draw_id) ? {
       id: match.draw_id,
       category: match.category,
       entries: drawEntries.map(formatEntry),
@@ -665,87 +552,6 @@ async function computeStatsBySet(
         t2: acc.stats.t2,
       }
     })
-}
-
-/**
- * Hash determinista del bloque estático. Sirve como "change pointer":
- * el receptor compara este valor con el último que tiene cacheado y
- * sabe si necesita refrescar (o esperar al próximo push estático).
- *
- * Cubre los campos que realmente componen el bloque static:
- *   tournament: nombre, venue, sponsors, logo, scoreboard_config
- *   judge:      id, nombre, full_name
- *   match:      categoría, round, scoring_system, court, teams (ids +
- *               nombres de jugadores), toss, rules
- *   weather:    updated_at (basta para saber si refresc)
- *
- * Usa djb2 (simple, sin dependencias). 32 bits hex bastan para detectar
- * cambios — no es criptográfico.
- */
-function computeStaticHash(match: any, tournament: any): string {
-  const parts: string[] = []
-  // tournament
-  parts.push(`t:${tournament?.id}|${tournament?.name}|${tournament?.venue_name}|${tournament?.venue_city}|${tournament?.logo_url}|${tournament?.edition}|${tournament?.status}`)
-  parts.push(`spo:${JSON.stringify(tournament?.sponsors ?? [])}`)
-  parts.push(`sb:${JSON.stringify(tournament?.scoreboard_config ?? {})}`)
-  // match estructural — incluye judge_id y judge_name (siempre disponibles
-  // en match aunque dynamic mode no cargue el objeto judge completo)
-  if (match) {
-    parts.push(`m:${match.id}|${match.category}|${match.round}|${match.match_number}|${match.match_type}|${match.scoring_system}`)
-    parts.push(`mj:${match.judge_id ?? ''}|${match.judge_name ?? ''}`)
-    parts.push(`mt:${match.toss_winner ?? ''}|${match.toss_choice ?? ''}|${match.side_entry1 ?? ''}`)
-    parts.push(`mr:${match.net_height ?? ''}|${match.forbidden_zone_serving ?? ''}`)
-    parts.push(`mc:${match.court?.id ?? ''}|${match.court?.name ?? ''}`)
-    // teams — ids de entries y jugadores
-    for (const e of [match.entry1, match.entry2]) {
-      const players = [e?.player1, e?.player2].filter(Boolean).map((p: any) => `${p.id}:${p.first_name}:${p.last_name}:${p.photo_url ?? ''}:${p.ranking_rfet ?? ''}:${p.ranking_itf ?? ''}`).join(',')
-      parts.push(`e:${e?.id ?? ''}|${e?.seed ?? ''}|${e?.entry_type ?? ''}|${players}`)
-    }
-  }
-  return djb2(parts.join('||'))
-}
-
-/** djb2 hash (Bernstein) — rápido, sin dependencias, 32 bits hex. */
-function djb2(s: string): string {
-  let hash = 5381
-  for (let i = 0; i < s.length; i++) {
-    hash = ((hash << 5) + hash) + s.charCodeAt(i)
-    hash = hash & 0xFFFFFFFF
-  }
-  return (hash >>> 0).toString(16).padStart(8, '0')
-}
-
-/**
- * formatMatchStatic — solo los campos del match que NO cambian
- * con cada punto (datos estructurales para overlays poco frecuentes).
- * Excluye score, stats, times de juego, warnings, retire.
- */
-function formatMatchStatic(m: any) {
-  const isFinal = m.round === 'F'
-  return {
-    id: m.id,
-    category: m.category,
-    round: m.round,
-    is_final: isFinal,
-    match_number: m.match_number,
-    type: m.match_type,
-    scoring_system: m.scoring_system,
-    rules: {
-      net_height_cm: m.net_height ?? null,
-      forbidden_zone_serving_m: m.forbidden_zone_serving ?? null,
-    },
-    court: m.court ? { id: m.court.id, name: m.court.name, is_center: m.court.is_center_court } : null,
-    scheduled_at: m.scheduled_at ?? null,
-    toss: {
-      winner: m.toss_winner ?? null,
-      choice: m.toss_choice ?? null,
-      side_entry1: m.side_entry1 ?? null,
-    },
-    teams: [
-      buildTeam(1, m.entry1, false, /*includeBio*/ true),
-      buildTeam(2, m.entry2, false, /*includeBio*/ true),
-    ],
-  }
 }
 
 function buildTeam(side: 1 | 2, entry: any, serving: boolean, includeBio: boolean) {
