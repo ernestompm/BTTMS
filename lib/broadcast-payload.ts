@@ -69,63 +69,69 @@ export async function buildBroadcastPayload(
     match = inProgress
   }
 
-  // ── PASO 2: queries auxiliares en paralelo ───────────────────────────
-  // Reconcile score (lee último punto si hay sospecha de corrupción),
-  // judge, weather, stats_by_set y draw — todo a la vez.
-  // En modo 'lite' saltamos stats_by_set y draw (ahorra ~80% del tiempo).
+  // ── PASO 2: queries auxiliares ─────────────────────────────────────
+  // En modo 'lite' (point_scored / point_undone) saltamos TODO lo que
+  // no cambia con cada punto: reconcile, judge, weather, stats_by_set,
+  // draw. Esos datos los manda 'full' al broadcast_started/match_started/
+  // match_finished y Singular Live los conserva entre pushes lite.
+  // Así el payload lite pasa de ~450ms a ~80ms de generación.
   const isLite = mode === 'lite'
 
-  const reconcilePromise = match?.id
-    ? reconcileScore(service, match.id, match.score)
-    : Promise.resolve(match?.score ?? null)
+  let reconciledScore: any = match?.score ?? null
+  let judge: any = null
+  let weather: any = null
+  let statsBySet: Array<any> = []
+  let drawEntries: any[] = []
+  let drawMatches: any[] = []
 
-  const judgePromise = match?.judge_id
-    ? service.from('app_users')
-        .select('id, full_name, email, role').eq('id', match.judge_id).single()
-        .then(({ data }: any) => data ? { id: data.id, name: data.full_name, role: data.role } : null)
-    : Promise.resolve(null)
+  if (!isLite) {
+    // Modo full — todo en paralelo
+    const judgePromise = match?.judge_id
+      ? service.from('app_users')
+          .select('id, full_name, email, role').eq('id', match.judge_id).single()
+          .then(({ data }: any) => data ? { id: data.id, name: data.full_name, role: data.role } : null)
+      : Promise.resolve(null)
 
-  // El cliente Supabase devuelve un thenable que no implementa .catch — lo
-  // envolvemos en una promise real para que el chaining funcione.
-  const weatherPromise = (async () => {
-    try {
-      const { data } = await service.from('weather_cache')
-        .select('data, updated_at').eq('tournament_id', tournamentId).maybeSingle()
-      return data ? (data as any).data : null
-    } catch { return null }
-  })()
+    const weatherPromise = (async () => {
+      try {
+        const { data } = await service.from('weather_cache')
+          .select('data, updated_at').eq('tournament_id', tournamentId).maybeSingle()
+        return data ? (data as any).data : null
+      } catch { return null }
+    })()
 
-  const statsBySetPromise = (!isLite && match?.id)
-    ? computeStatsBySet(service, match.id, (match.score?.sets ?? []) as Array<{ t1: number, t2: number }>)
-    : Promise.resolve([])
+    const reconcilePromise = match?.id
+      ? reconcileScore(service, match.id, match.score)
+      : Promise.resolve(match?.score ?? null)
 
-  const drawPromise = (!isLite && match?.draw_id)
-    ? Promise.all([
-        service.from('draw_entries').select(`*,
-          player1:players!player1_id(*),
-          player2:players!player2_id(*)
-        `).eq('draw_id', match.draw_id),
-        service.from('matches').select(matchSelectCompact())
-          .eq('draw_id', match.draw_id).order('round').order('match_number'),
-      ]).then(([{ data: entries }, { data: matches }]: any) => ({
-        entries: entries ?? [],
-        matches: matches ?? [],
-      }))
-    : Promise.resolve({ entries: [], matches: [] })
+    const statsBySetPromise = match?.id
+      ? computeStatsBySet(service, match.id, (match.score?.sets ?? []) as Array<{ t1: number, t2: number }>)
+      : Promise.resolve([])
 
-  const [
-    reconciledScore,
-    judge,
-    weather,
-    statsBySet,
-    { entries: drawEntries, matches: drawMatches },
-  ] = await Promise.all([
-    reconcilePromise,
-    judgePromise,
-    weatherPromise,
-    statsBySetPromise,
-    drawPromise,
-  ])
+    const drawPromise = match?.draw_id
+      ? Promise.all([
+          service.from('draw_entries').select(`*,
+            player1:players!player1_id(*),
+            player2:players!player2_id(*)
+          `).eq('draw_id', match.draw_id),
+          service.from('matches').select(matchSelectCompact())
+            .eq('draw_id', match.draw_id).order('round').order('match_number'),
+        ]).then(([{ data: entries }, { data: matches }]: any) => ({
+          entries: entries ?? [],
+          matches: matches ?? [],
+        }))
+      : Promise.resolve({ entries: [], matches: [] })
+
+    const [r, j, w, sb, draw] = await Promise.all([
+      reconcilePromise, judgePromise, weatherPromise, statsBySetPromise, drawPromise,
+    ])
+    reconciledScore = r
+    judge = j
+    weather = w
+    statsBySet = sb
+    drawEntries = draw.entries
+    drawMatches = draw.matches
+  }
 
   if (match?.id) match.score = reconciledScore
 

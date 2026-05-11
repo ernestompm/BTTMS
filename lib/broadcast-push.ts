@@ -141,13 +141,17 @@ async function doPush(
     }
     logRow.payload_bytes = body.length
 
+    const isLiteEvent = LITE_EVENTS.has(event)
+    const fetchTimeoutMs = isLiteEvent ? 2000 : 5000
+
     const attempt = async () => {
       const started = Date.now()
       try {
-        // 3s timeout — Singular Live responde típicamente en 200-500ms.
-        // Si tardara más, mejor abandonar y reintentar que bloquear.
         const res = await fetch(logRow.endpoint!, {
-          method, headers, body, signal: AbortSignal.timeout(3000),
+          method, headers, body, signal: AbortSignal.timeout(fetchTimeoutMs),
+          // Keep-alive para reutilizar conexión TCP entre pushes consecutivos.
+          // Reduce latencia ~50-100ms tras el primer push de la sesión.
+          keepalive: true,
         })
         return { status: res.status, error: null as string | null, durationMs: Date.now() - started }
       } catch (err: any) {
@@ -156,9 +160,11 @@ async function doPush(
     }
 
     let result = await attempt()
-    // Reintenta una vez en error de red o 5xx — espera reducida (500ms en
-    // vez de 1.5s) para que la actualización llegue rápido a Singular.
-    if (result.error || (result.status !== null && result.status >= 500)) {
+    // Retry solo para eventos full (broadcast_started, match_finished...).
+    // En eventos lite (point_scored, point_undone) NO reintentamos — el
+    // próximo punto pisará el estado y sincroniza igualmente. Reintentar
+    // añadiría latencia innecesaria al hot-path.
+    if (!isLiteEvent && (result.error || (result.status !== null && result.status >= 500))) {
       await new Promise((r) => setTimeout(r, 500))
       logRow.retries = 1
       result = await attempt()
