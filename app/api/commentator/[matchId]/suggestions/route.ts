@@ -90,7 +90,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ mat
   const { matchId } = await params
   const supabase = await createServerSupabase()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   const providers = listProviders()
   if (providers.length === 0) {
@@ -122,7 +122,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ mat
       entry1:draw_entries!entry1_id(*, player1:players!player1_id(*), player2:players!player2_id(*)),
       entry2:draw_entries!entry2_id(*, player1:players!player1_id(*), player2:players!player2_id(*))
     `).eq('id', matchId).single()
-  if (!match) return NextResponse.json({ error: 'Match not found' }, { status: 404 })
+  if (!match) return NextResponse.json({ error: 'Partido no encontrado' }, { status: 404 })
 
   // Refetch tournament con datos completos (nombre, edicion, fechas, venue,
   // sponsors). Antes el contexto tenia "Beach Tennis Tournament" hardcodeado

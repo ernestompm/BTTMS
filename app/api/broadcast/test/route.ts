@@ -4,7 +4,7 @@ import { createServerSupabase } from '@/lib/supabase-server'
 export async function POST(req: NextRequest) {
   const supabase = await createServerSupabase()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   const { endpoint, api_key, method, headers: extraHeaders } = await req.json()
   if (!endpoint) return NextResponse.json({ error: 'endpoint requerido' }, { status: 400 })

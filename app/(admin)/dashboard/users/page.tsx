@@ -3,8 +3,10 @@
 import { useEffect, useState } from 'react'
 import type { AppUser } from '@/types'
 import { Badge } from '@/components/ui/badge'
+import { roleLabel } from '@/lib/labels'
+import { DEFAULT_TOURNAMENT_ID } from '@/lib/active-tournament'
 
-const TOURNAMENT_ID = '00000000-0000-0000-0000-000000000001'
+const TOURNAMENT_ID = DEFAULT_TOURNAMENT_ID
 const roleColors: Record<string, any> = {
   super_admin: 'danger', tournament_director: 'warning', staff: 'info', judge: 'success', commentator: 'default',
 }
@@ -16,6 +18,10 @@ export default function UsersPage() {
   const [form, setForm] = useState({ email: '', full_name: '', role: 'judge', password: '' })
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState('')
+  // Filtros — antes la lista era plana sin manera de buscar por rol
+  // o nombre. Con 20+ árbitros se hacía ilegible.
+  const [filterRole, setFilterRole] = useState<string>('')
+  const [filterText, setFilterText] = useState('')
 
   async function load() {
     const res = await fetch('/api/users')
@@ -95,19 +101,76 @@ export default function UsersPage() {
         </form>
       )}
 
+      {/* Filtros */}
+      {!loading && users.length > 0 && (
+        <div className="flex gap-2 flex-wrap items-center">
+          <input
+            value={filterText}
+            onChange={(e) => setFilterText(e.target.value)}
+            placeholder="Buscar por nombre o email…"
+            className="flex-1 min-w-[200px] bg-gray-900 border border-gray-800 rounded-xl px-4 py-2 text-white text-sm focus:outline-none focus:border-brand-red"
+          />
+          <select
+            value={filterRole}
+            onChange={(e) => setFilterRole(e.target.value)}
+            className="bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-brand-red"
+          >
+            <option value="">Todos los roles</option>
+            <option value="super_admin">Super admin</option>
+            <option value="tournament_director">Director</option>
+            <option value="staff">Personal</option>
+            <option value="judge">Árbitro</option>
+            <option value="commentator">Comentarista</option>
+          </select>
+        </div>
+      )}
+
       <div className="space-y-2">
-        {loading ? <div className="text-gray-500">Cargando...</div> : users.map((u) => (
-          <div key={u.id} className="bg-gray-900 border border-gray-800 rounded-2xl p-4 flex items-center justify-between">
-            <div>
-              <p className="text-white font-medium">{u.full_name}</p>
-              <p className="text-gray-500 text-sm">{u.email}</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <Badge variant={roleColors[u.role] ?? 'default'}>{u.role.replace('_', ' ')}</Badge>
-              {!u.is_active && <Badge variant="warning">Inactivo</Badge>}
-            </div>
+        {loading && (
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8 text-center">
+            <p className="text-gray-500 text-sm">Cargando usuarios...</p>
           </div>
-        ))}
+        )}
+
+        {!loading && users.length === 0 && (
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8 text-center">
+            <div className="text-5xl mb-3">👥</div>
+            <p className="text-white font-medium mb-1">No hay usuarios todavía</p>
+            <p className="text-gray-500 text-sm mb-4">Crea el primero para que puedan acceder al sistema</p>
+            <button onClick={() => setShowForm(true)}
+              className="bg-brand-red hover:bg-red-600 text-white px-5 py-2 rounded-xl text-sm font-medium transition-colors">
+              + Crear primer usuario
+            </button>
+          </div>
+        )}
+
+        {!loading && users
+          .filter(u => !filterRole || u.role === filterRole)
+          .filter(u => !filterText
+            || u.full_name?.toLowerCase().includes(filterText.toLowerCase())
+            || u.email?.toLowerCase().includes(filterText.toLowerCase()))
+          .map((u) => (
+            <div key={u.id} className="bg-gray-900 border border-gray-800 rounded-2xl p-4 flex items-center justify-between">
+              <div className="min-w-0 flex-1">
+                <p className="text-white font-medium truncate">{u.full_name}</p>
+                <p className="text-gray-500 text-sm truncate">{u.email}</p>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <Badge variant={roleColors[u.role] ?? 'default'}>{roleLabel(u.role)}</Badge>
+                {!u.is_active && <Badge variant="warning">Inactivo</Badge>}
+              </div>
+            </div>
+          ))}
+
+        {!loading && users.length > 0 &&
+          users.filter(u => !filterRole || u.role === filterRole)
+            .filter(u => !filterText
+              || u.full_name?.toLowerCase().includes(filterText.toLowerCase())
+              || u.email?.toLowerCase().includes(filterText.toLowerCase())).length === 0 && (
+          <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6 text-center">
+            <p className="text-gray-500 text-sm">Ningún usuario coincide con los filtros.</p>
+          </div>
+        )}
       </div>
     </div>
   )

@@ -5,10 +5,10 @@ async function requireAdmin() {
   const supabase = await createServerSupabase()
   const service = createServiceSupabase()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Unauthorized', status: 401 as const }
+  if (!user) return { error: 'No autenticado', status: 401 as const }
   const { data: appUser } = await service.from('app_users').select('role').eq('id', user.id).single()
   if (!appUser || !['super_admin', 'tournament_director'].includes(appUser.role)) {
-    return { error: 'Forbidden', status: 403 as const }
+    return { error: 'Sin permisos', status: 403 as const }
   }
   return { user, service }
 }
@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
 
   const { email, password, full_name, role, phone, tournament_id } = await req.json()
   if (!email || !password || !full_name || !role) {
-    return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    return NextResponse.json({ error: 'Faltan campos obligatorios' }, { status: 400 })
   }
 
   const { data: authUser, error: authError } = await auth.service.auth.admin.createUser({

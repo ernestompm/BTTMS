@@ -8,21 +8,34 @@ import { clsx } from 'clsx'
 import type { AppUser } from '@/types'
 
 const navItems = [
-  { href: '/dashboard', label: 'Inicio', icon: '🏠', roles: ['super_admin','tournament_director','staff','judge'] },
-  { href: '/dashboard/matches', label: 'Partidos', icon: '🎾', roles: ['super_admin','tournament_director','staff'] },
-  { href: '/dashboard/players', label: 'Jugadores', icon: '👤', roles: ['super_admin','tournament_director','staff'] },
-  { href: '/dashboard/draws', label: 'Cuadros', icon: '🏆', roles: ['super_admin','tournament_director'] },
-  { href: '/dashboard/schedule', label: 'Horario', icon: '📅', roles: ['super_admin','tournament_director','staff'] },
-  { href: '/dashboard/stats', label: 'Estadísticas', icon: '📊', roles: ['super_admin','tournament_director','staff'] },
-  { href: '/dashboard/tournament', label: 'Torneo', icon: '⚙️', roles: ['super_admin','tournament_director'] },
-  { href: '/dashboard/users', label: 'Usuarios', icon: '👥', roles: ['super_admin','tournament_director'] },
-  { href: '/dashboard/scoreboard', label: 'Marcador Venue', icon: '🖥️', roles: ['super_admin','tournament_director'] },
-  { href: '/dashboard/graphics-editor', label: 'Editor gráficos', icon: '🎨', roles: ['super_admin','tournament_director'] },
-  { href: '/dashboard/svg-mockups', label: 'SVG Mockups', icon: '📐', roles: ['super_admin','tournament_director'] },
-  { href: '/broadcast', label: 'TV Broadcast', icon: '📺', roles: ['super_admin','tournament_director'] },
-  { href: '/dashboard/streaming', label: 'Streaming Grafismo', icon: '🎬', roles: ['super_admin','tournament_director','staff'] },
-  { href: '/commentator', label: 'Comentarista (CIS)', icon: '🎙️', roles: ['super_admin','tournament_director','commentator'] },
+  // ── PRINCIPAL ────────────────────────────────────────────────
+  { href: '/dashboard', label: 'Inicio', icon: '🏠', roles: ['super_admin','tournament_director','staff','judge'], group: 'main' },
+  { href: '/dashboard/matches', label: 'Partidos', icon: '🎾', roles: ['super_admin','tournament_director','staff'], group: 'main' },
+  { href: '/dashboard/players', label: 'Jugadores', icon: '👤', roles: ['super_admin','tournament_director','staff'], group: 'main' },
+  { href: '/dashboard/draws', label: 'Cuadros', icon: '🏆', roles: ['super_admin','tournament_director'], group: 'main' },
+  { href: '/dashboard/schedule', label: 'Horario', icon: '📅', roles: ['super_admin','tournament_director','staff'], group: 'main' },
+  { href: '/dashboard/stats', label: 'Estadísticas', icon: '📊', roles: ['super_admin','tournament_director','staff'], group: 'main' },
+  // ── OPERACIÓN EN VIVO ────────────────────────────────────────
+  // Acceso rápido a la app del juez también para staff/director (antes solo home).
+  { href: '/judge', label: 'Arbitrar', icon: '⚖️', roles: ['super_admin','tournament_director','staff','judge'], group: 'live' },
+  { href: '/commentator', label: 'Comentarista (CIS)', icon: '🎙️', roles: ['super_admin','tournament_director','commentator'], group: 'live' },
+  { href: '/broadcast', label: 'TV Broadcast', icon: '📺', roles: ['super_admin','tournament_director'], group: 'live' },
+  // ── PRODUCCIÓN TV ────────────────────────────────────────────
+  { href: '/dashboard/scoreboard', label: 'Marcador Venue', icon: '🖥️', roles: ['super_admin','tournament_director'], group: 'tv' },
+  { href: '/dashboard/streaming', label: 'Streaming Grafismo', icon: '🎬', roles: ['super_admin','tournament_director','staff'], group: 'tv' },
+  { href: '/dashboard/graphics-editor', label: 'Editor gráficos', icon: '🎨', roles: ['super_admin','tournament_director'], group: 'tv' },
+  { href: '/dashboard/svg-mockups', label: 'SVG Mockups', icon: '📐', roles: ['super_admin','tournament_director'], group: 'tv' },
+  // ── CONFIGURACIÓN ────────────────────────────────────────────
+  { href: '/dashboard/tournament', label: 'Torneo', icon: '⚙️', roles: ['super_admin','tournament_director'], group: 'config' },
+  { href: '/dashboard/users', label: 'Usuarios', icon: '👥', roles: ['super_admin','tournament_director'], group: 'config' },
 ]
+
+const GROUP_LABELS: Record<string, string> = {
+  main: '',                           // sin label, son los principales
+  live: 'En vivo',
+  tv: 'Producción TV',
+  config: 'Configuración',
+}
 
 export function AdminNav({ user }: { user: AppUser }) {
   const pathname = usePathname()
@@ -59,24 +72,38 @@ export function AdminNav({ user }: { user: AppUser }) {
         </button>
       </div>
 
-      {/* Nav items */}
-      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-        {filteredItems.map((item) => {
-          const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))
+      {/* Nav items agrupados por sección — separadores visuales para
+          que los 14 items no parezcan un listado sin estructura. */}
+      <nav className="flex-1 p-3 overflow-y-auto">
+        {(['main', 'live', 'tv', 'config'] as const).map((group, gi) => {
+          const items = filteredItems.filter(item => (item as any).group === group)
+          if (items.length === 0) return null
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={clsx(
-                'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors',
-                isActive
-                  ? 'bg-brand-red/20 text-brand-red border border-brand-red/30'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
+            <div key={group} className={gi === 0 ? 'space-y-1' : 'space-y-1 mt-4 pt-3 border-t border-gray-800'}>
+              {GROUP_LABELS[group] && (
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-600 px-3 mb-1.5">
+                  {GROUP_LABELS[group]}
+                </p>
               )}
-            >
-              <span className="text-base">{item.icon}</span>
-              {item.label}
-            </Link>
+              {items.map((item) => {
+                const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={clsx(
+                      'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors',
+                      isActive
+                        ? 'bg-brand-red/20 text-brand-red border border-brand-red/30'
+                        : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                    )}
+                  >
+                    <span className="text-base">{item.icon}</span>
+                    {item.label}
+                  </Link>
+                )
+              })}
+            </div>
           )
         })}
       </nav>

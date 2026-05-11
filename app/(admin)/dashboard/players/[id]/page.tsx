@@ -165,13 +165,31 @@ export default function EditPlayerPage() {
         </div>
 
         {inviteLink && (
-          <div className="mt-4 space-y-2">
+          <div className="mt-4 space-y-3">
             <div className="flex items-center gap-2 bg-gray-800 rounded-xl px-3 py-2.5 border border-gray-700">
               <p className="flex-1 text-gray-300 text-xs font-mono truncate">{inviteLink}</p>
               <button type="button" onClick={handleCopyLink}
                 className="flex-shrink-0 text-xs font-bold text-brand-red hover:text-red-400 transition-colors px-2">
                 {linkCopied ? '✓ Copiado' : 'Copiar'}
               </button>
+            </div>
+            {/* QR para escanear directamente desde el móvil del jugador
+                (director está físicamente al lado). Genera vía QR Server
+                gratuito — sin dep extra en bundle. */}
+            <div className="flex gap-3 items-start bg-gray-800/50 rounded-xl p-3 border border-gray-700">
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&margin=8&bgcolor=1f2937&color=ffffff&data=${encodeURIComponent(inviteLink)}`}
+                alt="QR del enlace de invitación"
+                width={140}
+                height={140}
+                className="rounded-lg bg-gray-800 flex-shrink-0"
+              />
+              <div className="flex-1 min-w-0">
+                <p className="text-white text-sm font-medium mb-1">📱 Escanear con el móvil del jugador</p>
+                <p className="text-gray-400 text-xs leading-relaxed">
+                  Apunta la cámara del jugador al QR para abrir el enlace de invitación directamente sin tener que copiar/enviar nada.
+                </p>
+              </div>
             </div>
             <p className="text-amber-500 text-xs">⏱ Válido hasta {inviteExpires} · El jugador puede actualizar: foto, bio, club, fecha de nacimiento y más.</p>
           </div>

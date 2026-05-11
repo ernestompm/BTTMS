@@ -72,11 +72,11 @@ export async function POST(req: Request) {
 
   const supabase = await createServerSupabase()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   const service = createServiceSupabase()
   const { data: appUser } = await service.from('app_users').select('role').eq('id', user.id).single()
-  if (appUser?.role !== 'super_admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (appUser?.role !== 'super_admin') return NextResponse.json({ error: 'Sin permisos' }, { status: 403 })
 
   // 1. Clean up any existing test data (in FK order)
   await service.from('points').delete().neq('id', '00000000-0000-0000-0000-000000000000')

@@ -10,10 +10,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const service = createServiceSupabase()
 
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   const { data: appUser } = await supabase.from('app_users').select('role').eq('id', user.id).single()
-  if (!appUser) return NextResponse.json({ error: 'User not found' }, { status: 403 })
+  if (!appUser) return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 403 })
 
   const body = await req.json()
   const { point_type, shot_direction }: { point_type: PointType; shot_direction: ShotDirection | null } = body

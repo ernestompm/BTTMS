@@ -9,16 +9,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const service = createServiceSupabase()
 
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   const { data: appUser } = await service.from('app_users').select('role').eq('id', user.id).single()
-  if (!appUser) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!appUser) return NextResponse.json({ error: 'Sin permisos' }, { status: 403 })
 
   const { data: match } = await service.from('matches').select('status,judge_id,broadcast_active').eq('id', matchId).single()
-  if (!match) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (!match) return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
 
   if (appUser.role === 'judge' && match.judge_id !== user.id) {
-    return NextResponse.json({ error: 'Not your match' }, { status: 403 })
+    return NextResponse.json({ error: 'No es tu partido' }, { status: 403 })
   }
 
   const validStatuses = ['in_progress', 'warmup', 'players_on_court', 'judge_on_court']

@@ -14,6 +14,6 @@ export async function GET(req: NextRequest) {
   const matchId = searchParams.get('match') ?? undefined
 
   const payload = await buildBroadcastPayload(tournamentId, matchId)
-  if (!payload) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (!payload) return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
   return NextResponse.json(payload)
 }

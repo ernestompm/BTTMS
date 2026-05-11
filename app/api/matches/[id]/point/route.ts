@@ -12,17 +12,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const service = createServiceSupabase()
 
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   const { data: appUser } = await supabase.from('app_users').select('role').eq('id', user.id).single()
-  if (!appUser) return NextResponse.json({ error: 'User not found' }, { status: 403 })
+  if (!appUser) return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 403 })
 
   const { data: match } = await service.from('matches').select('*').eq('id', matchId).single()
-  if (!match) return NextResponse.json({ error: 'Match not found' }, { status: 404 })
-  if (match.status !== 'in_progress') return NextResponse.json({ error: 'Match is not in progress' }, { status: 400 })
+  if (!match) return NextResponse.json({ error: 'Partido no encontrado' }, { status: 404 })
+  if (match.status !== 'in_progress') return NextResponse.json({ error: 'El partido no está en juego' }, { status: 400 })
 
   if (appUser.role === 'judge' && match.judge_id !== user.id) {
-    return NextResponse.json({ error: 'Not your match' }, { status: 403 })
+    return NextResponse.json({ error: 'No es tu partido' }, { status: 403 })
   }
 
   const body = await req.json()
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   } = body
 
   if (!winner_team || !point_type) {
-    return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    return NextResponse.json({ error: 'Faltan campos obligatorios' }, { status: 400 })
   }
 
   const scoreBefore: Score = match.score ?? INITIAL_SCORE((match.scoring_system ?? 'best_of_2_sets_super_tb') as ScoringSystem)

@@ -4,11 +4,11 @@ import { createServerSupabase, createServiceSupabase } from '@/lib/supabase-serv
 export async function POST(req: NextRequest) {
   const supabase = await createServerSupabase()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   const service = createServiceSupabase()
   const { data: appUser } = await service.from('app_users').select('role').eq('id', user.id).single()
-  if (appUser?.role !== 'super_admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (appUser?.role !== 'super_admin') return NextResponse.json({ error: 'Sin permisos' }, { status: 403 })
 
   const FAKE_ID = '00000000-0000-0000-0000-000000000000'
   const tables = ['points', 'matches', 'draw_entries', 'groups', 'draws', 'players'] as const

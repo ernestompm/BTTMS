@@ -17,13 +17,13 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   const service = createServiceSupabase()
 
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   const { data: appUser } = await service.from('app_users').select('role').eq('id', user.id).single()
-  if (!appUser) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!appUser) return NextResponse.json({ error: 'Sin permisos' }, { status: 403 })
   // Solo admin/director pueden mover gente entre rondas
   if (!['super_admin', 'tournament_director'].includes(appUser.role)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'Sin permisos' }, { status: 403 })
   }
 
   const result = await advanceWinnerToNextRound(service, matchId)

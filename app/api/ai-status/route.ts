@@ -12,7 +12,7 @@ import { createServerSupabase } from '@/lib/supabase-server'
 export async function GET() {
   const supabase = await createServerSupabase()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   // Detectar qué keys están en el entorno (sin revelar el valor)
   const envStatus = {

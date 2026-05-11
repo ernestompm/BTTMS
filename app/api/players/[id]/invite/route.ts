@@ -7,11 +7,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const service = createServiceSupabase()
 
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   const { data: appUser } = await supabase.from('app_users').select('role').eq('id', user.id).single()
   if (!['super_admin', 'tournament_director', 'staff'].includes(appUser?.role ?? '')) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'Sin permisos' }, { status: 403 })
   }
 
   const { data: player } = await service.from('players').select('id, first_name, last_name').eq('id', playerId).single()
