@@ -215,12 +215,22 @@ export default function BroadcastPage() {
   return (
     <div className="min-h-screen bg-gray-950 p-5">
       <div className="max-w-5xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="min-w-0">
             <h1 className="text-2xl font-bold text-white font-score">TV Broadcast Dashboard</h1>
-            <p className="text-gray-400 text-sm">Control de emisión en directo · payload v2.0</p>
+            <p className="text-gray-400 text-sm">Control de emisión en directo · payload v3.0</p>
           </div>
-          <a href="/dashboard" className="text-gray-500 hover:text-white text-sm">← Panel</a>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <a href="/dashboard" className="text-gray-500 hover:text-white text-sm px-2">← Panel</a>
+            <form action="/api/auth/signout" method="post">
+              <button
+                type="submit"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-red-900/50 border border-gray-700 hover:border-red-800 text-gray-300 hover:text-red-300 text-sm font-semibold transition-colors"
+              >
+                <span>🚪</span> Salir
+              </button>
+            </form>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

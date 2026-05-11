@@ -41,7 +41,16 @@ export async function middleware(request: NextRequest) {
   }
 
   if (user && path === '/login') {
-    const redirectRes = NextResponse.redirect(new URL('/dashboard', request.url))
+    // Redirección inteligente por rol — evita el doble redirect
+    // /login → /dashboard → /judge cuando el usuario es árbitro.
+    let target = '/dashboard'
+    try {
+      const { data: appUser } = await supabase
+        .from('app_users').select('role').eq('id', user.id).single()
+      if (appUser?.role === 'judge') target = '/judge'
+      else if (appUser?.role === 'commentator') target = '/commentator'
+    } catch {}
+    const redirectRes = NextResponse.redirect(new URL(target, request.url))
     supabaseResponse.cookies.getAll().forEach(({ name, value, ...options }) => {
       redirectRes.cookies.set(name, value, options)
     })
