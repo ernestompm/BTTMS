@@ -244,6 +244,12 @@ export interface TeamStats {
   set_points_saved: number
   match_points_faced: number
   match_points_saved: number
+  /** Puntos de oro (deuce 40-40 en beach tennis) jugados por el equipo */
+  golden_points_played: number
+  /** Puntos de oro ganados */
+  golden_points_won: number
+  /** % de puntos de oro ganados sobre los jugados */
+  golden_points_won_pct: number
   max_points_streak: number
   current_points_streak: number
   max_games_streak: number
@@ -400,6 +406,7 @@ export const DEFAULT_TEAM_STATS: TeamStats = {
   game_points_faced: 0, game_points_saved: 0,
   set_points_faced: 0, set_points_saved: 0,
   match_points_faced: 0, match_points_saved: 0,
+  golden_points_played: 0, golden_points_won: 0, golden_points_won_pct: 0,
   max_points_streak: 0, current_points_streak: 0, max_games_streak: 0,
   total_points_won: 0, total_points_played: 0, total_points_won_pct: 0,
 }

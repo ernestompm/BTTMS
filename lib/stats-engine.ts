@@ -47,6 +47,16 @@ export function applyPointToStats(prevStats: MatchStats, input: PointInput): Mat
     s[rKey].return_points_won++
   }
 
+  // Golden point (Punto de Oro) — beach tennis: 40-40 sin ventaja, el siguiente
+  // punto se lleva el game. Si scoreBefore tenía deuce=true, ESTE punto es
+  // un golden point. Lo incrementan ambos equipos en "jugados"; solo el
+  // ganador en "ganados".
+  if (scoreBefore.deuce === true) {
+    s[wKey].golden_points_played++
+    s[lKey].golden_points_played++
+    s[wKey].golden_points_won++
+  }
+
   // Point type breakdown
   switch (pointType) {
     case 'ace':
@@ -90,6 +100,8 @@ export function applyPointToStats(prevStats: MatchStats, input: PointInput): Mat
   s.t2.return_points_won_pct = pct(s.t2.return_points_won, s.t2.return_points_played)
   s.t1.total_points_won_pct = pct(s.t1.total_points_won, s.t1.total_points_played)
   s.t2.total_points_won_pct = pct(s.t2.total_points_won, s.t2.total_points_played)
+  s.t1.golden_points_won_pct = pct(s.t1.golden_points_won, s.t1.golden_points_played)
+  s.t2.golden_points_won_pct = pct(s.t2.golden_points_won, s.t2.golden_points_played)
 
   // Streaks
   if (winnerTeam === 1) {
