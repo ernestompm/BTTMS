@@ -32,8 +32,29 @@ const PTS_DISPLAY = ['0', '15', '30', '40']
  *    generación de ~1.5s a ~300ms en producción.
  *  - 'full' (broadcast_started, match_finished, warning, etc.): incluye
  *    el cuadro completo y las stats desglosadas por set.
+ *  - 'static': datos que cambian raramente — tournament, teams, judge,
+ *    weather, draw, rules. Para el endpoint estático configurable.
+ *  - 'dynamic': datos que cambian en cada punto — score, stats, times,
+ *    flags. Para el endpoint dinámico.
  */
-export type PayloadMode = 'lite' | 'full'
+export type PayloadMode = 'lite' | 'full' | 'static' | 'dynamic'
+
+/**
+ * Payload ESTÁTICO — todo lo que NO cambia con cada punto.
+ * Se envía solo al activar EN AIRE o cuando algo estructural cambia.
+ * Singular Live cachea esto entre pushes dinámicos.
+ */
+export async function buildStaticPayload(tournamentId: string, matchId?: string) {
+  return buildBroadcastPayload(tournamentId, matchId, 'static')
+}
+
+/**
+ * Payload DINÁMICO — solo lo que SÍ cambia con cada punto (score,
+ * stats, times, flags). Se envía en cada transición. Ligero (~3-5KB).
+ */
+export async function buildDynamicPayload(tournamentId: string, matchId?: string) {
+  return buildBroadcastPayload(tournamentId, matchId, 'dynamic')
+}
 
 export async function buildBroadcastPayload(
   tournamentId: string,
@@ -70,12 +91,21 @@ export async function buildBroadcastPayload(
   }
 
   // ── PASO 2: queries auxiliares ─────────────────────────────────────
-  // En modo 'lite' (point_scored / point_undone) saltamos TODO lo que
-  // no cambia con cada punto: reconcile, judge, weather, stats_by_set,
-  // draw. Esos datos los manda 'full' al broadcast_started/match_started/
-  // match_finished y Singular Live los conserva entre pushes lite.
-  // Así el payload lite pasa de ~450ms a ~80ms de generación.
+  // Tabla de qué carga cada modo:
+  //                  reconcile  judge  weather  by_set  draw
+  //   lite              ✗        ✗      ✗        ✗      ✗
+  //   dynamic           ✓        ✗      ✗        ✓      ✗
+  //   static            ✗        ✓      ✓        ✗      ✓
+  //   full              ✓        ✓      ✓        ✓      ✓
   const isLite = mode === 'lite'
+  const isDynamic = mode === 'dynamic'
+  const isStatic = mode === 'static'
+
+  const wantReconcile = mode === 'full' || isDynamic
+  const wantJudge = mode === 'full' || isStatic
+  const wantWeather = mode === 'full' || isStatic
+  const wantStatsBySet = mode === 'full' || isDynamic
+  const wantDraw = mode === 'full' || isStatic
 
   let reconciledScore: any = match?.score ?? null
   let judge: any = null
@@ -84,31 +114,31 @@ export async function buildBroadcastPayload(
   let drawEntries: any[] = []
   let drawMatches: any[] = []
 
-  if (!isLite) {
-    // Modo full — todo en paralelo
-    const judgePromise = match?.judge_id
+  if (wantReconcile || wantJudge || wantWeather || wantStatsBySet || wantDraw) {
+    // Solo cargamos las queries que el modo necesita — paralelo.
+    const judgePromise = (wantJudge && match?.judge_id)
       ? service.from('app_users')
           .select('id, full_name, email, role').eq('id', match.judge_id).single()
           .then(({ data }: any) => data ? { id: data.id, name: data.full_name, role: data.role } : null)
       : Promise.resolve(null)
 
-    const weatherPromise = (async () => {
+    const weatherPromise = wantWeather ? (async () => {
       try {
         const { data } = await service.from('weather_cache')
           .select('data, updated_at').eq('tournament_id', tournamentId).maybeSingle()
         return data ? (data as any).data : null
       } catch { return null }
-    })()
+    })() : Promise.resolve(null)
 
-    const reconcilePromise = match?.id
+    const reconcilePromise = (wantReconcile && match?.id)
       ? reconcileScore(service, match.id, match.score)
       : Promise.resolve(match?.score ?? null)
 
-    const statsBySetPromise = match?.id
+    const statsBySetPromise = (wantStatsBySet && match?.id)
       ? computeStatsBySet(service, match.id, (match.score?.sets ?? []) as Array<{ t1: number, t2: number }>)
       : Promise.resolve([])
 
-    const drawPromise = match?.draw_id
+    const drawPromise = (wantDraw && match?.draw_id)
       ? Promise.all([
           service.from('draw_entries').select(`*,
             player1:players!player1_id(*),
@@ -135,38 +165,90 @@ export async function buildBroadcastPayload(
 
   if (match?.id) match.score = reconciledScore
 
+  const meta = {
+    version: PAYLOAD_VERSION,
+    generated_at: new Date().toISOString(),
+    tournament_id: tournamentId,
+    match_id: match?.id ?? null,
+    mode,
+  }
+
+  const tournamentBlock = {
+    id: tournament.id,
+    name: tournament.name,
+    edition: tournament.edition,
+    status: tournament.status,
+    venue: {
+      name: tournament.venue_name,
+      city: tournament.venue_city,
+      lat: tournament.venue_lat,
+      lng: tournament.venue_lng,
+    },
+    dates: {
+      start: tournament.start_date,
+      end: tournament.end_date,
+    },
+    logo_url: tournament.logo_url,
+    sponsors: tournament.sponsors ?? [],
+    scoreboard_config: tournament.scoreboard_config ?? null,
+    weather,
+  }
+
+  // ── STATIC payload — solo lo que NO cambia con cada punto ──────────
+  if (isStatic) {
+    return {
+      meta,
+      tournament: tournamentBlock,
+      judge,
+      match: match ? formatMatchStatic(match) : null,
+      draw: match?.draw_id ? {
+        id: match.draw_id,
+        category: match.category,
+        entries: drawEntries.map(formatEntry),
+        matches: drawMatches.map((m: any) => ({
+          ...formatMatch(m, /*includeBio*/ false),
+          is_current: m.id === match.id,
+        })),
+      } : null,
+    }
+  }
+
+  // ── DYNAMIC payload — solo lo que SÍ cambia con cada punto ─────────
+  if (isDynamic) {
+    if (!match) return { meta, match: null }
+    const isFinal = match.round === 'F'
+    return {
+      meta,
+      match: {
+        id: match.id,
+        status: match.status,
+        broadcast_active: match.broadcast_active ?? false,
+        serving_team: match.serving_team ?? null,
+        times: {
+          started_at: match.started_at ?? null,
+          finished_at: match.finished_at ?? null,
+          elapsed_ms: match.started_at && !match.finished_at
+            ? Date.now() - new Date(match.started_at).getTime()
+            : (match.started_at && match.finished_at
+                ? new Date(match.finished_at).getTime() - new Date(match.started_at).getTime()
+                : 0),
+        },
+        score: formatScore(match.score, match.serving_team ?? 1, isFinal),
+        stats: match.stats ? {
+          total: { t1: match.stats.t1, t2: match.stats.t2 },
+          by_set: statsBySet,
+        } : null,
+        warnings: match.warnings ?? { t1: [], t2: [] },
+      },
+    }
+  }
+
+  // ── FULL / LITE payload — formato completo (backward compat) ──────
   return {
-    meta: {
-      version: PAYLOAD_VERSION,
-      generated_at: new Date().toISOString(),
-      tournament_id: tournamentId,
-      match_id: match?.id ?? null,
-      mode,
-    },
-    tournament: {
-      id: tournament.id,
-      name: tournament.name,
-      edition: tournament.edition,
-      status: tournament.status,
-      venue: {
-        name: tournament.venue_name,
-        city: tournament.venue_city,
-        lat: tournament.venue_lat,
-        lng: tournament.venue_lng,
-      },
-      dates: {
-        start: tournament.start_date,
-        end: tournament.end_date,
-      },
-      logo_url: tournament.logo_url,
-      sponsors: tournament.sponsors ?? [],
-      scoreboard_config: tournament.scoreboard_config ?? null,
-      weather,
-    },
+    meta,
+    tournament: tournamentBlock,
     judge,
     match: match ? formatMatch(match, /*includeBio*/ !isLite, statsBySet) : null,
-    // En modo 'lite' draw = null. Singular Live solo necesita el draw
-    // para la vista de cuadro, que no cambia con cada punto.
     draw: (!isLite && match?.draw_id) ? {
       id: match.draw_id,
       category: match.category,
@@ -537,6 +619,39 @@ async function computeStatsBySet(
         t2: acc.stats.t2,
       }
     })
+}
+
+/**
+ * formatMatchStatic — solo los campos del match que NO cambian
+ * con cada punto (datos estructurales para overlays poco frecuentes).
+ * Excluye score, stats, times de juego, warnings, retire.
+ */
+function formatMatchStatic(m: any) {
+  const isFinal = m.round === 'F'
+  return {
+    id: m.id,
+    category: m.category,
+    round: m.round,
+    is_final: isFinal,
+    match_number: m.match_number,
+    type: m.match_type,
+    scoring_system: m.scoring_system,
+    rules: {
+      net_height_cm: m.net_height ?? null,
+      forbidden_zone_serving_m: m.forbidden_zone_serving ?? null,
+    },
+    court: m.court ? { id: m.court.id, name: m.court.name, is_center: m.court.is_center_court } : null,
+    scheduled_at: m.scheduled_at ?? null,
+    toss: {
+      winner: m.toss_winner ?? null,
+      choice: m.toss_choice ?? null,
+      side_entry1: m.side_entry1 ?? null,
+    },
+    teams: [
+      buildTeam(1, m.entry1, false, /*includeBio*/ true),
+      buildTeam(2, m.entry2, false, /*includeBio*/ true),
+    ],
+  }
 }
 
 function buildTeam(side: 1 | 2, entry: any, serving: boolean, includeBio: boolean) {

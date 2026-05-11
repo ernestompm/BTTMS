@@ -2,30 +2,33 @@ import { waitUntil } from '@vercel/functions'
 import { createServiceSupabase } from './supabase-server'
 import { buildBroadcastPayload, type PayloadMode } from './broadcast-payload'
 
-// Eventos de alta frecuencia que solo necesitan los datos del marcador,
-// no el cuadro entero ni las stats por set. Usan modo 'lite' para que el
-// push llegue a Singular Live en <500ms en vez de 1.5-2s.
-const LITE_EVENTS = new Set<string>([
-  'point_scored',
-  'point_undone',
+// Eventos que disparan ADEMÁS un push al endpoint estático (cuando está
+// configurado). Datos estructurales del torneo cambian raras veces.
+const STATIC_TRIGGERS = new Set<string>([
+  'broadcast_started',
+  'judge_on_court',
+  'players_on_court',
+  'warmup_started',
+  'match_started',
+  'match_finished',
+  'match_retired',
 ])
 
 /**
- * Push del JSON canónico al endpoint configurado en el torneo
- * (broadcast_endpoint), ya sea POST o PUT (broadcast_method).
+ * Push del JSON canónico al endpoint configurado en el torneo.
  *
- * Importante: en Vercel serverless, las funciones terminan al devolver
- * la respuesta y matan cualquier promesa fire-and-forget que tenga work
- * pendiente. Por eso envolvemos el trabajo en `waitUntil` — Vercel
- * garantiza que la promesa se completa después de la respuesta sin
- * bloquearla.
+ * ARQUITECTURA DE DOBLE ENDPOINT (opcional):
+ *   - broadcast_endpoint            → datos dinámicos (score, stats, tiempos)
+ *     SIEMPRE recibe el evento.
+ *   - broadcast_endpoint_static     → datos estáticos (tournament, teams,
+ *     judge, weather, draw). Solo recibe en eventos STATIC_TRIGGERS.
  *
- * En entornos sin waitUntil (dev local, Node directo) la promesa sigue
- * corriendo en el event loop sin perder nada.
+ * Si broadcast_endpoint_static NO está configurado: comportamiento legacy —
+ * el endpoint principal recibe el payload full (todo junto, modo lite en
+ * point_scored/point_undone para reducir latencia).
  *
- * Cada intento queda registrado en `broadcast_logs` — incluso los
- * fallos tempranos (sin endpoint configurado, payload vacío) — para
- * que el dashboard de broadcast surface qué pasó.
+ * En Vercel serverless usamos waitUntil para que la función no termine
+ * antes de que el fetch al endpoint se complete.
  */
 export function pushBroadcastEvent(
   tournamentId: string,
@@ -34,40 +37,31 @@ export function pushBroadcastEvent(
   extraContext?: Record<string, unknown>
 ): void {
   const promise = doPush(tournamentId, matchId, event, extraContext)
-  // Catch defensivo para que si waitUntil falla, no haya unhandled rejection
   promise.catch(() => {})
   try {
     waitUntil(promise)
   } catch {
-    // waitUntil solo está disponible en runtime de Vercel.
-    // En dev local la promesa corre igualmente — Node no mata el proceso.
+    // waitUntil solo disponible en runtime Vercel. En dev local Node no
+    // mata el proceso entre invocaciones, así que la promise corre igual.
   }
 }
 
-async function doPush(
-  tournamentId: string,
-  matchId: string,
-  event: string,
-  extraContext?: Record<string, unknown>
-): Promise<void> {
-  const service = createServiceSupabase()
+type LogRow = {
+  tournament_id: string
+  match_id: string
+  event: string
+  endpoint: string | null
+  method: string | null
+  status: number | null
+  ok: boolean
+  error: string | null
+  retries: number
+  payload_bytes: number
+  duration_ms: number
+}
 
-  // Log row se rellena progresivamente y se inserta SIEMPRE — incluso
-  // en early returns — para que el dashboard pueda surface por qué no
-  // llegó el push al endpoint.
-  const logRow: {
-    tournament_id: string
-    match_id: string
-    event: string
-    endpoint: string | null
-    method: string | null
-    status: number | null
-    ok: boolean
-    error: string | null
-    retries: number
-    payload_bytes: number
-    duration_ms: number
-  } = {
+function emptyLog(tournamentId: string, matchId: string, event: string): LogRow {
+  return {
     tournament_id: tournamentId,
     match_id: matchId,
     event,
@@ -80,9 +74,18 @@ async function doPush(
     payload_bytes: 0,
     duration_ms: 0,
   }
+}
 
-  const writeLog = async () => {
-    try { await service.from('broadcast_logs').insert(logRow) } catch {}
+async function doPush(
+  tournamentId: string,
+  matchId: string,
+  event: string,
+  extraContext?: Record<string, unknown>
+): Promise<void> {
+  const service = createServiceSupabase()
+
+  const writeLog = async (row: LogRow) => {
+    try { await service.from('broadcast_logs').insert(row) } catch {}
   }
 
   try {
@@ -93,30 +96,16 @@ async function doPush(
       .single()
 
     if (!tournament) {
-      logRow.error = 'tournament_not_found'
-      await writeLog()
+      const row = emptyLog(tournamentId, matchId, event)
+      row.error = 'tournament_not_found'
+      await writeLog(row)
       return
     }
 
     if (!tournament.broadcast_endpoint) {
-      logRow.error = 'no_endpoint_configured'
-      await writeLog()
-      return
-    }
-
-    const method: 'POST' | 'PUT' =
-      ((tournament as any).broadcast_method === 'PUT' ? 'PUT' : 'POST')
-    logRow.endpoint = tournament.broadcast_endpoint as string
-    logRow.method = method
-
-    // Lite mode para eventos de alta frecuencia — drástica reducción de
-    // latencia en el push (Singular se actualiza en ~500ms en vez de ~2s).
-    const mode: PayloadMode = LITE_EVENTS.has(event) ? 'lite' : 'full'
-
-    const payload = await buildBroadcastPayload(tournamentId, matchId, mode)
-    if (!payload) {
-      logRow.error = 'payload_build_failed'
-      await writeLog()
+      const row = emptyLog(tournamentId, matchId, event)
+      row.error = 'no_endpoint_configured'
+      await writeLog(row)
       return
     }
 
@@ -124,33 +113,115 @@ async function doPush(
       (tournament as any).broadcast_headers && typeof (tournament as any).broadcast_headers === 'object'
         ? (tournament as any).broadcast_headers
         : {}
+    const apiKey = (tournament as any).broadcast_api_key as string | null
 
-    // v3.0: event y context van dentro de meta para no contaminar la raíz.
+    const dynamicEndpoint = (tournament as any).broadcast_endpoint as string
+    const dynamicMethod: 'POST' | 'PUT' =
+      ((tournament as any).broadcast_method === 'PUT' ? 'PUT' : 'POST')
+
+    const staticEndpoint = ((tournament as any).broadcast_endpoint_static ?? null) as string | null
+    const staticMethod: 'POST' | 'PUT' =
+      ((tournament as any).broadcast_method_static === 'POST' ? 'POST' : 'PUT')
+
+    const hasSplit = !!staticEndpoint
+    const shouldSendStatic = hasSplit && STATIC_TRIGGERS.has(event)
+
+    // Construir los payloads necesarios. Si hay split, dynamic siempre.
+    // Si no hay split, hacemos el legacy payload (lite/full) en un solo PUT.
+    const tasks: Promise<void>[] = []
+
+    if (hasSplit) {
+      // Modo doble endpoint
+      tasks.push(sendOne({
+        service, writeLog,
+        tournamentId, matchId, event, extraContext,
+        endpoint: dynamicEndpoint, method: dynamicMethod, apiKey, customHeaders,
+        mode: 'dynamic', kind: 'dynamic',
+      }))
+      if (shouldSendStatic) {
+        tasks.push(sendOne({
+          service, writeLog,
+          tournamentId, matchId, event, extraContext,
+          endpoint: staticEndpoint!, method: staticMethod, apiKey, customHeaders,
+          mode: 'static', kind: 'static',
+        }))
+      }
+    } else {
+      // Modo legacy un solo endpoint con payload combinado
+      const legacyMode: PayloadMode = (event === 'point_scored' || event === 'point_undone')
+        ? 'lite' : 'full'
+      tasks.push(sendOne({
+        service, writeLog,
+        tournamentId, matchId, event, extraContext,
+        endpoint: dynamicEndpoint, method: dynamicMethod, apiKey, customHeaders,
+        mode: legacyMode, kind: 'legacy',
+      }))
+    }
+
+    await Promise.all(tasks)
+  } catch (err: any) {
+    const row = emptyLog(tournamentId, matchId, event)
+    row.error = err?.message ?? 'unknown_error'
+    await writeLog(row)
+  }
+}
+
+interface SendOneOpts {
+  service: any
+  writeLog: (row: LogRow) => Promise<void>
+  tournamentId: string
+  matchId: string
+  event: string
+  extraContext?: Record<string, unknown>
+  endpoint: string
+  method: 'POST' | 'PUT'
+  apiKey: string | null
+  customHeaders: Record<string, string>
+  mode: PayloadMode
+  kind: 'static' | 'dynamic' | 'legacy'
+}
+
+async function sendOne(o: SendOneOpts): Promise<void> {
+  const logRow = emptyLog(o.tournamentId, o.matchId, `${o.event}${o.kind === 'static' ? ':static' : o.kind === 'dynamic' ? ':dynamic' : ''}`)
+  logRow.endpoint = o.endpoint
+  logRow.method = o.method
+
+  try {
+    const payload = await buildBroadcastPayload(o.tournamentId, o.matchId, o.mode)
+    if (!payload) {
+      logRow.error = 'payload_build_failed'
+      await o.writeLog(logRow)
+      return
+    }
+
     const body = JSON.stringify({
       ...payload,
       meta: {
         ...(payload as any).meta,
-        event,
-        context: extraContext ?? {},
+        event: o.event,
+        context: o.extraContext ?? {},
       },
     })
     const headers = {
       'Content-Type': 'application/json',
-      ...(tournament.broadcast_api_key ? { 'X-API-Key': tournament.broadcast_api_key } : {}),
-      ...customHeaders,
+      ...(o.apiKey ? { 'X-API-Key': o.apiKey } : {}),
+      ...o.customHeaders,
     }
     logRow.payload_bytes = body.length
 
-    const isLiteEvent = LITE_EVENTS.has(event)
-    const fetchTimeoutMs = isLiteEvent ? 2000 : 5000
+    // Hot-path (dynamic en point_scored/point_undone, o legacy lite):
+    // timeout corto, sin retry. El próximo evento sincroniza igualmente.
+    const isHotPath =
+      (o.kind === 'dynamic' || o.kind === 'legacy') &&
+      (o.event === 'point_scored' || o.event === 'point_undone')
+    const fetchTimeoutMs = isHotPath ? 2000 : 5000
 
     const attempt = async () => {
       const started = Date.now()
       try {
-        const res = await fetch(logRow.endpoint!, {
-          method, headers, body, signal: AbortSignal.timeout(fetchTimeoutMs),
-          // Keep-alive para reutilizar conexión TCP entre pushes consecutivos.
-          // Reduce latencia ~50-100ms tras el primer push de la sesión.
+        const res = await fetch(o.endpoint, {
+          method: o.method, headers, body,
+          signal: AbortSignal.timeout(fetchTimeoutMs),
           keepalive: true,
         })
         return { status: res.status, error: null as string | null, durationMs: Date.now() - started }
@@ -160,11 +231,7 @@ async function doPush(
     }
 
     let result = await attempt()
-    // Retry solo para eventos full (broadcast_started, match_finished...).
-    // En eventos lite (point_scored, point_undone) NO reintentamos — el
-    // próximo punto pisará el estado y sincroniza igualmente. Reintentar
-    // añadiría latencia innecesaria al hot-path.
-    if (!isLiteEvent && (result.error || (result.status !== null && result.status >= 500))) {
+    if (!isHotPath && (result.error || (result.status !== null && result.status >= 500))) {
       await new Promise((r) => setTimeout(r, 500))
       logRow.retries = 1
       result = await attempt()
@@ -175,9 +242,9 @@ async function doPush(
     logRow.duration_ms = result.durationMs
     logRow.ok = result.status !== null && result.status >= 200 && result.status < 300
 
-    await writeLog()
+    await o.writeLog(logRow)
   } catch (err: any) {
     logRow.error = err?.message ?? 'unknown_error'
-    await writeLog()
+    await o.writeLog(logRow)
   }
 }
