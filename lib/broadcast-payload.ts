@@ -165,12 +165,34 @@ export async function buildBroadcastPayload(
 
   if (match?.id) match.score = reconciledScore
 
+  // Change pointers — el receptor compara estos hashes con los que
+  // tiene cacheados. Si static_hash difiere del último visto, debe
+  // refrescar el bloque estático (o esperar al próximo trigger
+  // estructural que se lo enviará automáticamente).
+  //
+  // IMPORTANTE: el hash se computa SOLO sobre tournament + match (con
+  // joins) que están disponibles tanto en static como en dynamic. Judge
+  // y weather NO entran al hash porque dynamic no los carga, y un hash
+  // distinto en cada modo rompería la comparación.
+  // - Cambios en judge → siempre disparan judge_on_court (STATIC_TRIGGER)
+  //   así que el receptor recibe un push estático sin necesitar hash.
+  // - Cambios en weather → si quieres detectarlos en tiempo real,
+  //   llama a /api/broadcast/refresh-static manualmente (TODO).
+  const staticHash = match ? computeStaticHash(match, tournament) : null
+  const matchUpdatedAt: string | null = match?.updated_at ?? null
+
   const meta = {
     version: PAYLOAD_VERSION,
     generated_at: new Date().toISOString(),
     tournament_id: tournamentId,
     match_id: match?.id ?? null,
     mode,
+    /** Hash determinista del bloque estático. Cuando cambia algo en
+     *  tournament/judge/teams/court/scoring_system/etc → cambia el
+     *  hash, y el receptor sabe que debe refrescar la caché. */
+    static_hash: staticHash,
+    /** Timestamp de la última modificación del match en BBDD. */
+    match_updated_at: matchUpdatedAt,
   }
 
   const tournamentBlock = {
@@ -213,7 +235,11 @@ export async function buildBroadcastPayload(
     }
   }
 
-  // ── DYNAMIC payload — solo lo que SÍ cambia con cada punto ─────────
+  // ── DYNAMIC payload — el match en juego ────────────────────────────
+  // Incluye los campos "semi-estáticos" (juez, court, toss, server actual)
+  // dentro de match_summary porque pueden cambiar entre transiciones y
+  // queremos que vayan SIEMPRE frescos sin esperar a un push estático.
+  // El receptor puede usar match_summary directamente sin tocar la caché.
   if (isDynamic) {
     if (!match) return { meta, match: null }
     const isFinal = match.round === 'F'
@@ -223,8 +249,28 @@ export async function buildBroadcastPayload(
         id: match.id,
         status: match.status,
         broadcast_active: match.broadcast_active ?? false,
-        serving_team: match.serving_team ?? null,
+        // Datos semi-estáticos que se actualizan en cada push — el receptor
+        // no necesita refrescar el bloque estático si solo cambia esto.
+        summary: {
+          category: match.category,
+          round: match.round,
+          is_final: isFinal,
+          type: match.match_type,
+          scoring_system: match.scoring_system,
+          court_name: match.court?.name ?? null,
+          judge_name: match.judge_name ?? null,
+          judge_id: match.judge_id ?? null,
+          toss_winner: match.toss_winner ?? null,
+          toss_choice: match.toss_choice ?? null,
+          side_entry1: match.side_entry1 ?? null,
+          serving_team: match.serving_team ?? null,
+          current_server_id: match.current_server_id ?? null,
+        },
         times: {
+          scheduled_at: match.scheduled_at ?? null,
+          judge_on_court_at: match.judge_on_court_at ?? null,
+          players_on_court_at: match.players_on_court_at ?? null,
+          warmup_started_at: match.warmup_started_at ?? null,
           started_at: match.started_at ?? null,
           finished_at: match.finished_at ?? null,
           elapsed_ms: match.started_at && !match.finished_at
@@ -619,6 +665,54 @@ async function computeStatsBySet(
         t2: acc.stats.t2,
       }
     })
+}
+
+/**
+ * Hash determinista del bloque estático. Sirve como "change pointer":
+ * el receptor compara este valor con el último que tiene cacheado y
+ * sabe si necesita refrescar (o esperar al próximo push estático).
+ *
+ * Cubre los campos que realmente componen el bloque static:
+ *   tournament: nombre, venue, sponsors, logo, scoreboard_config
+ *   judge:      id, nombre, full_name
+ *   match:      categoría, round, scoring_system, court, teams (ids +
+ *               nombres de jugadores), toss, rules
+ *   weather:    updated_at (basta para saber si refresc)
+ *
+ * Usa djb2 (simple, sin dependencias). 32 bits hex bastan para detectar
+ * cambios — no es criptográfico.
+ */
+function computeStaticHash(match: any, tournament: any): string {
+  const parts: string[] = []
+  // tournament
+  parts.push(`t:${tournament?.id}|${tournament?.name}|${tournament?.venue_name}|${tournament?.venue_city}|${tournament?.logo_url}|${tournament?.edition}|${tournament?.status}`)
+  parts.push(`spo:${JSON.stringify(tournament?.sponsors ?? [])}`)
+  parts.push(`sb:${JSON.stringify(tournament?.scoreboard_config ?? {})}`)
+  // match estructural — incluye judge_id y judge_name (siempre disponibles
+  // en match aunque dynamic mode no cargue el objeto judge completo)
+  if (match) {
+    parts.push(`m:${match.id}|${match.category}|${match.round}|${match.match_number}|${match.match_type}|${match.scoring_system}`)
+    parts.push(`mj:${match.judge_id ?? ''}|${match.judge_name ?? ''}`)
+    parts.push(`mt:${match.toss_winner ?? ''}|${match.toss_choice ?? ''}|${match.side_entry1 ?? ''}`)
+    parts.push(`mr:${match.net_height ?? ''}|${match.forbidden_zone_serving ?? ''}`)
+    parts.push(`mc:${match.court?.id ?? ''}|${match.court?.name ?? ''}`)
+    // teams — ids de entries y jugadores
+    for (const e of [match.entry1, match.entry2]) {
+      const players = [e?.player1, e?.player2].filter(Boolean).map((p: any) => `${p.id}:${p.first_name}:${p.last_name}:${p.photo_url ?? ''}:${p.ranking_rfet ?? ''}:${p.ranking_itf ?? ''}`).join(',')
+      parts.push(`e:${e?.id ?? ''}|${e?.seed ?? ''}|${e?.entry_type ?? ''}|${players}`)
+    }
+  }
+  return djb2(parts.join('||'))
+}
+
+/** djb2 hash (Bernstein) — rápido, sin dependencias, 32 bits hex. */
+function djb2(s: string): string {
+  let hash = 5381
+  for (let i = 0; i < s.length; i++) {
+    hash = ((hash << 5) + hash) + s.charCodeAt(i)
+    hash = hash & 0xFFFFFFFF
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0')
 }
 
 /**
