@@ -60,9 +60,11 @@ export async function buildBroadcastPayload(tournamentId: string, matchId?: stri
     match.score = await reconcileScore(service, match.id, match.score)
   }
 
-  // Stats desglosadas por set — replay de los points filtrados por set_number.
+  // Stats + timing desglosados por set — replay de los points por set_number.
   // Solo cuando hay match (sin él no hay nada que computar).
-  const statsBySet = match?.id ? await computeStatsBySet(service, match.id) : []
+  const statsBySet = match?.id
+    ? await computeStatsBySet(service, match.id, (match.score?.sets ?? []) as Array<{ t1: number, t2: number }>)
+    : []
 
   // Cuadro completo del match actual (si hay draw asignado)
   let drawEntries: any[] = []
@@ -242,7 +244,18 @@ function ageFromDOB(dob: string): number | null {
   } catch { return null }
 }
 
-function formatMatch(m: any, includeBio: boolean, statsBySet: Array<{ set_number: number, t1: any, t2: any }> = []) {
+function formatMatch(
+  m: any,
+  includeBio: boolean,
+  statsBySet: Array<{
+    set_number: number,
+    started_at: string | null,
+    finished_at: string | null,
+    duration_ms: number,
+    t1: any,
+    t2: any,
+  }> = [],
+) {
   const isFinal = m.round === 'F'
   const status = m.status as string
   const inProgress = status === 'in_progress'
@@ -395,35 +408,60 @@ function isFlag(fn: () => boolean): boolean {
 
 /**
  * Replay de los puntos del match agrupados por set para sacar stats
- * desglosadas. Cada set se computa de cero (no es un acumulado, son
- * las stats de ESE set en concreto). El set en juego incluye solo
- * los puntos jugados hasta ahora.
+ * desglosadas y timing por set. Cada set se computa de cero (no es un
+ * acumulado, son las stats de ESE set en concreto). El set en juego
+ * incluye solo los puntos jugados hasta ahora.
  *
- * Nota de coste: lee todos los puntos del match (ordenados por
- * sequence). En un partido típico < 200 puntos. Razonable para un
- * push por evento, pero si se vuelve cuello de botella se puede
- * cachear el snapshot al cierre de cada set.
+ * Tiempos por set:
+ *  - started_at:  created_at del primer punto del set
+ *  - finished_at: created_at del último punto del set (= punto que cerró
+ *                 el set). Para el set en curso queda null porque aún
+ *                 no ha terminado.
+ *  - duration_ms: ms entre started_at y finished_at (en el set en curso,
+ *                 ms entre started_at y "ahora").
+ *
+ * Nota de coste: lee todos los puntos del match (ordenados por sequence).
+ * En un partido típico < 200 puntos. Razonable para un push por evento.
  */
 async function computeStatsBySet(
   service: any,
   matchId: string,
-): Promise<Array<{ set_number: number, t1: any, t2: any }>> {
+  matchScoreSets: Array<{ t1: number, t2: number }>,
+): Promise<Array<{
+  set_number: number,
+  started_at: string | null,
+  finished_at: string | null,
+  duration_ms: number,
+  t1: any,
+  t2: any,
+}>> {
   const { data: points } = await service
     .from('points')
-    .select('set_number, server_team, winner_team, point_type, shot_direction, score_before, is_break_point')
+    .select('set_number, server_team, winner_team, point_type, shot_direction, score_before, is_break_point, created_at')
     .eq('match_id', matchId)
     .eq('is_undone', false)
     .order('sequence', { ascending: true })
 
   if (!points || points.length === 0) return []
 
-  const bySet = new Map<number, MatchStats>()
+  // Para cada set acumulamos stats + primera/última marca de tiempo
+  type SetAccum = {
+    stats: MatchStats,
+    started_at: string | null,
+    last_point_at: string | null,
+  }
+  const bySet = new Map<number, SetAccum>()
 
   for (const p of points as any[]) {
     const setN = p.set_number as number
     if (setN == null) continue
-    let stats = bySet.get(setN) ?? emptyStats()
-    stats = applyPointToStats(stats, {
+    let acc = bySet.get(setN)
+    if (!acc) {
+      acc = { stats: emptyStats(), started_at: p.created_at ?? null, last_point_at: p.created_at ?? null }
+      bySet.set(setN, acc)
+    }
+    acc.last_point_at = p.created_at ?? acc.last_point_at
+    acc.stats = applyPointToStats(acc.stats, {
       winnerTeam: p.winner_team,
       serverTeam: p.server_team,
       pointType: p.point_type,
@@ -431,18 +469,34 @@ async function computeStatsBySet(
       scoreBefore: p.score_before,
     })
     if (p.is_break_point) {
-      stats = applyBreakPointStats(stats, p.server_team, true, p.winner_team)
+      acc.stats = applyBreakPointStats(acc.stats, p.server_team, true, p.winner_team)
     }
-    bySet.set(setN, stats)
   }
+
+  // Sets cerrados = los que están en matchScoreSets. El último set
+  // visto en bySet puede ser el que está en curso (sin cerrar). Para
+  // los cerrados, finished_at = last_point_at. Para el en curso,
+  // finished_at queda null.
+  const completedSetCount = matchScoreSets.length
+  const now = Date.now()
 
   return Array.from(bySet.entries())
     .sort(([a], [b]) => a - b)
-    .map(([set_number, stats]) => ({
-      set_number,
-      t1: stats.t1,
-      t2: stats.t2,
-    }))
+    .map(([set_number, acc]) => {
+      const isCompleted = set_number <= completedSetCount
+      const startMs = acc.started_at ? new Date(acc.started_at).getTime() : 0
+      const endMs = isCompleted && acc.last_point_at
+        ? new Date(acc.last_point_at).getTime()
+        : now
+      return {
+        set_number,
+        started_at: acc.started_at,
+        finished_at: isCompleted ? acc.last_point_at : null,
+        duration_ms: startMs > 0 ? Math.max(0, endMs - startMs) : 0,
+        t1: acc.stats.t1,
+        t2: acc.stats.t2,
+      }
+    })
 }
 
 function buildTeam(side: 1 | 2, entry: any, serving: boolean, includeBio: boolean) {
