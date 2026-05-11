@@ -1,6 +1,14 @@
 import { waitUntil } from '@vercel/functions'
 import { createServiceSupabase } from './supabase-server'
-import { buildBroadcastPayload } from './broadcast-payload'
+import { buildBroadcastPayload, type PayloadMode } from './broadcast-payload'
+
+// Eventos de alta frecuencia que solo necesitan los datos del marcador,
+// no el cuadro entero ni las stats por set. Usan modo 'lite' para que el
+// push llegue a Singular Live en <500ms en vez de 1.5-2s.
+const LITE_EVENTS = new Set<string>([
+  'point_scored',
+  'point_undone',
+])
 
 /**
  * Push del JSON canónico al endpoint configurado en el torneo
@@ -101,7 +109,11 @@ async function doPush(
     logRow.endpoint = tournament.broadcast_endpoint as string
     logRow.method = method
 
-    const payload = await buildBroadcastPayload(tournamentId, matchId)
+    // Lite mode para eventos de alta frecuencia — drástica reducción de
+    // latencia en el push (Singular se actualiza en ~500ms en vez de ~2s).
+    const mode: PayloadMode = LITE_EVENTS.has(event) ? 'lite' : 'full'
+
+    const payload = await buildBroadcastPayload(tournamentId, matchId, mode)
     if (!payload) {
       logRow.error = 'payload_build_failed'
       await writeLog()
@@ -132,8 +144,10 @@ async function doPush(
     const attempt = async () => {
       const started = Date.now()
       try {
+        // 3s timeout — Singular Live responde típicamente en 200-500ms.
+        // Si tardara más, mejor abandonar y reintentar que bloquear.
         const res = await fetch(logRow.endpoint!, {
-          method, headers, body, signal: AbortSignal.timeout(5000),
+          method, headers, body, signal: AbortSignal.timeout(3000),
         })
         return { status: res.status, error: null as string | null, durationMs: Date.now() - started }
       } catch (err: any) {
@@ -142,9 +156,10 @@ async function doPush(
     }
 
     let result = await attempt()
-    // Reintenta una vez en error de red o 5xx
+    // Reintenta una vez en error de red o 5xx — espera reducida (500ms en
+    // vez de 1.5s) para que la actualización llegue rápido a Singular.
     if (result.error || (result.status !== null && result.status >= 500)) {
-      await new Promise((r) => setTimeout(r, 1500))
+      await new Promise((r) => setTimeout(r, 500))
       logRow.retries = 1
       result = await attempt()
     }
