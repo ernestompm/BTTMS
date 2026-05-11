@@ -1,15 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceSupabase } from '@/lib/supabase-server'
 
-// One-time setup endpoint: creates the first super_admin user
-// Only works if no users exist yet
+// One-time setup endpoint: creates the first super_admin user.
+// Hardened: requiere SETUP_TOKEN (env var) si está definido. Esto
+// protege contra el caso "app_users se vacía accidentalmente y
+// cualquiera puede reclamarse super_admin".
 export async function POST(req: NextRequest) {
   const service = createServiceSupabase()
+
+  // Si está configurado SETUP_TOKEN, exige header Authorization Bearer.
+  const expectedToken = process.env.SETUP_TOKEN
+  if (expectedToken) {
+    const authHeader = req.headers.get('authorization') ?? ''
+    if (authHeader !== `Bearer ${expectedToken}`) {
+      return NextResponse.json({ error: 'SETUP_TOKEN inválido o ausente' }, { status: 401 })
+    }
+  }
 
   // Check if any user exists
   const { count } = await service.from('app_users').select('*', { count: 'exact', head: true })
   if ((count ?? 0) > 0) {
-    return NextResponse.json({ error: 'Setup already completed. Users exist.' }, { status: 400 })
+    return NextResponse.json({ error: 'Setup ya completado. Existen usuarios.' }, { status: 400 })
   }
 
   const body = await req.json()

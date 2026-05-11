@@ -22,13 +22,11 @@ export default async function StreamOperatorPage({ params }: { params: Promise<{
 
   const { data: tournament } = await service.from('tournaments').select('*').eq('id', match.tournament_id).single()
 
-  let { data: session } = await service.from('stream_sessions').select('*').eq('match_id', matchId).single()
-  if (!session) {
-    const { data: created } = await service.from('stream_sessions').insert({
-      tournament_id: match.tournament_id, match_id: matchId, active: true,
-    }).select('*').single()
-    session = created
-  }
+  // Upsert para evitar race conditions de unique constraint cuando se
+  // abren varias pestañas /stream a la vez.
+  const { data: session } = await service.from('stream_sessions').upsert({
+    tournament_id: match.tournament_id, match_id: matchId, active: true,
+  }, { onConflict: 'match_id' }).select('*').single()
 
   const { data: rules } = await service.from('stream_automation_rules')
     .select('*').eq('tournament_id', match.tournament_id).order('trigger_type')

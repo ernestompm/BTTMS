@@ -36,13 +36,11 @@ export default async function OverlayPage({ params }: { params: Promise<{ matchI
     .eq('category', match.category)
     .order('match_number')
 
-  let { data: session } = await service.from('stream_sessions').select('*').eq('match_id', matchId).single()
-  if (!session) {
-    const { data: created } = await service.from('stream_sessions').insert({
-      tournament_id: match.tournament_id, match_id: matchId, active: true,
-    }).select('*').single()
-    session = created
-  }
+  // Upsert para evitar race conditions cuando dos pestañas /overlay
+  // se abren a la vez (antes daba unique constraint violation).
+  const { data: session } = await service.from('stream_sessions').upsert({
+    tournament_id: match.tournament_id, match_id: matchId, active: true,
+  }, { onConflict: 'match_id' }).select('*').single()
 
   // Patrocinador principal: el que el director ha marcado como `is_main`,
   // o si no hay ninguno, el primero (por display_order).

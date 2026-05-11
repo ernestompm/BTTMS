@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabase, createServiceSupabase } from '@/lib/supabase-server'
+import { createServiceSupabase } from '@/lib/supabase-server'
+import { requireAuth, requireStaff } from '@/lib/auth-helpers'
 
 export async function GET(req: NextRequest) {
+  // GDPR: no exponemos jugadores al público — exige login.
+  const auth = await requireAuth()
+  if (auth instanceof NextResponse) return auth
+
   const service = createServiceSupabase()
   const { searchParams } = new URL(req.url)
   const q = searchParams.get('q')
@@ -15,17 +20,10 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = await createServerSupabase()
+  const auth = await requireStaff()
+  if (auth instanceof NextResponse) return auth
+
   const service = createServiceSupabase()
-
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  const { data: appUser } = await supabase.from('app_users').select('role').eq('id', user.id).single()
-  if (!appUser || !['super_admin','tournament_director','staff'].includes(appUser.role)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
-
   const body = await req.json()
   const { data, error } = await service.from('players').insert(body).select().single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

@@ -1,7 +1,7 @@
 import { createServiceSupabase } from '@/lib/supabase-server'
 import { notFound } from 'next/navigation'
-import Image from 'next/image'
 import type { Player } from '@/types'
+import { FlagImg } from '@/components/admin/flag-img'
 
 export default async function PublicPlayerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -54,10 +54,7 @@ export default async function PublicPlayerPage({ params }: { params: Promise<{ i
                   {p.first_name} <span className="text-brand-red">{p.last_name}</span>
                 </h1>
                 <div className="flex items-center gap-2 mt-1">
-                  {p.nationality && (
-                    <img src={`https://flagcdn.com/20x15/${p.nationality.toLowerCase()}.png`}
-                      alt={p.nationality} className="w-5 h-3.5 rounded-sm" />
-                  )}
+                  {p.nationality && <FlagImg nationality={p.nationality} />}
                   {age && <span className="text-gray-400 text-sm">{age} años</span>}
                   {p.birth_city && <span className="text-gray-500 text-sm">· {p.birth_city}</span>}
                 </div>
