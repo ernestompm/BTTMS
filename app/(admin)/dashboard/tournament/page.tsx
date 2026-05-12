@@ -84,6 +84,34 @@ export default function TournamentPage() {
     if (data.needs_sql_fix) setShowFixSql(true)
   }
 
+  // Seeds REALES con las parejas inscritas oficiales del Campeonato
+  // de España Absoluto de Tenis Playa 2026 (extraídas de los PDFs RFET).
+  const [seedingInscritos, setSeedingInscritos] = useState<string | null>(null)
+
+  async function handleSeedInscritos(category: 'absolute_f' | 'absolute_m') {
+    const label = category === 'absolute_f' ? 'Absoluto Femenino' : 'Absoluto Masculino'
+    const count = category === 'absolute_f' ? 21 : 34
+    if (!confirm(`Se van a crear las ${count} parejas inscritas en ${label} (jugadores ESP + cuadro de dobles). Si ya existe un cuadro de esa categoría, se reemplazará. ¿Continuar?`)) return
+    setSeedingInscritos(category)
+    setSeedMsg('')
+    try {
+      const res = await fetch('/api/admin/seed-inscritos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setSeedMsg(`✓ ${label}: ${data.entries_created} parejas, ${data.players_created} jugadores nuevos, ${data.players_reused} reusados`)
+      } else {
+        setSeedMsg(`✗ ${data.error}`)
+      }
+    } catch (e: any) {
+      setSeedMsg(`✗ Error de red: ${e?.message ?? ''}`)
+    }
+    setSeedingInscritos(null)
+  }
+
   async function handleSeed(mode: 'skeleton' | 'simulated' = 'skeleton') {
     const msg = mode === 'simulated'
       ? 'Esto BORRARÁ los datos actuales y creará 32 jugadores + cuadro completo (R16+QF+SF+F = 15 partidos), simulando R16, QF y SF como TERMINADOS para que el cuadro se vea avanzado hasta la final. ¿Continuar?'
@@ -304,6 +332,36 @@ export default function TournamentPage() {
           {saving ? 'Guardando...' : 'Guardar cambios'}
         </button>
         {success && <span className="text-green-400 text-sm">✓ Guardado correctamente</span>}
+      </div>
+
+      {/* Datos REALES — inscritos oficiales del Campeonato de España 2026 */}
+      <div className="bg-gray-900 rounded-2xl p-6 border border-emerald-800/50 space-y-4">
+        <h2 className="text-emerald-300 font-semibold">🏆 Inscritos oficiales · Campeonato de España 2026</h2>
+        <p className="text-gray-400 text-sm">
+          Crea los cuadros con las parejas inscritas oficialmente por la RFET (PDFs públicos). Jugadores españoles con ranking RFET, seeded por ranking combinado. Idempotente: pulsar de nuevo reemplaza el cuadro existente sin duplicar jugadores.
+        </p>
+        <div className="flex items-center gap-3 flex-wrap">
+          <button
+            onClick={() => handleSeedInscritos('absolute_f')}
+            disabled={seedingInscritos !== null}
+            className="bg-pink-900/40 hover:bg-pink-800 border border-pink-700 disabled:opacity-50 text-pink-200 font-semibold px-6 py-2.5 rounded-xl transition-colors"
+          >
+            {seedingInscritos === 'absolute_f' ? 'Creando...' : '👩 Femenino · 21 parejas (42 jugadoras)'}
+          </button>
+          <button
+            onClick={() => handleSeedInscritos('absolute_m')}
+            disabled={seedingInscritos !== null}
+            className="bg-sky-900/40 hover:bg-sky-800 border border-sky-700 disabled:opacity-50 text-sky-200 font-semibold px-6 py-2.5 rounded-xl transition-colors"
+          >
+            {seedingInscritos === 'absolute_m' ? 'Creando...' : '🧔 Masculino · 34 parejas (68 jugadores)'}
+          </button>
+          {seedMsg && seedingInscritos === null && (
+            <span className={`text-sm ${seedMsg.startsWith('✓') ? 'text-emerald-400' : 'text-red-400'}`}>{seedMsg}</span>
+          )}
+        </div>
+        <p className="text-gray-500 text-xs">
+          Fuente: <strong className="text-gray-400">RFET 2026</strong> · PDFs oficiales de inscritos del Campeonato Absoluto de Tenis Playa. Cuadro femenino dimensionado a 32, masculino a 64 (single elimination, dobles, best-of-2 + super tiebreak).
+        </p>
       </div>
 
       {/* Test Data */}
