@@ -492,10 +492,41 @@ interface PreMatchTeamCardProps {
   /** padding vertical del card — viene del editor visual */
   cardPadding?: number
 }
+/**
+ * Auto-shrink del fontSize del apellido según la longitud de la palabra
+ * MÁS LARGA del nombre. Mantiene la legibilidad cuando aparecen apellidos
+ * largos como "VALLMITJANA" o "CASTELLANOS" sin tocar las medidas del card.
+ *
+ * Calibrado para el card de pre-match (~560px de ancho útil tras flag+gap).
+ * Para apellidos compuestos con espacios (GARCÍA MARTÍNEZ) el wrap natural
+ * los pone en dos líneas, así que la palabra más larga es lo que importa.
+ */
+function autoShrinkNameFs(baseFs: number, lastName: string): number {
+  // Coge la palabra más larga (apellido único o el más largo de un compuesto)
+  const longest = lastName.split(/\s+/).reduce((m, w) => Math.max(m, w.length), 0)
+  if (longest <= 8) return baseFs            // CASAS, ROSSI, GARCÍA — full size
+  if (longest <= 10) return Math.round(baseFs * 0.86)  // MARTÍNEZ, MENÉNDEZ
+  if (longest <= 12) return Math.round(baseFs * 0.74)  // VALLMITJANA, RODIONOV...
+  if (longest <= 14) return Math.round(baseFs * 0.64)  // 14 char outliers
+  return Math.round(baseFs * 0.55)                     // emergencia (>14)
+}
+
 function PreMatchTeamCard({ team, accent, isRight, showFlags, showSeed, nameFs, cardPadding }: PreMatchTeamCardProps) {
   const isDoubles = team.players.length > 1
-  const fs = nameFs ?? (isDoubles ? 110 : 156)
+  const baseFs = nameFs ?? (isDoubles ? 110 : 156)
   const padV = cardPadding ?? 48
+
+  // En dobles: usamos el fontSize del apellido más largo de los DOS
+  // jugadores, así ambos quedan al mismo tamaño (simetría visual).
+  const longestLast = team.players.reduce(
+    (m: string, p: any) => {
+      const ln = (p?.last_name ?? p?.name ?? '').toUpperCase()
+      return ln.length > m.length ? ln : m
+    },
+    '',
+  )
+  const fs = autoShrinkNameFs(baseFs, longestLast)
+
   return (
     <div style={{
       display:'flex', flexDirection:'column', justifyContent:'center',
@@ -535,15 +566,17 @@ function PreMatchTeamCard({ team, accent, isRight, showFlags, showSeed, nameFs, 
                     {first}
                   </span>
                 )}
-                {/* Apellido GRANDE. Si tiene espacios (apellidos compuestos
-                    como GARCIA MARTINEZ) se parte en dos lineas en el espacio
-                    natural (no se rompen palabras a la mitad). line-height
-                    .86 para que las dos lineas queden compactas y centradas
-                    visualmente con la bandera. */}
+                {/* Apellido GRANDE — autoshrink según longitud (autoShrinkNameFs).
+                    Si tiene espacios (apellidos compuestos como GARCIA MARTINEZ),
+                    el wrap natural lo parte en dos líneas en el espacio. Para
+                    apellidos sin espacios (VALLMITJANA, RODIONOV) el shrink
+                    reduce la fuente hasta caber. overflowWrap:'anywhere' actúa
+                    como red de seguridad para casos extremos. */}
                 <span style={{
                   fontWeight:900, fontSize:fs, lineHeight:.86,
                   textTransform:'uppercase', letterSpacing:'-.005em',
-                  whiteSpace:'normal', wordBreak:'normal', overflowWrap:'normal',
+                  whiteSpace:'normal', wordBreak:'normal',
+                  overflowWrap:'anywhere',
                   hyphens:'none',
                   textAlign: isRight ? 'right' : 'left',
                   width:'100%',
@@ -566,7 +599,17 @@ function PreMatchTeamCard({ team, accent, isRight, showFlags, showSeed, nameFs, 
 interface FinishedTeamCardProps extends PreMatchTeamCardProps { won: boolean }
 function FinishedTeamCard({ team, accent, isRight, showFlags, showSeed, nameFs, won }: FinishedTeamCardProps) {
   const isDoubles = team.players.length > 1
-  const fs = nameFs ?? (isDoubles ? 110 : 156)
+  const baseFs = nameFs ?? (isDoubles ? 110 : 156)
+  // Mismo auto-shrink que el pre-match — el apellido más largo del equipo
+  // determina el fontSize compartido para mantener simetría visual.
+  const longestLast = team.players.reduce(
+    (m: string, p: any) => {
+      const ln = (p?.last_name ?? p?.name ?? '').toUpperCase()
+      return ln.length > m.length ? ln : m
+    },
+    '',
+  )
+  const fs = autoShrinkNameFs(baseFs, longestLast)
   return (
     <div style={{
       display:'flex', flexDirection:'column', justifyContent:'center',
@@ -614,7 +657,8 @@ function FinishedTeamCard({ team, accent, isRight, showFlags, showSeed, nameFs, 
                 <span style={{
                   fontWeight:900, fontSize:fs, lineHeight:.86,
                   textTransform:'uppercase', letterSpacing:'-.005em',
-                  whiteSpace:'normal', wordBreak:'normal', overflowWrap:'normal',
+                  whiteSpace:'normal', wordBreak:'normal',
+                  overflowWrap:'anywhere',
                   hyphens:'none',
                   textAlign: isRight ? 'right' : 'left',
                   width:'100%',
