@@ -244,11 +244,13 @@ export async function buildBroadcastPayload(
     draw: (wantDraw && match?.draw_id) ? {
       id: match.draw_id,
       category: match.category,
-      entries: drawEntries.map(formatEntry),
-      matches: drawMatches.map((m: any) => ({
-        ...formatMatch(m, /*includeBio*/ false),
-        is_current: m.id === match.id,
-      })),
+      // Lean: solo seed + players con {id, first_name, last_name, nationality}.
+      // Las compositions del draw no consumen el resto (entry_type,
+      // draw_position que siempre venía null, bio, rankings…).
+      entries: drawEntries.map(formatDrawEntry),
+      // Lean: solo lo que pinta la composition "Cuadro" — round, match_number,
+      // teams (con seed y players reducidos) y score (winner_team + sets).
+      matches: drawMatches.map((m: any) => formatDrawMatch(m, m.id === match.id)),
     } : null,
   }
 }
@@ -321,6 +323,66 @@ function formatEntry(e: any) {
     status: e.status ?? null,
     draw_position: e.draw_position ?? null,
     players: [e.player1, e.player2].filter(Boolean).map((p: any) => formatPlayer(p, true)),
+  }
+}
+
+// ── Lean formatters para el draw (solo lo que consume Singular) ──
+// El composition "Cuadro" recorre draw.matches[] mapeando MATCH1..MATCH7
+// a (round, match_number) y solo lee:
+//   - teams[].players[].{first_name, last_name, nationality}
+//   - teams[].seed
+//   - score.winner_team
+//   - score.completed_sets[].{t1, t2}
+// Todo lo demás es ruido (court, times, toss, rules, broadcast_active,
+// match_type, scoring_system, warnings, retire, stats…). Antes mandábamos
+// ~50 campos por match × 7 matches = mucho overhead innecesario. Esto
+// reduce el payload del draw a ~10× menos bytes y deja el JSON legible.
+
+function formatDrawEntry(e: any) {
+  if (!e) return null
+  return {
+    id: e.id,
+    seed: e.seed ?? null,
+    status: e.status ?? null,
+    players: [e.player1, e.player2].filter(Boolean).map((p: any) => ({
+      id: p.id,
+      first_name: p.first_name,
+      last_name: p.last_name,
+      nationality: p.nationality,
+    })),
+  }
+}
+
+function formatDrawMatch(m: any, isCurrent: boolean) {
+  const score = m.score as Score | null
+  return {
+    id: m.id,
+    round: m.round,
+    match_number: m.match_number,
+    status: m.status,
+    is_current: isCurrent,
+    teams: [
+      buildLeanTeam(m.entry1),
+      buildLeanTeam(m.entry2),
+    ],
+    score: score ? {
+      winner_team: (score as any).winner_team ?? null,
+      sets_won: (score as any).sets_won ?? { t1: 0, t2: 0 },
+      completed_sets: ((score as any).sets ?? []) as Array<{ t1: number, t2: number }>,
+    } : null,
+  }
+}
+
+function buildLeanTeam(entry: any) {
+  if (!entry) return { seed: null, players: [] }
+  return {
+    seed: entry.seed ?? null,
+    players: [entry.player1, entry.player2].filter(Boolean).map((p: any) => ({
+      id: p.id,
+      first_name: p.first_name,
+      last_name: p.last_name,
+      nationality: p.nationality,
+    })),
   }
 }
 
