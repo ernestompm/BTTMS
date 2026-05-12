@@ -241,28 +241,40 @@ export function BroadcastMonitor({ tournament, initialMatches, initialLogs }: Pr
         </div>
       </header>
 
-      <main className="max-w-[1700px] mx-auto px-4 py-4 space-y-4">
-        {/* Fila 1: Mirror + Health */}
-        <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-4">
-          <ScoreMirror match={activeMatch}/>
-          <EndpointHealthCard health={health} tournament={tournament}/>
-        </div>
+      {/* Layout: dos columnas en pantallas anchas.
+            - Izquierda: contenido scroll-able (iframes, mirror, health, stats, logs, preview).
+            - Derecha: panel de control Singular sticky, siempre visible mientras operas.
+          Así puedes pulsar botones y ver al mismo tiempo los dos outputs (venue + Singular)
+          sin tener que scrollear de arriba abajo. */}
+      <main className="max-w-[1700px] mx-auto px-4 py-4">
+        <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-4 items-start">
+          {/* ── Columna principal ── */}
+          <div className="space-y-4 min-w-0">
+            {/* Iframes lado a lado — los dos outputs visibles a la vez */}
+            <LivePreviews activeMatchId={activeMatchId}/>
 
-        {/* Fila 2: Previews en iframes — venue (por matchId) + Singular (URL fija configurable) */}
-        <LivePreviews activeMatchId={activeMatchId}/>
+            {/* Espejo del marcador + salud del endpoint */}
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
+              <ScoreMirror match={activeMatch}/>
+              <EndpointHealthCard health={health} tournament={tournament}/>
+            </div>
 
-        {/* Fila 3: Stats live + Singular control */}
-        <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-4">
-          <LiveStats match={activeMatch}/>
-          <SingularControlPanel match={activeMatch}/>
-        </div>
+            {/* Stats en vivo */}
+            <LiveStats match={activeMatch}/>
 
-        {/* Fila 4: Log + Preview JSON */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          <LogPanel logs={logs} activeMatchId={activeMatchId}/>
-          <PayloadPreview payload={payload} loading={loadingPayload} autoRefresh={autoRefresh}
-            onToggleAuto={() => setAutoRefresh(a => !a)} onRefresh={loadPayload}
-            tournament={tournament}/>
+            {/* Log de envíos + preview del JSON */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <LogPanel logs={logs} activeMatchId={activeMatchId}/>
+              <PayloadPreview payload={payload} loading={loadingPayload} autoRefresh={autoRefresh}
+                onToggleAuto={() => setAutoRefresh(a => !a)} onRefresh={loadPayload}
+                tournament={tournament}/>
+            </div>
+          </div>
+
+          {/* ── Columna derecha: panel de control sticky ── */}
+          <div className="xl:sticky xl:top-[125px] xl:max-h-[calc(100vh-140px)] xl:overflow-y-auto">
+            <SingularControlPanel match={activeMatch}/>
+          </div>
         </div>
       </main>
     </div>
@@ -536,10 +548,23 @@ function LiveStats({ match }: { match: any | null }) {
 const SINGULAR_TOKEN_KEY = 'bttms:broadcast-monitor:singular-token'
 const COMPANION_CONTROL_APP_ID = '08NGiQwXHmlK6sYxiqE3cD'
 
+const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms))
+
 interface ToggleBtn { label: string, comp: string, color: 'green' | 'amber' | 'red' | 'gray' }
 
 const SCOREBUG_COMP = 'ScorebugWTA2'
 const GRANDE_COMP = 'GrandeWTA'
+const BIO_COMP = 'BIO'
+const POSICIONES_COMP = 'Posiciones'
+
+// Tiempo entre updatePayload y animateIn (Singular necesita un tic para
+// que el composition recoja los nuevos valores de los selectores antes
+// de animar la entrada — si se manda todo en la misma PATCH el render
+// puede pillar valores stale).
+const PAYLOAD_TO_IN_DELAY_MS = 100
+// Pequeño respiro al transicionar entre combinaciones (Out → re-payload → In)
+// para que la animación de salida termine antes de empezar la de entrada.
+const TRANSITION_DELAY_MS = 200
 
 const TOGGLE_GROUPS: Array<{ title: string, btns: ToggleBtn[] }> = [
   {
@@ -560,13 +585,6 @@ const TOGGLE_GROUPS: Array<{ title: string, btns: ToggleBtn[] }> = [
       { label: 'Venue',      comp: 'Venue',   color: 'gray'  },
     ],
   },
-  {
-    title: 'Bios y posiciones',
-    btns: [
-      { label: 'BIO jugador',  comp: 'BIO',        color: 'green' },
-      { label: 'Posiciones',   comp: 'Posiciones', color: 'gray'  },
-    ],
-  },
 ]
 
 function SingularControlPanel({ match }: { match: any | null }) {
@@ -583,6 +601,10 @@ function SingularControlPanel({ match }: { match: any | null }) {
   const [scorebugFlag, setScorebugFlag] = useState<'IN' | 'OUT' | null>(null)
   // Estado del nodo isFinal del Stats
   const [statsIsFinal, setStatsIsFinal] = useState<'si' | 'no' | null>(null)
+  // Combinación de BIO en aire ('A1'|'A2'|'B1'|'B2'|null) — solo una a la vez
+  const [bioInAir, setBioInAir] = useState<'A1' | 'A2' | 'B1' | 'B2' | null>(null)
+  // Lado de Posiciones en aire ('A'|'B'|null) — solo uno a la vez
+  const [posicionesInAir, setPosicionesInAir] = useState<'A' | 'B' | null>(null)
 
   // Cargar token al montar
   useEffect(() => {
@@ -734,6 +756,82 @@ function SingularControlPanel({ match }: { match: any | null }) {
       `Stats isFinal=${v}`,
     )
     if (ok) setStatsIsFinal(v)
+  }
+
+  // ── Patrón "update payload → wait → animateIn / toggle Out" ─────────────
+  // Para compositions cuyo contenido depende de selectores (BIO con TEAM/PLAYER,
+  // Posiciones con su selector). Comportamiento:
+  //   - Primer click: actualiza el payload con los nuevos valores → espera
+  //     PAYLOAD_TO_IN_DELAY_MS → animateIn. Esto deja a Singular tiempo
+  //     para procesar los selectores antes de animar.
+  //   - Segundo click sobre el mismo: animateOut, libera el slot.
+  //   - Click en una combinación distinta mientras hay otra IN aire:
+  //     primero animateOut de la actual, espera TRANSITION_DELAY_MS,
+  //     después update payload, espera, y animateIn de la nueva. Una
+  //     única función — el componente solo sabe del key (qué botón).
+  async function chainPayloadIn<K extends string>(
+    comp: string,
+    payload: Record<string, any>,
+    key: K,
+    currentKey: K | null,
+    setKey: (k: K | null) => void,
+    label: string,
+  ) {
+    // Caso 1: ya estaba IN con este mismo key → animateOut
+    if (currentKey === key) {
+      const ok = await controlPatch(
+        [{ subCompositionName: comp, state: 'Out' }],
+        `${comp} OUT (${label})`,
+      )
+      if (ok) setKey(null)
+      return
+    }
+    // Caso 2: hay otra combinación IN → animateOut antes de re-poblar
+    if (currentKey !== null) {
+      await controlPatch(
+        [{ subCompositionName: comp, state: 'Out' }],
+        `${comp} OUT (transición)`,
+      )
+      await sleep(TRANSITION_DELAY_MS)
+    }
+    // Caso 3: update payload → wait → animateIn
+    const okUpd = await controlPatch(
+      [{ subCompositionName: comp, payload }],
+      `${comp} ← ${label}`,
+    )
+    if (!okUpd) return
+    await sleep(PAYLOAD_TO_IN_DELAY_MS)
+    const okIn = await controlPatch(
+      [{ subCompositionName: comp, state: 'In' }],
+      `${comp} IN (${label})`,
+    )
+    if (okIn) setKey(key)
+  }
+
+  // BIO: 4 combinaciones TEAM={A,B} × PLAYER={A,B}.
+  async function fireBio(team: 'A' | 'B', player: 'A' | 'B') {
+    const key = `${team}${player === 'A' ? 1 : 2}` as 'A1' | 'A2' | 'B1' | 'B2'
+    await chainPayloadIn(
+      BIO_COMP,
+      { TEAM: team, PLAYER: player },
+      key,
+      bioInAir,
+      setBioInAir,
+      key,
+    )
+  }
+
+  // Posiciones: selector "posiciones" con valores Aarriba / Barriba.
+  async function firePosiciones(side: 'A' | 'B') {
+    const value = side === 'A' ? 'Aarriba' : 'Barriba'
+    await chainPayloadIn(
+      POSICIONES_COMP,
+      { posiciones: value },
+      side,
+      posicionesInAir,
+      setPosicionesInAir,
+      value,
+    )
   }
 
   async function clearAll() {
@@ -901,6 +999,89 @@ function SingularControlPanel({ match }: { match: any | null }) {
             )}
           </div>
         ))}
+
+        {/* ── BIO jugador — 4 botones (TEAM × PLAYER) ───────────────────── */}
+        {(() => {
+          // Saco apellidos de los jugadores del match activo para etiquetar
+          // los botones. Si no hay match, los muestro como A1/A2/B1/B2 a secas.
+          const t1 = match?.entry1
+          const t2 = match?.entry2
+          const a1 = lastName(t1?.player1)
+          const a2 = lastName(t1?.player2)
+          const b1 = lastName(t2?.player1)
+          const b2 = lastName(t2?.player2)
+          // Botones de player2 desactivados si no hay segundo jugador (singles)
+          const hasA2 = !!t1?.player2
+          const hasB2 = !!t2?.player2
+          const slots: Array<{
+            key: 'A1'|'A2'|'B1'|'B2', team: 'A'|'B', player: 'A'|'B',
+            label: string, sub: string, disabled: boolean,
+          }> = [
+            { key: 'A1', team: 'A', player: 'A', label: 'A1', sub: a1 || '—', disabled: !t1?.player1 },
+            { key: 'A2', team: 'A', player: 'B', label: 'A2', sub: a2 || '—', disabled: !hasA2 },
+            { key: 'B1', team: 'B', player: 'A', label: 'B1', sub: b1 || '—', disabled: !t2?.player1 },
+            { key: 'B2', team: 'B', player: 'B', label: 'B2', sub: b2 || '—', disabled: !hasB2 },
+          ]
+          return (
+            <div>
+              <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1.5 px-1">
+                BIO jugador <span className="text-gray-700">· TEAM × PLAYER</span>
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {slots.map(s => {
+                  const on = bioInAir === s.key
+                  return (
+                    <button
+                      key={s.key}
+                      onClick={() => fireBio(s.team, s.player)}
+                      disabled={busy || s.disabled}
+                      title={s.disabled ? 'Sin jugador en este slot' : `${s.label} → TEAM=${s.team}, PLAYER=${s.player}`}
+                      className={`relative px-3 py-2.5 rounded-lg text-xs font-bold tracking-wide transition-colors disabled:opacity-25 disabled:cursor-not-allowed text-left ${
+                        on
+                          ? 'bg-emerald-600/40 border border-emerald-400 text-emerald-100 shadow-[0_0_0_1px_rgba(52,211,153,.4)]'
+                          : 'bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300'
+                      }`}>
+                      <span className="flex items-center gap-1.5 mb-0.5">
+                        <span className={`w-2 h-2 rounded-full ${on ? 'bg-emerald-300 shadow-[0_0_8px_rgba(110,231,183,.9)]' : 'bg-gray-600'}`}/>
+                        <span className="uppercase">{s.label}</span>
+                      </span>
+                      <span className="block text-[10px] font-normal text-gray-400 truncate uppercase">{s.sub}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })()}
+
+        {/* ── Posiciones — Aarriba / Barriba ────────────────────────────── */}
+        <div>
+          <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1.5 px-1">
+            Posiciones <span className="text-gray-700">· selector "posiciones"</span>
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {(['A', 'B'] as const).map(side => {
+              const on = posicionesInAir === side
+              const label = `${side}arriba`
+              return (
+                <button
+                  key={side}
+                  onClick={() => firePosiciones(side)}
+                  disabled={busy}
+                  className={`relative px-3 py-2.5 rounded-lg text-xs font-bold tracking-wide transition-colors disabled:opacity-30 text-left ${
+                    on
+                      ? 'bg-emerald-600/40 border border-emerald-400 text-emerald-100 shadow-[0_0_0_1px_rgba(52,211,153,.4)]'
+                      : 'bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300'
+                  }`}>
+                  <span className="flex items-center gap-1.5">
+                    <span className={`w-2 h-2 rounded-full ${on ? 'bg-emerald-300 shadow-[0_0_8px_rgba(110,231,183,.9)]' : 'bg-gray-600'}`}/>
+                    <span className="uppercase">{label}</span>
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
 
         {/* Take Out All Output — comando global del control app */}
         <button
@@ -1155,6 +1336,10 @@ function IframePreview({ title, subtitle, url, iframeKey, onReload, emptyMsg }: 
 }
 
 // ─── Utils ─────────────────────────────────────────────────────────────────
+function lastName(player: any): string {
+  return (player?.last_name ?? '').trim().toUpperCase()
+}
+
 function teamShortName(entry: any): string {
   const a = entry?.player1?.last_name
   const b = entry?.player2?.last_name
