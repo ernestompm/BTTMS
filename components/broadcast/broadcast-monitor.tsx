@@ -566,25 +566,32 @@ function SingularControlPanel({ match }: { match: any | null }) {
     }
     setBusy(true)
     setFeedback(null)
+    // Llamada DIRECTA al endpoint de Singular Live. Su Control API
+    // soporta CORS y no requiere cabeceras de auth — el token va en
+    // la URL. Es lo mismo que hace Companion/Stream Deck.
+    const url = `https://app.singular.live/apiv2/controlapps/${encodeURIComponent(token)}/control`
+    const started = performance.now()
     try {
-      const res = await fetch('/api/singular/control', {
+      const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, actions }),
+        body: JSON.stringify(actions),
       })
-      const data = await res.json().catch(() => ({}))
-      const ok = res.ok && data.ok !== false
+      const duration = Math.round(performance.now() - started)
+      const text = await res.text()
+      const ok = res.ok
       setFeedback({
         ok,
         msg: ok
-          ? `✓ ${successLabel} · ${data.duration_ms ?? '?'}ms`
-          : `✗ ${data.error || `HTTP ${data.status ?? res.status}`}`,
+          ? `✓ ${successLabel} · ${duration}ms`
+          : `✗ HTTP ${res.status} · ${text.slice(0, 120) || 'sin cuerpo'}`,
       })
-      setTimeout(() => setFeedback(null), 3000)
+      setTimeout(() => setFeedback(null), 3500)
       return ok
     } catch (e: any) {
-      setFeedback({ ok: false, msg: `✗ Red: ${e?.message ?? 'desconocido'}` })
-      setTimeout(() => setFeedback(null), 3000)
+      const duration = Math.round(performance.now() - started)
+      setFeedback({ ok: false, msg: `✗ Red (${duration}ms): ${e?.message ?? 'desconocido'}` })
+      setTimeout(() => setFeedback(null), 3500)
       return false
     } finally {
       setBusy(false)
