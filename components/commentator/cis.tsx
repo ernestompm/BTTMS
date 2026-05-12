@@ -145,14 +145,23 @@ function TopBar({ currentUser, tournament, match }: { currentUser: AppUser, tour
 }
 
 // ─── BIG SCORE HEADER (sticky) ─────────────────────────────────────────────
+// Formato CLÁSICO de tenis broadcast: dos filas (un equipo por fila),
+// cada fila tiene: [bandera nat] [nombre equipo] [● saque] | set1 | set2 | set3 | punto
+// Equivalente a lo que ves en TVs en cualquier ATP/WTA — Federer arriba,
+// Nadal abajo, sets corriendo en columnas, current game/TB en la última.
+// Cuando un set se cierra, el ganador queda en blanco y el perdedor gris;
+// el set en juego se resalta con fondo del color de su equipo.
 function ScoreHeaderBig({ match }: { match: any }) {
   const score = match.score as Score | null
   const isDoubles = match.match_type === 'doubles'
   const serving = match.serving_team as 1|2|null
   const tbActive = !!(score?.tiebreak_active || score?.super_tiebreak_active)
+  const stbActive = !!(score as any)?.super_tiebreak_active
   const isLive = match.status === 'in_progress'
-  const finishedSets = score?.sets ?? []
-  const setCount = Math.max(1, Math.min(3, finishedSets.length + (isLive ? 1 : 0)))
+  const finishedSets = (score?.sets ?? []) as Array<{ t1: number, t2: number }>
+  // Siempre mostramos 3 columnas de set: las jugadas + las pendientes en gris.
+  // Si el match es a 2 sets + super TB, la tercera columna pasa a ser STB.
+  const setCount = 3
 
   function teamName(t: 1|2): string {
     const e = t === 1 ? match.entry1 : match.entry2
@@ -160,11 +169,16 @@ function ScoreHeaderBig({ match }: { match: any }) {
     if (isDoubles) return [e.player1, e.player2].filter(Boolean).map((p:any) => p.last_name).join(' / ')
     return e.player1?.last_name ?? '—'
   }
+  function teamFlag(t: 1|2): string | null {
+    const e = t === 1 ? match.entry1 : match.entry2
+    return (e?.player1?.nationality as string | undefined)?.toUpperCase() ?? null
+  }
   function setVal(t: 1|2, i: number): number | null {
-    if (i < finishedSets.length) return finishedSets[i][t === 1 ? 't1' : 't2']
+    const k = t === 1 ? 't1' : 't2'
+    if (i < finishedSets.length) return finishedSets[i][k]
     if (i === finishedSets.length && isLive) {
-      if (tbActive) return score?.tiebreak_score?.[t === 1 ? 't1' : 't2'] ?? 0
-      return score?.current_set?.[t === 1 ? 't1' : 't2'] ?? 0
+      if (tbActive) return score?.tiebreak_score?.[k] ?? 0
+      return score?.current_set?.[k] ?? 0
     }
     return null
   }
@@ -175,67 +189,200 @@ function ScoreHeaderBig({ match }: { match: any }) {
     if (score.deuce) return '40'
     return ['0','15','30','40'][score.current_game?.[k] ?? 0] ?? '0'
   }
+  function setWonBy(i: number): 1 | 2 | null {
+    const s = finishedSets[i]
+    if (!s) return null
+    if (s.t1 > s.t2) return 1
+    if (s.t2 > s.t1) return 2
+    return null
+  }
+
+  // Estado del marcador
+  const winnerTeam = (score as any)?.winner_team ?? null
+  const matchStatus: string = match.status
+  const elapsedLabel = matchElapsedLabel(match)
 
   return (
     <div className="bg-gradient-to-b from-gray-900 to-gray-950 border-b border-gray-800 flex-none sticky top-[37px] z-20">
-      <div className="max-w-[1800px] mx-auto px-4 py-3 grid items-center gap-2"
-        style={{ gridTemplateColumns: `1fr ${Array(setCount).fill('60px').join(' ')} 70px 1fr ${Array(setCount).fill('60px').join(' ')} 70px` }}>
-        {/* Team 1 */}
-        <div className="text-right">
-          <span className="text-xs text-gray-500 uppercase tracking-widest">Equipo 1</span>
-          <div className="flex items-center justify-end gap-2">
-            {serving === 1 && <ServingIndicator/>}
-            <span className="text-2xl font-bold uppercase tracking-tight" style={{ color: '#00e0c6' }}>{teamName(1)}</span>
+      <div className="max-w-[1800px] mx-auto px-4 py-2.5">
+        {/* Tira superior: estado + tiempo + flags */}
+        <div className="flex items-center justify-between gap-3 mb-1.5 text-[10px] uppercase tracking-widest text-gray-500">
+          <div className="flex items-center gap-3">
+            <StatusBadge status={matchStatus}/>
+            {elapsedLabel && <span className="text-gray-400 font-mono tabular-nums">⏱ {elapsedLabel}</span>}
+            {tbActive && (
+              <span className="text-amber-400 font-bold">
+                {stbActive ? 'SUPER TIEBREAK' : 'TIEBREAK'}
+              </span>
+            )}
+          </div>
+          {/* Encabezado de columnas (Set 1 / Set 2 / Set 3 / Punto) */}
+          <div className="grid items-center gap-1.5"
+            style={{ gridTemplateColumns: `repeat(${setCount}, 56px) 72px` }}>
+            {Array.from({ length: setCount }).map((_, i) => (
+              <span key={i} className="text-center text-gray-600">S{i + 1}</span>
+            ))}
+            <span className="text-center text-gray-600">{tbActive ? 'TB' : 'PT'}</span>
           </div>
         </div>
-        {Array.from({ length: setCount }).map((_, i) => (
-          <SetCell key={`s1-${i}`} value={setVal(1, i)} isCurrent={i === finishedSets.length && isLive} accent="#00e0c6"/>
-        ))}
-        <PointCell value={gamePoint(1)} tb={tbActive} accent="#00e0c6"/>
 
-        {/* Team 2 */}
-        <div className="text-left">
-          <span className="text-xs text-gray-500 uppercase tracking-widest">Equipo 2</span>
-          <div className="flex items-center gap-2">
-            <span className="text-2xl font-bold uppercase tracking-tight" style={{ color: '#ff7b61' }}>{teamName(2)}</span>
-            {serving === 2 && <ServingIndicator/>}
-          </div>
-        </div>
-        {Array.from({ length: setCount }).map((_, i) => (
-          <SetCell key={`s2-${i}`} value={setVal(2, i)} isCurrent={i === finishedSets.length && isLive} accent="#ff7b61"/>
-        ))}
-        <PointCell value={gamePoint(2)} tb={tbActive} accent="#ff7b61"/>
+        {/* Equipo 1 — fila */}
+        <TeamRow
+          accent="#00e0c6"
+          name={teamName(1)}
+          flag={teamFlag(1)}
+          isServing={serving === 1}
+          isWinner={winnerTeam === 1}
+          sets={Array.from({ length: setCount }).map((_, i) => ({
+            value: setVal(1, i),
+            isCurrent: i === finishedSets.length && isLive,
+            isWon: setWonBy(i) === 1,
+            isLost: setWonBy(i) === 2,
+          }))}
+          gamePoint={gamePoint(1)}
+          tbActive={tbActive}
+          setCount={setCount}
+        />
+        {/* Equipo 2 — fila */}
+        <TeamRow
+          accent="#ff7b61"
+          name={teamName(2)}
+          flag={teamFlag(2)}
+          isServing={serving === 2}
+          isWinner={winnerTeam === 2}
+          sets={Array.from({ length: setCount }).map((_, i) => ({
+            value: setVal(2, i),
+            isCurrent: i === finishedSets.length && isLive,
+            isWon: setWonBy(i) === 2,
+            isLost: setWonBy(i) === 1,
+          }))}
+          gamePoint={gamePoint(2)}
+          tbActive={tbActive}
+          setCount={setCount}
+        />
       </div>
     </div>
   )
 }
 
-function ServingIndicator() {
+function TeamRow({
+  accent, name, flag, isServing, isWinner, sets, gamePoint, tbActive, setCount,
+}: {
+  accent: string,
+  name: string,
+  flag: string | null,
+  isServing: boolean,
+  isWinner: boolean,
+  sets: Array<{ value: number | null, isCurrent: boolean, isWon: boolean, isLost: boolean }>,
+  gamePoint: string,
+  tbActive: boolean,
+  setCount: number,
+}) {
   return (
-    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(253,224,71,.20)', border: '1px solid rgba(253,224,71,.55)' }}>
-      <span className="w-1.5 h-1.5 rounded-full bg-yellow-300 animate-pulse"/>
-      <span className="text-[9px] font-bold text-yellow-300 tracking-widest">SAQUE</span>
+    <div
+      className="grid items-stretch gap-1.5 py-1 rounded-md transition-colors"
+      style={{
+        gridTemplateColumns: `28px 1fr repeat(${setCount}, 56px) 72px`,
+        background: isServing ? `${accent}10` : 'transparent',
+      }}
+    >
+      {/* Punto de saque a la izquierda — más visible que el chip anterior */}
+      <div className="flex items-center justify-center">
+        {isServing
+          ? <span className="w-3 h-3 rounded-full" style={{ background: '#fde047', boxShadow: '0 0 10px rgba(253,224,71,.7)' }} title="Al saque"/>
+          : <span className="w-3 h-3 rounded-full" style={{ background: 'transparent', border: '1px solid rgba(255,255,255,.08)' }}/>
+        }
+      </div>
+
+      {/* Bandera + nombre */}
+      <div className="flex items-center gap-2.5 min-w-0">
+        {flag && (
+          <img
+            src={`/Flags/${flag}.jpg`}
+            alt={flag}
+            className="w-7 h-5 object-cover rounded-sm flex-shrink-0"
+            style={{ boxShadow: 'inset 0 0 0 1px rgba(0,0,0,.3)' }}
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+          />
+        )}
+        <span
+          className="text-2xl font-black uppercase tracking-tight truncate"
+          style={{ color: isWinner ? '#fff' : accent }}
+        >
+          {name}
+        </span>
+        {isWinner && (
+          <span className="text-[10px] font-bold tracking-widest text-emerald-400 flex-shrink-0">🏆 GANADOR</span>
+        )}
+      </div>
+
+      {/* Sets */}
+      {sets.map((s, i) => (
+        <div
+          key={i}
+          className="grid place-items-center text-2xl font-black tabular-nums rounded-md"
+          style={{
+            background: s.isCurrent
+              ? `${accent}26`
+              : s.isWon
+                ? 'rgba(255,255,255,.06)'
+                : 'rgba(0,0,0,.18)',
+            color: s.value == null
+              ? 'rgba(255,255,255,.18)'
+              : s.isWon
+                ? '#fff'
+                : s.isLost
+                  ? 'rgba(255,255,255,.42)'
+                  : 'white',
+            boxShadow: s.isCurrent ? `inset 0 0 0 1px ${accent}66` : 'none',
+          }}
+        >
+          {s.value == null ? '–' : s.value}
+        </div>
+      ))}
+
+      {/* Punto actual / TB */}
+      <div
+        className="grid place-items-center text-xl font-black tabular-nums rounded-md"
+        style={{
+          background: tbActive ? '#fbbf24' : accent,
+          color: tbActive ? '#1f1200' : 'white',
+        }}
+      >
+        {gamePoint}
+      </div>
+    </div>
+  )
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const cfg: Record<string, { label: string, cls: string }> = {
+    in_progress: { label: 'EN JUEGO',    cls: 'bg-red-700/30 border-red-500 text-red-300' },
+    suspended:   { label: 'SUSPENDIDO',  cls: 'bg-amber-700/30 border-amber-500 text-amber-300' },
+    finished:    { label: 'FINALIZADO',  cls: 'bg-emerald-700/30 border-emerald-500 text-emerald-300' },
+    retired:     { label: 'RETIRADO',    cls: 'bg-gray-700/30 border-gray-500 text-gray-300' },
+    walkover:    { label: 'WALKOVER',    cls: 'bg-gray-700/30 border-gray-500 text-gray-300' },
+    warmup:      { label: 'CALENTANDO',  cls: 'bg-blue-700/30 border-blue-500 text-blue-300' },
+    scheduled:   { label: 'PROGRAMADO',  cls: 'bg-gray-700/30 border-gray-600 text-gray-400' },
+  }
+  const c = cfg[status] ?? { label: status.toUpperCase(), cls: 'bg-gray-800 border-gray-700 text-gray-400' }
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded border text-[10px] font-bold tracking-widest ${c.cls}`}>
+      {status === 'in_progress' && <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"/>}
+      {c.label}
     </span>
   )
 }
-function SetCell({ value, isCurrent, accent }: { value: number|null, isCurrent: boolean, accent: string }) {
-  return (
-    <div className="grid place-items-center text-2xl font-black tabular-nums rounded-md py-1"
-      style={{
-        background: isCurrent ? `${accent}14` : 'rgba(0,0,0,.18)',
-        color: value == null ? 'rgba(255,255,255,.30)' : 'white',
-      }}>
-      {value == null ? '–' : value}
-    </div>
-  )
-}
-function PointCell({ value, tb, accent }: { value: string, tb: boolean, accent: string }) {
-  return (
-    <div className="grid place-items-center text-xl font-black tabular-nums rounded-md py-1"
-      style={{ background: tb ? '#fbbf24' : accent, color: tb ? '#1f1200' : 'white' }}>
-      {value}
-    </div>
-  )
+
+function matchElapsedLabel(match: any): string | null {
+  if (!match.started_at) return null
+  const end = match.finished_at ? new Date(match.finished_at).getTime() : Date.now()
+  const start = new Date(match.started_at).getTime()
+  const ms = Math.max(0, end - start)
+  const h = Math.floor(ms / 3_600_000)
+  const m = Math.floor((ms % 3_600_000) / 60_000)
+  if (h > 0) return `${h}h ${String(m).padStart(2, '0')}m`
+  return `${m}m`
 }
 
 // ─── Widget shell ──────────────────────────────────────────────────────────
