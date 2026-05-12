@@ -2,6 +2,7 @@ import { createServiceSupabase } from '@/lib/supabase-server'
 import Link from 'next/link'
 import { EmptyDrawCTA } from './empty-cta'
 import { BracketTree } from '@/components/admin/bracket-tree'
+import { BracketBuilder } from '@/components/admin/bracket-builder'
 import { EntryRegister } from '@/components/admin/entry-register'
 import { Badge } from '@/components/ui/badge'
 import { CATEGORY_LABELS } from '@/types'
@@ -193,6 +194,19 @@ export default async function DrawDetailPage({ params }: { params: Promise<{ cat
         )}
       </div>
 
+      {/* Generador del cuadro — slots de la primera ronda con selector
+          de parejas. El director controla qué partido va en cada
+          posición del cuadro. Las rondas posteriores (QF/SF/F) se
+          rellenan automáticamente cuando se completa cada partido. */}
+      {entries && entries.length > 0 && (
+        <BracketBuilder
+          drawId={draw.id}
+          drawSize={draw.size}
+          entries={entries as any[]}
+          existingMatches={(matches ?? []) as any[]}
+        />
+      )}
+
       {/* Bracket — vista en arbol (R32 -> R16 -> QF -> SF -> F) con conectores */}
       <div>
         <div className="flex items-center justify-between mb-4">
@@ -204,9 +218,7 @@ export default async function DrawDetailPage({ params }: { params: Promise<{ cat
 
         {!hasMatches ? (
           <div className="bg-gray-900 rounded-2xl p-8 border border-gray-800 text-center text-gray-500 space-y-3">
-            <p>No hay partidos en esta categoría todavía.</p>
-            <p className="text-xs">Si acabas de crear el cuadro vacío y no se generaron partidos automáticamente, sembrá los datos completos:</p>
-            <div className="pt-2"><EmptyDrawCTA /></div>
+            <p>El cuadro aún no tiene partidos. Usa el generador de arriba para asignar parejas a cada slot — los partidos se crean automáticamente.</p>
           </div>
         ) : (
           <BracketTree matches={matches as any[]} isDoubles={matchType !== 'singles'}/>
