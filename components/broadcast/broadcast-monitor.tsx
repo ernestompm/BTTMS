@@ -513,13 +513,16 @@ const COMPANION_CONTROL_APP_ID = '08NGiQwXHmlK6sYxiqE3cD'
 
 interface ToggleBtn { label: string, comp: string, color: 'green' | 'amber' | 'red' | 'gray' }
 
+const SCOREBUG_COMP = 'ScorebugWTA2'
+const GRANDE_COMP = 'GrandeWTA'
+
 const TOGGLE_GROUPS: Array<{ title: string, btns: ToggleBtn[] }> = [
   {
     title: 'Marcador en pantalla',
     btns: [
-      { label: 'Scorebug',        comp: 'Scorebug',       color: 'green' },
-      { label: 'Marcador grande', comp: 'MarcadorGrande', color: 'amber' },
-      { label: 'Stats',           comp: 'Stats',          color: 'amber' },
+      { label: 'Scorebug',        comp: SCOREBUG_COMP, color: 'green' },
+      { label: 'Marcador grande', comp: GRANDE_COMP,   color: 'amber' },
+      { label: 'Stats',           comp: 'Stats',       color: 'amber' },
     ],
   },
   {
@@ -530,8 +533,6 @@ const TOGGLE_GROUPS: Array<{ title: string, btns: ToggleBtn[] }> = [
       { label: 'Umpire',     comp: 'Umpire',  color: 'gray'  },
       { label: 'Cuadro',     comp: 'Cuadro',  color: 'gray'  },
       { label: 'Venue',      comp: 'Venue',   color: 'gray'  },
-      { label: 'Torneo',     comp: 'Torneo',  color: 'gray'  },
-      { label: 'Lluvia',     comp: 'Llluvia', color: 'gray'  },
     ],
   },
   {
@@ -548,11 +549,13 @@ function SingularControlPanel({ match }: { match: any | null }) {
   const [draftToken, setDraftToken] = useState('')
   const [editingToken, setEditingToken] = useState(false)
   const [visible, setVisible] = useState<Set<string>>(new Set())   // compositions actualmente IN
-  const [mode, setMode] = useState<'MANUAL' | 'AUTO' | 'SMART' | null>(null)
   const [busy, setBusy] = useState(false)
   const [feedback, setFeedback] = useState<{ ok: boolean, msg: string } | null>(null)
-  const [rootCompId, setRootCompId] = useState<string | null>(null)
   const [knownComps, setKnownComps] = useState<Set<string>>(new Set())
+
+  // Estado de los nodos del ScorebugWTA2 (payload values)
+  const [scorebugSet, setScorebugSet] = useState<1 | 2>(1)
+  const [scorebugFlag, setScorebugFlag] = useState<'In' | 'Out' | null>(null)
 
   // Cargar token al montar
   useEffect(() => {
@@ -565,11 +568,9 @@ function SingularControlPanel({ match }: { match: any | null }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // GET /model — Singular devuelve el árbol del control app. Lo usamos para:
-  //   - aprender el subCompositionId del Root Composition (el módulo oficial
-  //     comenta que el "name" del root viene mal y solo funciona por id).
-  //   - validar que las subcompositions que usamos (Scorebug, Stats, BIO…)
-  //     existen en este control app y avisar al usuario si falta alguna.
+  // GET /model — para validar que las subcompositions que usamos
+  // (ScorebugWTA2, Stats, BIO…) existen en este control app y avisar
+  // al operador si falta alguna antes de pulsar y ver un 404.
   async function fetchModel(tk: string) {
     try {
       const res = await fetch(`https://app.singular.live/apiv2/controlapps/${encodeURIComponent(tk)}/model`)
@@ -579,7 +580,6 @@ function SingularControlPanel({ match }: { match: any | null }) {
       }
       const json = await res.json()
       const root = Array.isArray(json) ? json[0] : json
-      if (root?.id) setRootCompId(root.id)
       const subs: string[] = (root?.subcompositions ?? []).map((s: any) => s?.name).filter(Boolean)
       setKnownComps(new Set(subs))
     } catch (e: any) {
@@ -680,24 +680,23 @@ function SingularControlPanel({ match }: { match: any | null }) {
     }
   }
 
-  // Modo MANUAL/AUTO/SMART = checkbox datosTablet en Root Composition.
-  // Para el root composition Singular SOLO acepta subCompositionId
-  // (el name del root viene mal del modelo) — por eso pedimos /model
-  // al guardar el token y cacheamos rootCompId.
-  async function setModeAction(label: 'MANUAL' | 'AUTO' | 'SMART', value: boolean) {
-    if (!rootCompId) {
-      // No tenemos el id del root → re-pedir modelo y reintentar
-      await fetchModel(token)
-    }
-    if (!rootCompId) {
-      setFeedback({ ok: false, msg: '✗ No tengo el id del Root Composition. Revisa el token.' })
-      return
-    }
+  // ── ScorebugWTA2 controls ──────────────────────────────────────────────
+  // Set: número (1 ó 2). FLAG: selección entre "In" / "Out" que muestra
+  // u oculta el mensajito de flag dentro del scorebug.
+  async function setScorebugSetValue(n: 1 | 2) {
     const ok = await controlPatch(
-      [{ subCompositionId: rootCompId, payload: { datosTablet: value } }],
-      `Modo ${label}`,
+      [{ subCompositionName: SCOREBUG_COMP, payload: { Set: n } }],
+      `Scorebug Set=${n}`,
     )
-    if (ok) setMode(label)
+    if (ok) setScorebugSet(n)
+  }
+
+  async function setScorebugFlagValue(v: 'In' | 'Out') {
+    const ok = await controlPatch(
+      [{ subCompositionName: SCOREBUG_COMP, payload: { FLAG: v } }],
+      `Scorebug FLAG=${v}`,
+    )
+    if (ok) setScorebugFlag(v)
   }
 
   async function clearAll() {
@@ -766,16 +765,6 @@ function SingularControlPanel({ match }: { match: any | null }) {
       })()}
 
       <div className="p-3 space-y-3">
-        {/* Modos (datosTablet checkbox) */}
-        <div>
-          <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1.5 px-1">Modo de datos</p>
-          <div className="grid grid-cols-3 gap-1.5">
-            <ModeBtn label="MANUAL"  active={mode === 'MANUAL'} onClick={() => setModeAction('MANUAL', false)} disabled={busy}/>
-            <ModeBtn label="SMART"   active={mode === 'SMART'}  onClick={() => setModeAction('SMART',  true)}  disabled={busy}/>
-            <ModeBtn label="AUTO"    active={mode === 'AUTO'}   onClick={() => setModeAction('AUTO',   true)}  disabled={busy}/>
-          </div>
-        </div>
-
         {TOGGLE_GROUPS.map(g => (
           <div key={g.title}>
             <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1.5 px-1">{g.title}</p>
@@ -802,6 +791,53 @@ function SingularControlPanel({ match }: { match: any | null }) {
                 )
               })}
             </div>
+
+            {/* Controles inline del ScorebugWTA2 (Set + FLAG) — sólo
+                aparecen en el grupo "Marcador en pantalla" */}
+            {g.title === 'Marcador en pantalla' && (
+              <div className="mt-2 ml-2 pl-3 border-l-2 border-gray-800 space-y-2">
+                {/* Set 1 / Set 2 */}
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-gray-500 uppercase tracking-widest w-12">Set</span>
+                  <div className="flex gap-1 flex-1">
+                    {([1, 2] as const).map(n => (
+                      <button
+                        key={n}
+                        onClick={() => setScorebugSetValue(n)}
+                        disabled={busy}
+                        className={`flex-1 px-2 py-1.5 rounded-md text-[11px] font-bold tabular-nums transition-colors disabled:opacity-30 ${
+                          scorebugSet === n
+                            ? 'bg-cyan-600/40 border border-cyan-400 text-cyan-100'
+                            : 'bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300'
+                        }`}>
+                        Set {n}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {/* FLAG In / Out */}
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-gray-500 uppercase tracking-widest w-12">Flag</span>
+                  <div className="flex gap-1 flex-1">
+                    {(['In', 'Out'] as const).map(v => (
+                      <button
+                        key={v}
+                        onClick={() => setScorebugFlagValue(v)}
+                        disabled={busy}
+                        className={`flex-1 px-2 py-1.5 rounded-md text-[11px] font-bold uppercase tracking-wide transition-colors disabled:opacity-30 ${
+                          scorebugFlag === v
+                            ? (v === 'In'
+                                ? 'bg-emerald-600/40 border border-emerald-400 text-emerald-100'
+                                : 'bg-gray-600/40 border border-gray-400 text-gray-100')
+                            : 'bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300'
+                        }`}>
+                        {v}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         ))}
 
@@ -826,21 +862,6 @@ function SingularControlPanel({ match }: { match: any | null }) {
         )}
       </div>
     </div>
-  )
-}
-
-function ModeBtn({ label, active, onClick, disabled }: { label: string, active: boolean, onClick: () => void, disabled?: boolean }) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className={`px-2 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wide transition-colors disabled:opacity-30 ${
-        active
-          ? 'bg-purple-700 text-white shadow-[0_0_0_1px_rgba(168,85,247,.5)]'
-          : 'bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700'
-      }`}>
-      {label}
-    </button>
   )
 }
 
