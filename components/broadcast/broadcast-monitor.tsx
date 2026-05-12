@@ -484,18 +484,32 @@ function LiveStats({ match }: { match: any | null }) {
 
 // ─── SINGULAR CONTROL PANEL ────────────────────────────────────────────────
 //
-// Mapeado 1:1 con el Companion config "BEACHTENIS_COMPANION":
-//   - apiurl (Singular Live module) = "08NGiQwXHmlK6sYxiqE3cD"
+// ATENCIÓN: este panel habla con la API de CONTROL APPS, NO con Data Streams.
+// Son dos endpoints distintos en Singular que no se intercambian:
+//
+//   1) Data Streams (PUT datastream.singular.live/datastreams/<token>)
+//      → empuja datos continuos (score, time, names…) que las composiciones
+//        consumen. Lo configuras en /broadcast.
+//
+//   2) Control Apps (POST app.singular.live/apiv2/controlapps/<id>/control)
+//      → manda comandos animateIn/Out a compositions. Es lo que usa este
+//        panel y lo que usa Stream Deck/Companion.
+//
+// Si pegas el Data Stream token aquí, Singular devuelve 404 (no es un
+// control app válido). El Control App ID que sale en el Companion config
+// (BEACHTENIS_COMPANION → instance "singular") es 08NGiQwXHmlK6sYxiqE3cD.
+//
+// Mapeado 1:1 con ese Companion config:
 //   - subCompositions: PRE, Weather, Umpire, Cuadro, Venue, Torneo, Llluvia,
 //     BIO, Posiciones, Scorebug, MarcadorGrande, Stats.
-//   - "datosTablet" (checkbox del Root Composition) controla el modo
-//     MANUAL (false) / AUTO / SMART MANUAL (true).
+//   - "datosTablet" (checkbox del Root Composition) controla MANUAL (false)
+//     / AUTO / SMART MANUAL (true).
 //
-// Cada botón "toggle" recuerda su estado en memoria (visibleComps Set):
-// el primer click hace animateIn; el segundo, animateOut. La REST API de
-// Singular Live (`apiv2/controlapps/<token>/control`) acepta una lista
-// de acciones; nosotros enviamos una a la vez vía /api/singular/control.
+// Cada botón es toggle: primer click animateIn (estado verde), segundo
+// animateOut. El estado vive en memoria — refrescar la pestaña reinicia
+// la percepción aquí, pero no afecta a lo que ya esté en aire en Singular.
 const SINGULAR_TOKEN_KEY = 'bttms:broadcast-monitor:singular-token'
+const COMPANION_CONTROL_APP_ID = '08NGiQwXHmlK6sYxiqE3cD'
 
 interface ToggleBtn { label: string, comp: string, color: 'green' | 'amber' | 'red' | 'gray' }
 
@@ -537,6 +551,8 @@ function SingularControlPanel({ match }: { match: any | null }) {
   const [mode, setMode] = useState<'MANUAL' | 'AUTO' | 'SMART' | null>(null)
   const [busy, setBusy] = useState(false)
   const [feedback, setFeedback] = useState<{ ok: boolean, msg: string } | null>(null)
+  const [rootCompId, setRootCompId] = useState<string | null>(null)
+  const [knownComps, setKnownComps] = useState<Set<string>>(new Set())
 
   // Cargar token al montar
   useEffect(() => {
@@ -544,47 +560,70 @@ function SingularControlPanel({ match }: { match: any | null }) {
       const saved = localStorage.getItem(SINGULAR_TOKEN_KEY) ?? ''
       setToken(saved)
       if (!saved) setEditingToken(true)
+      else fetchModel(saved)
     } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // GET /model — Singular devuelve el árbol del control app. Lo usamos para:
+  //   - aprender el subCompositionId del Root Composition (el módulo oficial
+  //     comenta que el "name" del root viene mal y solo funciona por id).
+  //   - validar que las subcompositions que usamos (Scorebug, Stats, BIO…)
+  //     existen en este control app y avisar al usuario si falta alguna.
+  async function fetchModel(tk: string) {
+    try {
+      const res = await fetch(`https://app.singular.live/apiv2/controlapps/${encodeURIComponent(tk)}/model`)
+      if (!res.ok) {
+        setFeedback({ ok: false, msg: `✗ Token no válido (HTTP ${res.status} al pedir /model)` })
+        return
+      }
+      const json = await res.json()
+      const root = Array.isArray(json) ? json[0] : json
+      if (root?.id) setRootCompId(root.id)
+      const subs: string[] = (root?.subcompositions ?? []).map((s: any) => s?.name).filter(Boolean)
+      setKnownComps(new Set(subs))
+    } catch (e: any) {
+      setFeedback({ ok: false, msg: `✗ No se pudo leer el modelo: ${e?.message ?? 'red'}` })
+    }
+  }
 
   function saveToken() {
     const v = draftToken.trim()
     setToken(v)
     try { localStorage.setItem(SINGULAR_TOKEN_KEY, v) } catch {}
     setEditingToken(false)
+    if (v) fetchModel(v)
   }
   function openTokenEditor() {
     setDraftToken(token)
     setEditingToken(true)
   }
 
-  async function send(actions: any[], successLabel: string) {
+  // PATCH /control — el método correcto (el módulo oficial usa PATCH, no POST).
+  // POST devuelve 404 en este path, por eso antes parecía que el token estaba mal.
+  async function controlPatch(body: any[], successLabel: string): Promise<boolean> {
     if (!token) {
-      setFeedback({ ok: false, msg: 'Configura primero el Control App token de Singular' })
+      setFeedback({ ok: false, msg: 'Configura primero el Control App token' })
       setEditingToken(true)
-      return null
+      return false
     }
-    setBusy(true)
-    setFeedback(null)
-    // Llamada DIRECTA al endpoint de Singular Live. Su Control API
-    // soporta CORS y no requiere cabeceras de auth — el token va en
-    // la URL. Es lo mismo que hace Companion/Stream Deck.
+    setBusy(true); setFeedback(null)
     const url = `https://app.singular.live/apiv2/controlapps/${encodeURIComponent(token)}/control`
     const started = performance.now()
     try {
       const res = await fetch(url, {
-        method: 'POST',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(actions),
+        body: JSON.stringify(body),
       })
       const duration = Math.round(performance.now() - started)
-      const text = await res.text()
+      const text = await res.text().catch(() => '')
       const ok = res.ok
       setFeedback({
         ok,
         msg: ok
           ? `✓ ${successLabel} · ${duration}ms`
-          : `✗ HTTP ${res.status} · ${text.slice(0, 120) || 'sin cuerpo'}`,
+          : `✗ HTTP ${res.status} · ${text.slice(0, 140) || 'sin cuerpo'}`,
       })
       setTimeout(() => setFeedback(null), 3500)
       return ok
@@ -598,10 +637,40 @@ function SingularControlPanel({ match }: { match: any | null }) {
     }
   }
 
+  // POST /command — para acciones globales como Take Out All Output.
+  async function commandPost(action: string, successLabel: string): Promise<boolean> {
+    if (!token) return false
+    setBusy(true); setFeedback(null)
+    const url = `https://app.singular.live/apiv2/controlapps/${encodeURIComponent(token)}/command`
+    const started = performance.now()
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      })
+      const duration = Math.round(performance.now() - started)
+      const text = await res.text().catch(() => '')
+      const ok = res.ok
+      setFeedback({
+        ok,
+        msg: ok ? `✓ ${successLabel} · ${duration}ms` : `✗ HTTP ${res.status} · ${text.slice(0, 140)}`,
+      })
+      setTimeout(() => setFeedback(null), 3500)
+      return ok
+    } catch (e: any) {
+      setFeedback({ ok: false, msg: `✗ Red: ${e?.message ?? 'desconocido'}` })
+      setTimeout(() => setFeedback(null), 3500)
+      return false
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function toggleComp(comp: string) {
     const isVisible = visible.has(comp)
     const state = isVisible ? 'Out' : 'In'
-    const ok = await send([{ subCompositionName: comp, state }], `${comp} ${state}`)
+    const ok = await controlPatch([{ subCompositionName: comp, state }], `${comp} ${state}`)
     if (ok) {
       setVisible(prev => {
         const next = new Set(prev)
@@ -611,21 +680,30 @@ function SingularControlPanel({ match }: { match: any | null }) {
     }
   }
 
+  // Modo MANUAL/AUTO/SMART = checkbox datosTablet en Root Composition.
+  // Para el root composition Singular SOLO acepta subCompositionId
+  // (el name del root viene mal del modelo) — por eso pedimos /model
+  // al guardar el token y cacheamos rootCompId.
   async function setModeAction(label: 'MANUAL' | 'AUTO' | 'SMART', value: boolean) {
-    // datosTablet checkbox lo manda Companion como updateCheckboxNode
-    // sobre Root Composition. En la REST API equivale a un payload
-    // aplicado al subCompositionName "Root Composition".
-    const ok = await send(
-      [{ subCompositionName: 'Root Composition', payload: { datosTablet: value } }],
+    if (!rootCompId) {
+      // No tenemos el id del root → re-pedir modelo y reintentar
+      await fetchModel(token)
+    }
+    if (!rootCompId) {
+      setFeedback({ ok: false, msg: '✗ No tengo el id del Root Composition. Revisa el token.' })
+      return
+    }
+    const ok = await controlPatch(
+      [{ subCompositionId: rootCompId, payload: { datosTablet: value } }],
       `Modo ${label}`,
     )
     if (ok) setMode(label)
   }
 
   async function clearAll() {
-    if (visible.size === 0) return
-    const actions = Array.from(visible).map(comp => ({ subCompositionName: comp, state: 'Out' as const }))
-    const ok = await send(actions, 'Borrar todo')
+    // Take Out All Output es un comando global del control app:
+    //   POST /command  body: { action: 'TakeOutAllOutput' }
+    const ok = await commandPost('TakeOutAllOutput', 'Take Out All Output')
     if (ok) setVisible(new Set())
   }
 
@@ -663,16 +741,29 @@ function SingularControlPanel({ match }: { match: any | null }) {
               Cancelar
             </button>
             <button
-              onClick={() => setDraftToken('08NGiQwXHmlK6sYxiqE3cD')}
+              onClick={() => setDraftToken(COMPANION_CONTROL_APP_ID)}
               className="text-[10px] text-gray-500 hover:text-gray-300 ml-auto">
               usar token del Companion
             </button>
           </div>
-          <p className="text-[10px] text-gray-600">
-            Endpoint: <code className="text-gray-500">https://app.singular.live/apiv2/controlapps/&lt;token&gt;/control</code>
+          <p className="text-[10px] text-gray-600 leading-relaxed">
+            PATCH <code className="text-gray-500">app.singular.live/apiv2/controlapps/&lt;token&gt;/control</code><br/>
+            <span className="text-amber-400/80">Ojo:</span> es el Control App ID (compositions), <strong>no</strong> el Data Stream token (datos).
           </p>
         </div>
       )}
+
+      {/* Aviso si la composition que vamos a usar no aparece en /model */}
+      {token && knownComps.size > 0 && (() => {
+        const allCompsUsed = TOGGLE_GROUPS.flatMap(g => g.btns.map(b => b.comp))
+        const missing = allCompsUsed.filter(c => !knownComps.has(c))
+        if (missing.length === 0) return null
+        return (
+          <div className="px-4 py-2 border-b border-gray-800 bg-amber-950/30 text-[10px] text-amber-300/90">
+            ⚠ No están en este control app: {missing.join(', ')}. Esos botones devolverán error.
+          </div>
+        )
+      })()}
 
       <div className="p-3 space-y-3">
         {/* Modos (datosTablet checkbox) */}
@@ -714,12 +805,12 @@ function SingularControlPanel({ match }: { match: any | null }) {
           </div>
         ))}
 
-        {/* Borrar todo */}
+        {/* Take Out All Output — comando global del control app */}
         <button
           onClick={clearAll}
-          disabled={busy || visible.size === 0}
+          disabled={busy || !token}
           className="w-full px-3 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wide bg-red-900/40 hover:bg-red-800/60 border border-red-800/50 text-red-200 disabled:opacity-30 transition-colors">
-          ⌫ Borrar todo ({visible.size})
+          ⌫ Take out all output
         </button>
 
         {feedback && (
