@@ -404,15 +404,20 @@ export function JudgeClient({ initialMatch, userId, judgeName, timerConfig, adva
     // Fire-and-reconcile: render is already updated, network happens in background.
     // If the fetch fails (offline/5xx/timeout) we KEEP the optimistic score and
     // enqueue the point for later replay — no data loss for the judge.
+    // El árbitro solo elige quién GANA el punto pulsando el botón del equipo.
+    // No estamos suponiendo que sea un winner — point_type='rally' es neutro
+    // y no incrementa Winners/Aces/Errores en las stats. Si advancedStats
+    // está activo y el árbitro selecciona luego un tipo concreto en el
+    // modal, classify-point ajusta las stats con el delta correcto.
     let res: Response
     try {
       res = await fetch(`/api/matches/${match.id}/point`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ winner_team: wt, point_type: 'winner', shot_direction: null }),
+        body: JSON.stringify({ winner_team: wt, point_type: 'rally', shot_direction: null }),
         signal: AbortSignal.timeout(12000),
       })
     } catch {
-      offlineQueue.enqueue({ winnerTeam: wt, pointType: 'winner', shotDirection: null })
+      offlineQueue.enqueue({ winnerTeam: wt, pointType: 'rally', shotDirection: null })
       addToast('SIN CONEXIÓN — punto en cola', 'orange')
       return
     }
@@ -436,7 +441,7 @@ export function JudgeClient({ initialMatch, userId, judgeName, timerConfig, adva
         return
       }
       // 5xx — encolar y reintentar luego
-      offlineQueue.enqueue({ winnerTeam: wt, pointType: 'winner', shotDirection: null })
+      offlineQueue.enqueue({ winnerTeam: wt, pointType: 'rally', shotDirection: null })
       addToast(`ERROR ${res.status} — punto en cola`, 'orange')
       return
     }

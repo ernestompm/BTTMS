@@ -304,7 +304,13 @@ export interface Match {
   scoring_system?: ScoringSystem
 }
 
+// 'rally' es el tipo POR DEFECTO cuando el árbitro solo marca quién gana
+// el punto pulsando el botón del equipo, sin clasificar. Es neutro: cuenta
+// como total_points pero NO incrementa winners/aces/errors. Si el árbitro
+// abre el modal de clasificación y elige un tipo concreto, classify-point
+// recomputa las stats con el delta correcto.
 export type PointType =
+  | 'rally'
   | 'ace' | 'winner' | 'unforced_error' | 'forced_error'
   | 'double_fault' | 'serve_fault' | 'forbidden_zone' | 'foot_fault'
   | 'let_replay' | 'correction'
