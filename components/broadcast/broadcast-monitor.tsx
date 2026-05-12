@@ -555,7 +555,9 @@ function SingularControlPanel({ match }: { match: any | null }) {
 
   // Estado de los nodos del ScorebugWTA2 (payload values)
   const [scorebugSet, setScorebugSet] = useState<1 | 2>(1)
-  const [scorebugFlag, setScorebugFlag] = useState<'In' | 'Out' | null>(null)
+  const [scorebugFlag, setScorebugFlag] = useState<'IN' | 'OUT' | null>(null)
+  // Estado del nodo isFinal del Stats
+  const [statsIsFinal, setStatsIsFinal] = useState<'si' | 'no' | null>(null)
 
   // Cargar token al montar
   useEffect(() => {
@@ -691,12 +693,22 @@ function SingularControlPanel({ match }: { match: any | null }) {
     if (ok) setScorebugSet(n)
   }
 
-  async function setScorebugFlagValue(v: 'In' | 'Out') {
+  async function setScorebugFlagValue(v: 'IN' | 'OUT') {
     const ok = await controlPatch(
       [{ subCompositionName: SCOREBUG_COMP, payload: { FLAG: v } }],
       `Scorebug FLAG=${v}`,
     )
     if (ok) setScorebugFlag(v)
+  }
+
+  // Stats: selector isFinal (si/no) — controla si el panel de Stats
+  // muestra el banner de "estadísticas finales" del partido.
+  async function setStatsIsFinalValue(v: 'si' | 'no') {
+    const ok = await controlPatch(
+      [{ subCompositionName: 'Stats', payload: { isFinal: v } }],
+      `Stats isFinal=${v}`,
+    )
+    if (ok) setStatsIsFinal(v)
   }
 
   async function clearAll() {
@@ -815,18 +827,19 @@ function SingularControlPanel({ match }: { match: any | null }) {
                     ))}
                   </div>
                 </div>
-                {/* FLAG In / Out */}
+                {/* FLAG IN / OUT (en mayúsculas — es como están definidos
+                    los valores del selector en Singular) */}
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] text-gray-500 uppercase tracking-widest w-12">Flag</span>
                   <div className="flex gap-1 flex-1">
-                    {(['In', 'Out'] as const).map(v => (
+                    {(['IN', 'OUT'] as const).map(v => (
                       <button
                         key={v}
                         onClick={() => setScorebugFlagValue(v)}
                         disabled={busy}
                         className={`flex-1 px-2 py-1.5 rounded-md text-[11px] font-bold uppercase tracking-wide transition-colors disabled:opacity-30 ${
                           scorebugFlag === v
-                            ? (v === 'In'
+                            ? (v === 'IN'
                                 ? 'bg-emerald-600/40 border border-emerald-400 text-emerald-100'
                                 : 'bg-gray-600/40 border border-gray-400 text-gray-100')
                             : 'bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300'
@@ -835,6 +848,29 @@ function SingularControlPanel({ match }: { match: any | null }) {
                       </button>
                     ))}
                   </div>
+                </div>
+
+                {/* Stats: selector isFinal (si/no) */}
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-gray-500 uppercase tracking-widest w-12">Final?</span>
+                  <div className="flex gap-1 flex-1">
+                    {(['si', 'no'] as const).map(v => (
+                      <button
+                        key={v}
+                        onClick={() => setStatsIsFinalValue(v)}
+                        disabled={busy}
+                        className={`flex-1 px-2 py-1.5 rounded-md text-[11px] font-bold uppercase tracking-wide transition-colors disabled:opacity-30 ${
+                          statsIsFinal === v
+                            ? (v === 'si'
+                                ? 'bg-amber-600/40 border border-amber-400 text-amber-100'
+                                : 'bg-gray-600/40 border border-gray-400 text-gray-100')
+                            : 'bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300'
+                        }`}>
+                        {v}
+                      </button>
+                    ))}
+                  </div>
+                  <span className="text-[9px] text-gray-600 italic">stats.isFinal</span>
                 </div>
               </div>
             )}
