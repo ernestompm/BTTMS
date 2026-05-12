@@ -18,6 +18,10 @@ export default function TournamentPage() {
   const [seeding, setSeeding] = useState(false)
   const [seedMsg, setSeedMsg] = useState('')
   const [showFixSql, setShowFixSql] = useState(false)
+  // useState para el seed de inscritos RFET — DEBE ir aquí arriba con
+  // los otros hooks, NO debajo del `if (loading) return` o React rompe
+  // con error #310 (hooks order mismatch).
+  const [seedingInscritos, setSeedingInscritos] = useState<string | null>(null)
 
   useEffect(() => {
     supabase.from('tournaments').select('*').eq('id', TOURNAMENT_ID).single()
@@ -86,8 +90,6 @@ export default function TournamentPage() {
 
   // Seeds REALES con las parejas inscritas oficiales del Campeonato
   // de España Absoluto de Tenis Playa 2026 (extraídas de los PDFs RFET).
-  const [seedingInscritos, setSeedingInscritos] = useState<string | null>(null)
-
   async function handleSeedInscritos(category: 'absolute_f' | 'absolute_m') {
     const label = category === 'absolute_f' ? 'Absoluto Femenino' : 'Absoluto Masculino'
     const count = category === 'absolute_f' ? 21 : 34
