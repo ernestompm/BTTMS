@@ -122,6 +122,15 @@ export function AdminNav({ user }: { user: AppUser }) {
           <span>🚪</span>
           Cerrar sesión
         </button>
+        {/* Branding footer — recuerda quién hace el desarrollo */}
+        <a
+          href="https://vinteon.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block text-center text-[10px] text-gray-600 hover:text-gray-300 mt-3 pt-3 border-t border-gray-800/60 transition-colors"
+        >
+          Desarrollado por <span className="font-bold tracking-wide">VINTEON MEDIA</span>
+        </a>
       </div>
     </div>
   )

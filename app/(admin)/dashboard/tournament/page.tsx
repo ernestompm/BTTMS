@@ -340,7 +340,9 @@ export default function TournamentPage() {
       <div className="bg-gray-900 rounded-2xl p-6 border border-emerald-800/50 space-y-4">
         <h2 className="text-emerald-300 font-semibold">🏆 Inscritos oficiales · Campeonato de España 2026</h2>
         <p className="text-gray-400 text-sm">
-          Crea los cuadros con las parejas inscritas oficialmente por la RFET (PDFs públicos). Jugadores españoles con ranking RFET, seeded por ranking combinado. Idempotente: pulsar de nuevo reemplaza el cuadro existente sin duplicar jugadores.
+          Crea los cuadros con las parejas inscritas oficialmente al Campeonato de España de Tenis Playa 2026.
+          Jugadores españoles con ranking nacional, seeded por ranking combinado. Idempotente: pulsar de nuevo
+          reemplaza el cuadro existente sin duplicar jugadores.
         </p>
         <div className="flex items-center gap-3 flex-wrap">
           <button
@@ -362,7 +364,7 @@ export default function TournamentPage() {
           )}
         </div>
         <p className="text-gray-500 text-xs">
-          Fuente: <strong className="text-gray-400">RFET 2026</strong> · PDFs oficiales de inscritos del Campeonato Absoluto de Tenis Playa. Cuadro femenino dimensionado a 32, masculino a 64 (single elimination, dobles, best-of-2 + super tiebreak).
+          Cuadro femenino dimensionado a 32, masculino a 64 (single elimination, dobles, best-of-2 + super tiebreak).
         </p>
       </div>
 

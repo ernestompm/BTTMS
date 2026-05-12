@@ -29,8 +29,13 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-6 fade-in">
       <div>
-        <h1 className="text-2xl font-bold text-white font-score">Panel de Control</h1>
-        <p className="text-gray-400 text-sm mt-1">Beach Tennis Tournament Management System v2.0</p>
+        <h1 className="text-2xl font-bold text-white font-score">
+          Panel de Control{' '}
+          <span style={{ background: 'linear-gradient(90deg, #f31948, #fc6f43)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            Vinteon
+          </span>
+        </h1>
+        <p className="text-gray-400 text-sm mt-1">Marcador Vinteon · sistema de gestión de torneos de Tenis Playa</p>
       </div>
 
       {/* Tournament banner */}

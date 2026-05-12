@@ -26,7 +26,7 @@ export function CommentatorPlayerBio({ player, accent }: { player: Player, accen
   if (player.nationality) facts.push(['Nacionalidad', player.nationality])
   if (player.club) facts.push(['Club', player.club])
   if (player.federacion_autonomica) facts.push(['Federación', player.federacion_autonomica])
-  if (player.ranking_rfet) facts.push(['Ranking RFET', `#${player.ranking_rfet}`])
+  if (player.ranking_rfet) facts.push(['Ranking nacional', `#${player.ranking_rfet}`])
   if (player.ranking_itf) facts.push(['Ranking ITF', `#${player.ranking_itf}`])
 
   return (
@@ -46,7 +46,7 @@ export function CommentatorPlayerBio({ player, accent }: { player: Player, accen
           <div className="text-2xl font-black uppercase text-white leading-tight tracking-tight truncate">{player.last_name}</div>
           {(player.ranking_rfet || player.ranking_itf) && (
             <div className="mt-1 text-xs text-gray-400 tabular-nums">
-              {player.ranking_rfet && <span>RFET <span className="text-white font-bold">#{player.ranking_rfet}</span></span>}
+              {player.ranking_rfet && <span>NAC. <span className="text-white font-bold">#{player.ranking_rfet}</span></span>}
               {player.ranking_rfet && player.ranking_itf && <span className="mx-2 text-gray-600">·</span>}
               {player.ranking_itf && <span>ITF <span className="text-white font-bold">#{player.ranking_itf}</span></span>}
             </div>

@@ -727,7 +727,7 @@ export function PlayerBioChampionship({ visible, player, team, category, tournam
   if (player.height_cm) fields.push({ label: 'ALTURA', value: `${player.height_cm} CM` })
   const lat = lateralityShortEs(player.laterality)
   if (lat) fields.push({ label: 'LATERALIDAD', value: lat })
-  if (player.ranking_rfet) fields.push({ label: 'RANKING RFET', value: `#${player.ranking_rfet}` })
+  if (player.ranking_rfet) fields.push({ label: 'RANKING NACIONAL', value: `#${player.ranking_rfet}` })
   if (player.ranking_itf) fields.push({ label: 'RANKING ITF', value: `#${player.ranking_itf}` })
   if (player.club) fields.push({ label: 'CLUB', value: player.club.toUpperCase() })
   if (player.federacion_autonomica) fields.push({ label: 'FEDERACIÓN', value: player.federacion_autonomica.toUpperCase() })

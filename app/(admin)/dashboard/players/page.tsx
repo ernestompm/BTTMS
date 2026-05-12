@@ -71,7 +71,7 @@ export default async function PlayersPage({ searchParams }: { searchParams: Prom
               </p>
               <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
                 {p.nationality && <FlagImg nationality={p.nationality} />}
-                {p.ranking_rfet && <span>RFET #{p.ranking_rfet}</span>}
+                {p.ranking_rfet && <span>RANK #{p.ranking_rfet}</span>}
                 {p.ranking_itf && <span>ITF #{p.ranking_itf}</span>}
               </div>
             </div>

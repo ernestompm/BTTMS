@@ -261,7 +261,7 @@ export default function EditPlayerPage() {
               <option value="right">Derecho</option><option value="left">Zurdo</option><option value="ambidextrous">Ambidiestro</option>
             </select>
           </div>
-          <div><label className={lc}>Ranking RFET</label><input type="number" className={ic} value={form.ranking_rfet} onChange={e => set('ranking_rfet', e.target.value)} /></div>
+          <div><label className={lc}>Ranking nacional</label><input type="number" className={ic} value={form.ranking_rfet} onChange={e => set('ranking_rfet', e.target.value)} /></div>
           <div><label className={lc}>Ranking ITF</label><input type="number" className={ic} value={form.ranking_itf} onChange={e => set('ranking_itf', e.target.value)} /></div>
         </div>
 

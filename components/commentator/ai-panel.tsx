@@ -33,7 +33,7 @@ const QUICK_PROMPTS = [
   'Estadísticas más interesantes hasta ahora',
   'Anécdotas y curiosidades del torneo',
   'Análisis táctico de los últimos puntos',
-  'Rankings RFET/ITF y palmarés',
+  'Rankings y palmarés del jugador',
 ]
 
 export function CommentatorAIPanel({ match, tournament, previousMatches, pointLog }: Props) {

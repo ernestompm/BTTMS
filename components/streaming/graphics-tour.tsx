@@ -697,7 +697,7 @@ export function PlayerBioTour({ visible, player, team, category, tournament }: {
           <div style={{ marginTop: 14, display: 'flex', gap: 22 }}>
             {player.ranking_rfet && (
               <div style={{ flex: 1, background: hexAlpha(accent, .12), border: `1px solid ${hexAlpha(accent, .4)}`, borderRadius: 8, padding: '16px 22px' }}>
-                <div style={tourKicker(accent, 18)}>RFET</div>
+                <div style={tourKicker(accent, 18)}>RANK</div>
                 <div style={{ fontSize: 76, fontWeight: 900, lineHeight: 1, color: '#fff', fontVariantNumeric: 'tabular-nums' }}>#{player.ranking_rfet}</div>
               </div>
             )}

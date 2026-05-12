@@ -43,7 +43,7 @@ const HEADER_LABELS: Record<Header, string> = {
   birth_city: 'Ciudad nacim.',
   height_cm: 'Altura (cm)',
   laterality: 'Lateralidad (right|left|ambidextrous)',
-  ranking_rfet: 'Ranking RFET',
+  ranking_rfet: 'Ranking nacional',
   ranking_itf: 'Ranking ITF',
   club: 'Club',
   federacion_autonomica: 'Federación autonómica',

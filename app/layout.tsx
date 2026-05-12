@@ -2,8 +2,33 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'BTTMS - Beach Tennis Tournament Management System',
-  description: 'Sistema de gestión de torneos de Tenis Playa - RFET',
+  title: 'Marcador Vinteon · Sistema de gestión de torneos de Tenis Playa',
+  description:
+    'Plataforma desarrollada por Vinteon Media para arbitrar, retransmitir y gestionar torneos de Tenis Playa en tiempo real: marcadores en pista, gráficos broadcast, estadísticas y cuadros.',
+  applicationName: 'Marcador Vinteon',
+  authors: [{ name: 'Vinteon Media', url: 'https://vinteon.com' }],
+  creator: 'Vinteon Media',
+  publisher: 'Vinteon Media',
+  keywords: [
+    'Vinteon',
+    'Marcador Vinteon',
+    'Tenis Playa',
+    'beach tennis',
+    'gestión de torneos',
+    'broadcast deportivo',
+    'marcador en directo',
+  ],
+  openGraph: {
+    title: 'Marcador Vinteon · Tenis Playa',
+    description: 'Sistema profesional de gestión y emisión de torneos de Tenis Playa, desarrollado por Vinteon Media.',
+    siteName: 'Marcador Vinteon',
+    locale: 'es_ES',
+    type: 'website',
+  },
+  icons: {
+    icon: '/logo-full.png',
+    apple: '/logo-full.png',
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

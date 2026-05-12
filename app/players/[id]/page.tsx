@@ -64,7 +64,7 @@ export default async function PublicPlayerPage({ params }: { params: Promise<{ i
             {/* Stats grid */}
             <div className="grid grid-cols-3 gap-3 mb-4">
               {[
-                { label: 'Ranking RFET', value: p.ranking_rfet ? `#${p.ranking_rfet}` : '—' },
+                { label: 'Ranking nacional', value: p.ranking_rfet ? `#${p.ranking_rfet}` : '—' },
                 { label: 'Ranking ITF', value: p.ranking_itf ? `#${p.ranking_itf}` : '—' },
                 { label: 'Altura', value: p.height_cm ? `${p.height_cm}cm` : '—' },
               ].map(({ label, value }) => (

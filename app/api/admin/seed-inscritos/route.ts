@@ -8,7 +8,7 @@ import { getActiveTournamentId } from '@/lib/active-tournament'
  * Body: { category: 'absolute_f' | 'absolute_m' }
  *
  * Pobla un cuadro de dobles con las parejas inscritas oficiales del
- * Campeonato de España Absoluto de Tenis Playa 2026 (RFET).
+ * Campeonato de España Absoluto de Tenis Playa 2026.
  *
  * Comportamiento idempotente:
  *  - Borra el draw existente de la categoría (si lo hay) y todos sus

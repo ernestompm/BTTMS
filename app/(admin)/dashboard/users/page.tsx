@@ -65,7 +65,7 @@ export default function UsersPage() {
           <div className="grid grid-cols-2 gap-3">
             {[
               { key: 'full_name', label: 'Nombre completo', placeholder: 'Juan García' },
-              { key: 'email', label: 'Email', placeholder: 'juez@rfet.es', type: 'email' },
+              { key: 'email', label: 'Email', placeholder: 'juez@vinteon.com', type: 'email' },
               { key: 'password', label: 'Contraseña temporal', placeholder: '········', type: 'password' },
             ].map(({ key, label, placeholder, type = 'text' }) => (
               <div key={key}>

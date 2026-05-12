@@ -330,7 +330,7 @@ export function PlayerBio({ visible, player, team, category, tournament }: { vis
             <div style={{ marginTop:14, display:'flex', gap:22 }}>
               {player.ranking_rfet && (
                 <div style={{ flex:1, background:hexAlpha(accent,.14), border:`1px solid ${hexAlpha(accent,.35)}`, borderRadius:14, padding:'16px 22px' }}>
-                  <div style={{ fontSize:26, letterSpacing:'.28em', textTransform:'uppercase', fontWeight:900, opacity:.8 }}>RFET</div>
+                  <div style={{ fontSize:26, letterSpacing:'.28em', textTransform:'uppercase', fontWeight:900, opacity:.8 }}>RANK</div>
                   <div style={{ fontSize:82, fontWeight:900, lineHeight:1, color:accent, fontVariantNumeric:'tabular-nums' }}>#{player.ranking_rfet}</div>
                 </div>
               )}

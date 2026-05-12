@@ -187,7 +187,7 @@ export default function NewPlayerPage() {
             </select>
           </div>
           <div>
-            <label className={lc}>Ranking RFET</label>
+            <label className={lc}>Ranking nacional</label>
             <input type="number" className={ic} value={form.ranking_rfet} onChange={e => set('ranking_rfet', e.target.value)} placeholder="1" />
           </div>
           <div>
@@ -203,7 +203,7 @@ export default function NewPlayerPage() {
         </div>
         <div>
           <label className={lc}>Instagram (@handle)</label>
-          <input className={ic} value={form.social_instagram} onChange={e => set('social_instagram', e.target.value)} placeholder="carlosrfet" />
+          <input className={ic} value={form.social_instagram} onChange={e => set('social_instagram', e.target.value)} placeholder="@nombre.usuario" />
         </div>
 
         {error && <div className="bg-red-900/30 border border-red-700 rounded-xl px-4 py-3 text-red-300 text-sm">{error}</div>}

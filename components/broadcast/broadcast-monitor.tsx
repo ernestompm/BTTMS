@@ -188,7 +188,10 @@ export function BroadcastMonitor({ tournament, initialMatches, initialLogs }: Pr
       <header className="sticky top-0 z-30 bg-gray-950/95 backdrop-blur border-b border-gray-800">
         <div className="max-w-[1700px] mx-auto px-4 py-3 flex items-center gap-3 flex-wrap">
           <div className="min-w-0">
-            <h1 className="text-lg font-bold text-white">📡 Broadcast Monitor</h1>
+            <h1 className="text-lg font-bold text-white">
+              📡 Broadcast Monitor{' '}
+              <span className="text-[11px] font-semibold tracking-widest uppercase text-gray-500">· Vinteon</span>
+            </h1>
             <p className="text-[11px] text-gray-500 truncate">{tournament?.name ?? '—'}</p>
           </div>
           <div className="flex-1" />

@@ -217,8 +217,10 @@ export default function BroadcastPage() {
       <div className="max-w-5xl mx-auto space-y-6">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="min-w-0">
-            <h1 className="text-2xl font-bold text-white font-score">TV Broadcast Dashboard</h1>
-            <p className="text-gray-400 text-sm">Control de emisión en directo · payload v3.0</p>
+            <h1 className="text-2xl font-bold text-white font-score">
+              TV Broadcast · <span style={{ background: 'linear-gradient(90deg, #f31948, #fc6f43)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Vinteon</span>
+            </h1>
+            <p className="text-gray-400 text-sm">Control de emisión en directo · Marcador Vinteon v3.0</p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             <a href="/dashboard" className="text-gray-500 hover:text-white text-sm px-2">← Panel</a>

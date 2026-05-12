@@ -719,7 +719,7 @@ export function JudgeClient({ initialMatch, userId, judgeName, timerConfig, adva
                 <input type="checkbox" checked={conformityChecked} onChange={(e) => setConformityChecked(e.target.checked)}
                   className="mt-0.5 w-5 h-5 accent-brand-red flex-shrink-0" />
                 <span className="text-gray-300 text-sm leading-snug">
-                  Confirmo que el resultado, las sanciones y el tiempo reflejados son correctos y se ajustan al reglamento RFET 2026.
+                  Confirmo que el resultado, las sanciones y el tiempo reflejados son correctos y se ajustan al reglamento oficial 2026.
                 </span>
               </label>
             </div>
@@ -976,7 +976,7 @@ export function JudgeClient({ initialMatch, userId, judgeName, timerConfig, adva
             <p className={`font-score font-black text-9xl tabular-nums leading-none mb-2 ${medTimer.secs <= 30 ? 'text-red-400' : 'text-white'}`}>
               {fmtMed(medTimer.secs)}
             </p>
-            <p className="text-teal-300/70 text-sm mb-8">3 min · RFET art. 27b</p>
+            <p className="text-teal-300/70 text-sm mb-8">3 min · Art. 27b reglamento</p>
             <button onClick={stopMedical} className="bg-teal-700 hover:bg-teal-600 text-white font-bold px-8 py-3.5 rounded-xl text-base transition-colors">
               Finalizar tiempo médico
             </button>

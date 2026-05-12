@@ -886,7 +886,7 @@ export function PlayerBioPacific({ visible, player, team, category, tournament }
                     background: `linear-gradient(135deg, ${hexAlpha(PAC.cyan,.20)} 0%, ${hexAlpha(PAC.coral,.20)} 100%)`,
                     border: `1px solid ${hexAlpha(PAC.cyan, .40)}`,
                   }}>
-                    <div style={pacKicker(PAC.cyanLt, 12)}>RFET</div>
+                    <div style={pacKicker(PAC.cyanLt, 12)}>RANK</div>
                     <div style={{ ...pacText(48, 300), lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>#{player.ranking_rfet}</div>
                   </div>
                 )}

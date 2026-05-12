@@ -184,7 +184,7 @@ export default async function DrawDetailPage({ params }: { params: Promise<{ cat
                   </p>
                   <p className="text-gray-500 text-xs">
                     {e.player1?.nationality}
-                    {e.player1?.ranking_rfet && ` · RFET #${e.player1.ranking_rfet}`}
+                    {e.player1?.ranking_rfet && ` · RANK #${e.player1.ranking_rfet}`}
                   </p>
                 </div>
                 <Badge variant={e.status === 'confirmed' ? 'success' : 'outline'}>{e.status}</Badge>
