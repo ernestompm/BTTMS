@@ -57,6 +57,42 @@ export function invalidateTournamentCache(tournamentId?: string) {
   else _tournamentCache.clear()
 }
 
+// Cache del draw por draw_id. El cuadro completo (entries + todos los
+// matches del cuadro) cambia rara vez durante un partido (solo cuando
+// otro match termina, se reemparejan slots, o el director edita el
+// bracket). 15 segundos es un buen compromiso: si en mitad de un punto
+// terminó otra QF, el siguiente push refresca; si no, no pagamos 150ms
+// extra de DB por cada punto del hot-path.
+const _drawCache = new Map<string, { entries: any[]; matches: any[]; expiresAt: number }>()
+const DRAW_CACHE_TTL_MS = 15_000
+
+async function loadDrawCached(service: any, drawId: string): Promise<{ entries: any[]; matches: any[] }> {
+  const now = Date.now()
+  const cached = _drawCache.get(drawId)
+  if (cached && cached.expiresAt > now) {
+    return { entries: cached.entries, matches: cached.matches }
+  }
+  const [entriesRes, matchesRes] = await Promise.all([
+    service.from('draw_entries').select(`*,
+      player1:players!player1_id(*),
+      player2:players!player2_id(*)
+    `).eq('draw_id', drawId),
+    service.from('matches').select(matchSelectCompact())
+      .eq('draw_id', drawId).order('round').order('match_number'),
+  ])
+  const entries = (entriesRes as any).data ?? []
+  const matches = (matchesRes as any).data ?? []
+  _drawCache.set(drawId, { entries, matches, expiresAt: now + DRAW_CACHE_TTL_MS })
+  return { entries, matches }
+}
+
+/** Limpia el draw cacheado — para cuando se sabe que cambió (otra
+ *  partida terminó, edición del bracket, etc.). */
+export function invalidateDrawCache(drawId?: string) {
+  if (drawId) _drawCache.delete(drawId)
+  else _drawCache.clear()
+}
+
 export async function buildBroadcastPayload(
   tournamentId: string,
   matchId?: string,
@@ -98,15 +134,13 @@ export async function buildBroadcastPayload(
   }
 
   // ── PASO 2: queries auxiliares ─────────────────────────────────────
-  // En modo 'lite' (point_scored/point_undone) saltamos SOLO el draw
-  // (cuadro completo con todas las entries y matches — la query más
-  // pesada). stats_by_set se calcula SIEMPRE para que el receptor
-  // disponga del desglose por set en cada push. Se ejecuta en paralelo
-  // con las otras queries, así que el coste real es ~100ms del SELECT
-  // de points, no se acumula con el resto.
+  // stats_by_set y draw se incluyen SIEMPRE en el JSON (las compositions
+  // de Singular las necesitan en cada push — sin ellas se ven los nulls).
+  // El draw va cacheado (DRAW_CACHE_TTL_MS = 15s) así que en el hot-path
+  // de un punto la lectura es instantánea desde memoria.
   const isLite = mode === 'lite'
-  const wantStatsBySet = true   // siempre — el receptor lo necesita en cada push
-  const wantDraw = !isLite
+  const wantStatsBySet = true
+  const wantDraw = true
 
   let reconciledScore: any = match?.score ?? null
   let judge: any = null
@@ -174,18 +208,12 @@ export async function buildBroadcastPayload(
       ? computeStatsBySet(service, match.id, (match.score?.sets ?? []) as Array<{ t1: number, t2: number }>)
       : Promise.resolve([])
 
+    // Draw via cache: 15s TTL evita rehacer la query pesada por cada
+    // punto. Cuando una match dentro del cuadro termina, el siguiente
+    // push (ya en modo full por ser match_finished, no point_scored)
+    // limpia el cache vía invalidateDrawCache desde el caller.
     const drawPromise = (wantDraw && match.draw_id)
-      ? Promise.all([
-          service.from('draw_entries').select(`*,
-            player1:players!player1_id(*),
-            player2:players!player2_id(*)
-          `).eq('draw_id', match.draw_id),
-          service.from('matches').select(matchSelectCompact())
-            .eq('draw_id', match.draw_id).order('round').order('match_number'),
-        ]).then(([{ data: entries }, { data: matches }]: any) => ({
-          entries: entries ?? [],
-          matches: matches ?? [],
-        }))
+      ? loadDrawCached(service, match.draw_id)
       : Promise.resolve({ entries: [], matches: [] })
 
     const [r, j, sb, draw] = await Promise.all([
@@ -250,7 +278,14 @@ export async function buildBroadcastPayload(
       entries: drawEntries.map(formatDrawEntry),
       // Lean: solo lo que pinta la composition "Cuadro" — round, match_number,
       // teams (con seed y players reducidos) y score (winner_team + sets).
-      matches: drawMatches.map((m: any) => formatDrawMatch(m, m.id === match.id)),
+      // Importante: para la match en curso usamos el match fresco (con
+      // score reconciliado) en vez del cacheado, que puede tener hasta
+      // 15s de retraso en el score. Para las otras matches del cuadro
+      // sí servimos del cache.
+      matches: drawMatches.map((m: any) => {
+        const isCurrent = m.id === match.id
+        return formatDrawMatch(isCurrent ? match : m, isCurrent)
+      }),
     } : null,
   }
 }

@@ -1,12 +1,22 @@
 import { waitUntil } from '@vercel/functions'
 import { createServiceSupabase } from './supabase-server'
-import { buildBroadcastPayload, type PayloadMode } from './broadcast-payload'
+import { buildBroadcastPayload, invalidateDrawCache, type PayloadMode } from './broadcast-payload'
 
 // Eventos de alta frecuencia → modo lite (mismo schema, sin
 // stats_by_set/draw para reducir latencia). El resto va en full.
 const LITE_EVENTS = new Set<string>([
   'point_scored',
   'point_undone',
+])
+
+// Eventos que cambian el cuadro (un match termina, rebracketing, etc.).
+// Tras esos eventos invalidamos el draw cache para que el push siguiente
+// recoja los datos frescos en vez de servir un cuadro de hasta 15s viejo.
+const DRAW_AFFECTING_EVENTS = new Set<string>([
+  'match_finished',
+  'match_retired',
+  'match_walkover',
+  'bracket_advanced',
 ])
 
 /**
@@ -108,6 +118,12 @@ async function doPush(
 
     const isLiteEvent = LITE_EVENTS.has(event)
     const mode: PayloadMode = isLiteEvent ? 'lite' : 'full'
+
+    // Si el evento cambia el cuadro, invalidamos la cache antes de
+    // construir el payload para que recoja los datos frescos.
+    if (DRAW_AFFECTING_EVENTS.has(event) && preBuiltMatch?.draw_id) {
+      invalidateDrawCache(preBuiltMatch.draw_id)
+    }
 
     const payload = await buildBroadcastPayload(tournamentId, matchId, mode, preBuiltMatch)
     if (!payload) {
