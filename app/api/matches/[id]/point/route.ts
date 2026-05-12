@@ -60,51 +60,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     statsAfter = applyBreakPointStats(statsAfter, serverTeam, true, winner_team)
   }
 
-  // Sequence: use MAX to be more reliable than COUNT under concurrent writes
-  const { data: maxRow } = await service
-    .from('points')
-    .select('sequence')
-    .eq('match_id', matchId)
-    .eq('is_undone', false)
-    .order('sequence', { ascending: false })
-    .limit(1)
-    .single()
-
-  const sequence = ((maxRow as any)?.sequence ?? 0) + 1
-
-  // Derive set/game context for the point log
-  const setNumber = (scoreBefore.sets?.length ?? 0) + 1
-  const isTB = scoreBefore.tiebreak_active || scoreBefore.super_tiebreak_active
-  const gameNumber = isTB
-    ? -1  // tiebreak points are not numbered like regular games
-    : (scoreBefore.current_set?.t1 ?? 0) + (scoreBefore.current_set?.t2 ?? 0) + 1
-
-  // El insert del point lo lanzamos pero NO esperamos aún — se ejecuta
-  // en paralelo con el update del match y el push de broadcast. Más
-  // abajo hacemos await del Promise.all para mantener la semántica.
-  const insertPointPromise = service.from('points').insert({
-    match_id: matchId,
-    sequence,
-    set_number: setNumber,
-    game_number: gameNumber,
-    server_team: serverTeam,
-    server_player_id: match.current_server_id,
-    winner_team,
-    winner_player_id: null,
-    point_type,
-    shot_direction: shot_direction ?? null,
-    fault_type: null,
-    is_break_point: wasBreakPoint,
-    is_game_point: false,
-    is_set_point: false,
-    is_match_point: false,
-    was_break_point_saved: wasBreakPoint && winner_team === serverTeam,
-    score_before: scoreBefore,
-    score_after: scoreAfter,
-    stats_after: statsAfter,
-    judge_id: user.id,
-    is_undone: false,
-  })
+  // ── BLOQUE EN MEMORIA: cálculo de TODO el estado nuevo sin tocar BBDD ─
+  // Esto se hace ANTES de cualquier query para que el push pueda salir
+  // hacia Singular Live lo antes posible.
 
   // Determine next serving team (alternates on game change)
   let nextServingTeam: 1 | 2 = serverTeam
@@ -151,18 +109,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     match_finished:       matchFinished,
   }
 
-  // ── DISPARO PARALELO: broadcast push + escrituras BBDD ─────────────
-  // El push usa los datos YA calculados en memoria (scoreAfter,
-  // statsAfter, _context, match con joins) — NO necesita esperar a
-  // que Supabase confirme la escritura. Por eso lo lanzamos en
-  // paralelo con el UPDATE: Singular recibe el JSON al mismo tiempo
-  // que la BBDD persiste el cambio, no después.
-  //
-  // Ahorro de latencia: ~250ms (el tiempo que tardaba el UPDATE en
-  // completar antes de empezar el push).
+  // ── DISPARO INMEDIATO del push a Singular ──────────────────────────
+  // Sale ANTES de queries de BBDD (sequence, insert, update).
+  // El receptor recibe el JSON al instante; las escrituras a BBDD
+  // viajan en paralelo y se completan después.
   if (match.broadcast_active) {
     const eventName = matchFinished ? 'match_finished' : 'point_scored'
-    // Construimos el match "predicho" con los joins originales + score nuevo
     const predictedMatch = {
       ...match,
       score: scoreAfter,
@@ -174,8 +126,52 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     pushBroadcastEvent(match.tournament_id, matchId, eventName, _context, { preBuiltMatch: predictedMatch })
   }
 
-  // Esperamos las dos escrituras a BBDD en paralelo. El push de
-  // broadcast ya viaja por su cuenta vía waitUntil.
+  // ── Escrituras a BBDD en paralelo (después del push) ────────────────
+  // Sequence query → insert point → update match. El update no depende
+  // del insert para empezar, pero ambos van en paralelo.
+  const setNumber = (scoreBefore.sets?.length ?? 0) + 1
+  const isTB = scoreBefore.tiebreak_active || scoreBefore.super_tiebreak_active
+  const gameNumber = isTB
+    ? -1
+    : (scoreBefore.current_set?.t1 ?? 0) + (scoreBefore.current_set?.t2 ?? 0) + 1
+
+  // Insert se hace tras conocer la sequence — encadenado.
+  const insertPointPromise = (async () => {
+    const { data: maxRow } = await service
+      .from('points')
+      .select('sequence')
+      .eq('match_id', matchId)
+      .eq('is_undone', false)
+      .order('sequence', { ascending: false })
+      .limit(1)
+      .single()
+    const sequence = ((maxRow as any)?.sequence ?? 0) + 1
+    return service.from('points').insert({
+      match_id: matchId,
+      sequence,
+      set_number: setNumber,
+      game_number: gameNumber,
+      server_team: serverTeam,
+      server_player_id: match.current_server_id,
+      winner_team,
+      winner_player_id: null,
+      point_type,
+      shot_direction: shot_direction ?? null,
+      fault_type: null,
+      is_break_point: wasBreakPoint,
+      is_game_point: false,
+      is_set_point: false,
+      is_match_point: false,
+      was_break_point_saved: wasBreakPoint && winner_team === serverTeam,
+      score_before: scoreBefore,
+      score_after: scoreAfter,
+      stats_after: statsAfter,
+      judge_id: user.id,
+      is_undone: false,
+    })
+  })()
+
+  // Update del match — independiente del insert. Va en paralelo.
   const updatePromise = service.from('matches').update({
     score: scoreAfter,
     stats: statsAfter,
