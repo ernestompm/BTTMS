@@ -482,84 +482,267 @@ function LiveStats({ match }: { match: any | null }) {
   )
 }
 
-// ─── SINGULAR CONTROL PANEL (TBD: API calls placeholder) ───────────────────
-function SingularControlPanel({ match }: { match: any | null }) {
-  // TBD — el usuario proporcionará las API calls de Singular. Por ahora
-  // dejamos los botones cableados pero sin endpoint (no-op + toast).
-  const [msg, setMsg] = useState<string | null>(null)
+// ─── SINGULAR CONTROL PANEL ────────────────────────────────────────────────
+//
+// Mapeado 1:1 con el Companion config "BEACHTENIS_COMPANION":
+//   - apiurl (Singular Live module) = "08NGiQwXHmlK6sYxiqE3cD"
+//   - subCompositions: PRE, Weather, Umpire, Cuadro, Venue, Torneo, Llluvia,
+//     BIO, Posiciones, Scorebug, MarcadorGrande, Stats.
+//   - "datosTablet" (checkbox del Root Composition) controla el modo
+//     MANUAL (false) / AUTO / SMART MANUAL (true).
+//
+// Cada botón "toggle" recuerda su estado en memoria (visibleComps Set):
+// el primer click hace animateIn; el segundo, animateOut. La REST API de
+// Singular Live (`apiv2/controlapps/<token>/control`) acepta una lista
+// de acciones; nosotros enviamos una a la vez vía /api/singular/control.
+const SINGULAR_TOKEN_KEY = 'bttms:broadcast-monitor:singular-token'
 
-  function fire(action: string) {
-    // TODO: cuando lleguen los endpoints de Singular, sustituir por:
-    //   fetch('/api/singular/...', { method: 'POST', body: JSON.stringify({ action }) })
-    setMsg(`[TBD] ${action}`)
-    setTimeout(() => setMsg(null), 1600)
+interface ToggleBtn { label: string, comp: string, color: 'green' | 'amber' | 'red' | 'gray' }
+
+const TOGGLE_GROUPS: Array<{ title: string, btns: ToggleBtn[] }> = [
+  {
+    title: 'Marcador en pantalla',
+    btns: [
+      { label: 'Scorebug',        comp: 'Scorebug',       color: 'green' },
+      { label: 'Marcador grande', comp: 'MarcadorGrande', color: 'amber' },
+      { label: 'Stats',           comp: 'Stats',          color: 'amber' },
+    ],
+  },
+  {
+    title: 'Pre-partido / info',
+    btns: [
+      { label: 'PRE intro',  comp: 'PRE',     color: 'green' },
+      { label: 'Weather',    comp: 'Weather', color: 'gray'  },
+      { label: 'Umpire',     comp: 'Umpire',  color: 'gray'  },
+      { label: 'Cuadro',     comp: 'Cuadro',  color: 'gray'  },
+      { label: 'Venue',      comp: 'Venue',   color: 'gray'  },
+      { label: 'Torneo',     comp: 'Torneo',  color: 'gray'  },
+      { label: 'Lluvia',     comp: 'Llluvia', color: 'gray'  },
+    ],
+  },
+  {
+    title: 'Bios y posiciones',
+    btns: [
+      { label: 'BIO jugador',  comp: 'BIO',        color: 'green' },
+      { label: 'Posiciones',   comp: 'Posiciones', color: 'gray'  },
+    ],
+  },
+]
+
+function SingularControlPanel({ match }: { match: any | null }) {
+  const [token, setToken] = useState<string>('')
+  const [draftToken, setDraftToken] = useState('')
+  const [editingToken, setEditingToken] = useState(false)
+  const [visible, setVisible] = useState<Set<string>>(new Set())   // compositions actualmente IN
+  const [mode, setMode] = useState<'MANUAL' | 'AUTO' | 'SMART' | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [feedback, setFeedback] = useState<{ ok: boolean, msg: string } | null>(null)
+
+  // Cargar token al montar
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(SINGULAR_TOKEN_KEY) ?? ''
+      setToken(saved)
+      if (!saved) setEditingToken(true)
+    } catch {}
+  }, [])
+
+  function saveToken() {
+    const v = draftToken.trim()
+    setToken(v)
+    try { localStorage.setItem(SINGULAR_TOKEN_KEY, v) } catch {}
+    setEditingToken(false)
+  }
+  function openTokenEditor() {
+    setDraftToken(token)
+    setEditingToken(true)
   }
 
-  const groups: Array<{ title: string, btns: Array<{ label: string, action: string, color?: 'red'|'amber'|'green'|'gray' }> }> = [
-    {
-      title: 'Marcador en pantalla',
-      btns: [
-        { label: 'Mostrar scorebug',  action: 'scorebug.show',  color: 'green' },
-        { label: 'Ocultar scorebug',  action: 'scorebug.hide',  color: 'gray' },
-        { label: 'Cambiar lado',      action: 'scorebug.flip',  color: 'gray' },
-      ],
-    },
-    {
-      title: 'Tercios y rótulos',
-      btns: [
-        { label: 'Rótulo de jugador 1', action: 'lower3.player1.show', color: 'green' },
-        { label: 'Rótulo de jugador 2', action: 'lower3.player2.show', color: 'green' },
-        { label: 'Marcador grande',     action: 'fullscreen.score',    color: 'amber' },
-        { label: 'Stats al aire',       action: 'fullscreen.stats',    color: 'amber' },
-        { label: 'Quitar tercios',      action: 'lower3.clear',        color: 'gray' },
-      ],
-    },
-    {
-      title: 'Momentos especiales',
-      btns: [
-        { label: 'Set Point',     action: 'fx.setpoint',   color: 'red' },
-        { label: 'Match Point',   action: 'fx.matchpoint', color: 'red' },
-        { label: 'Break Point',   action: 'fx.breakpoint', color: 'red' },
-        { label: 'Cambio de set', action: 'fx.setbreak',   color: 'amber' },
-      ],
-    },
-  ]
+  async function send(actions: any[], successLabel: string) {
+    if (!token) {
+      setFeedback({ ok: false, msg: 'Configura primero el Control App token de Singular' })
+      setEditingToken(true)
+      return null
+    }
+    setBusy(true)
+    setFeedback(null)
+    try {
+      const res = await fetch('/api/singular/control', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, actions }),
+      })
+      const data = await res.json().catch(() => ({}))
+      const ok = res.ok && data.ok !== false
+      setFeedback({
+        ok,
+        msg: ok
+          ? `✓ ${successLabel} · ${data.duration_ms ?? '?'}ms`
+          : `✗ ${data.error || `HTTP ${data.status ?? res.status}`}`,
+      })
+      setTimeout(() => setFeedback(null), 3000)
+      return ok
+    } catch (e: any) {
+      setFeedback({ ok: false, msg: `✗ Red: ${e?.message ?? 'desconocido'}` })
+      setTimeout(() => setFeedback(null), 3000)
+      return false
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function toggleComp(comp: string) {
+    const isVisible = visible.has(comp)
+    const state = isVisible ? 'Out' : 'In'
+    const ok = await send([{ subCompositionName: comp, state }], `${comp} ${state}`)
+    if (ok) {
+      setVisible(prev => {
+        const next = new Set(prev)
+        if (isVisible) next.delete(comp); else next.add(comp)
+        return next
+      })
+    }
+  }
+
+  async function setModeAction(label: 'MANUAL' | 'AUTO' | 'SMART', value: boolean) {
+    // datosTablet checkbox lo manda Companion como updateCheckboxNode
+    // sobre Root Composition. En la REST API equivale a un payload
+    // aplicado al subCompositionName "Root Composition".
+    const ok = await send(
+      [{ subCompositionName: 'Root Composition', payload: { datosTablet: value } }],
+      `Modo ${label}`,
+    )
+    if (ok) setMode(label)
+  }
+
+  async function clearAll() {
+    if (visible.size === 0) return
+    const actions = Array.from(visible).map(comp => ({ subCompositionName: comp, state: 'Out' as const }))
+    const ok = await send(actions, 'Borrar todo')
+    if (ok) setVisible(new Set())
+  }
 
   return (
     <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
-      <div className="px-4 py-2 border-b border-gray-800 flex items-center justify-between">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400">🎛 Control Singular</h3>
-        <span className="text-[10px] text-amber-400/80 uppercase tracking-widest font-mono">TBD · sin API conectada</span>
+      <div className="px-4 py-2 border-b border-gray-800 flex items-center justify-between gap-2 flex-wrap">
+        <div className="min-w-0">
+          <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400">🎛 Control Singular</h3>
+          <p className="text-[10px] text-gray-600 font-mono truncate max-w-[260px]">
+            {token ? `token: ${token.slice(0, 8)}…(${token.length} chars)` : 'sin token configurado'}
+          </p>
+        </div>
+        <button onClick={openTokenEditor} className="text-[10px] text-gray-400 hover:text-white px-2 py-1 rounded bg-gray-800 hover:bg-gray-700">
+          {token ? '✎ token' : '+ token'}
+        </button>
       </div>
+
+      {editingToken && (
+        <div className="px-4 py-3 border-b border-gray-800 bg-gray-950/60 space-y-2">
+          <label className="text-[10px] uppercase tracking-widest text-gray-500">
+            Control App ID de Singular Live
+          </label>
+          <input
+            type="text"
+            value={draftToken}
+            onChange={(e) => setDraftToken(e.target.value)}
+            placeholder="08NGiQwXHmlK6sYxiqE3cD"
+            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-[12px] text-white font-mono focus:outline-none focus:border-purple-500"
+          />
+          <div className="flex items-center gap-2 flex-wrap">
+            <button onClick={saveToken} disabled={!draftToken.trim()} className="px-3 py-1.5 rounded-lg bg-purple-700 hover:bg-purple-600 disabled:opacity-40 text-white text-[11px] font-semibold">
+              Guardar
+            </button>
+            <button onClick={() => setEditingToken(false)} className="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px]">
+              Cancelar
+            </button>
+            <button
+              onClick={() => setDraftToken('08NGiQwXHmlK6sYxiqE3cD')}
+              className="text-[10px] text-gray-500 hover:text-gray-300 ml-auto">
+              usar token del Companion
+            </button>
+          </div>
+          <p className="text-[10px] text-gray-600">
+            Endpoint: <code className="text-gray-500">https://app.singular.live/apiv2/controlapps/&lt;token&gt;/control</code>
+          </p>
+        </div>
+      )}
+
       <div className="p-3 space-y-3">
-        {groups.map(g => (
+        {/* Modos (datosTablet checkbox) */}
+        <div>
+          <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1.5 px-1">Modo de datos</p>
+          <div className="grid grid-cols-3 gap-1.5">
+            <ModeBtn label="MANUAL"  active={mode === 'MANUAL'} onClick={() => setModeAction('MANUAL', false)} disabled={busy}/>
+            <ModeBtn label="SMART"   active={mode === 'SMART'}  onClick={() => setModeAction('SMART',  true)}  disabled={busy}/>
+            <ModeBtn label="AUTO"    active={mode === 'AUTO'}   onClick={() => setModeAction('AUTO',   true)}  disabled={busy}/>
+          </div>
+        </div>
+
+        {TOGGLE_GROUPS.map(g => (
           <div key={g.title}>
             <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1.5 px-1">{g.title}</p>
             <div className="grid grid-cols-2 gap-1.5">
-              {g.btns.map(b => (
-                <button
-                  key={b.action}
-                  onClick={() => fire(b.action)}
-                  disabled={!match}
-                  className={`px-2.5 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wide transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-left ${
-                    b.color === 'red'   ? 'bg-red-900/40 hover:bg-red-800/60 border border-red-800/50 text-red-200' :
-                    b.color === 'amber' ? 'bg-amber-900/30 hover:bg-amber-800/50 border border-amber-800/50 text-amber-200' :
-                    b.color === 'green' ? 'bg-emerald-900/30 hover:bg-emerald-800/50 border border-emerald-800/50 text-emerald-200' :
-                                          'bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300'
-                  }`}>
-                  {b.label}
-                </button>
-              ))}
+              {g.btns.map(b => {
+                const on = visible.has(b.comp)
+                return (
+                  <button
+                    key={b.comp}
+                    onClick={() => toggleComp(b.comp)}
+                    disabled={busy}
+                    className={`relative px-2.5 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wide transition-colors disabled:opacity-30 text-left ${
+                      on ? 'bg-emerald-600/40 border border-emerald-400 text-emerald-100 shadow-[0_0_0_1px_rgba(52,211,153,.4)]' :
+                      b.color === 'red'   ? 'bg-red-900/30 hover:bg-red-800/50 border border-red-800/50 text-red-200' :
+                      b.color === 'amber' ? 'bg-amber-900/30 hover:bg-amber-800/50 border border-amber-800/50 text-amber-200' :
+                      b.color === 'green' ? 'bg-emerald-900/20 hover:bg-emerald-800/40 border border-emerald-800/40 text-emerald-200' :
+                                            'bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300'
+                    }`}>
+                    <span className="flex items-center gap-1.5">
+                      <span className={`w-1.5 h-1.5 rounded-full ${on ? 'bg-emerald-300 shadow-[0_0_6px_rgba(110,231,183,.8)]' : 'bg-gray-600'}`}/>
+                      {b.label}
+                    </span>
+                  </button>
+                )
+              })}
             </div>
           </div>
         ))}
-        {msg && (
-          <div className="text-[11px] text-amber-300 bg-amber-950/40 border border-amber-800/40 rounded-md p-2 font-mono">
-            {msg}
+
+        {/* Borrar todo */}
+        <button
+          onClick={clearAll}
+          disabled={busy || visible.size === 0}
+          className="w-full px-3 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wide bg-red-900/40 hover:bg-red-800/60 border border-red-800/50 text-red-200 disabled:opacity-30 transition-colors">
+          ⌫ Borrar todo ({visible.size})
+        </button>
+
+        {feedback && (
+          <div className={`text-[11px] rounded-md p-2 font-mono ${feedback.ok ? 'text-emerald-300 bg-emerald-950/40 border border-emerald-800/40' : 'text-red-300 bg-red-950/40 border border-red-800/40'}`}>
+            {feedback.msg}
+          </div>
+        )}
+
+        {!match && (
+          <div className="text-[10px] text-gray-600 text-center pt-1">
+            (los botones funcionan igual sin partido seleccionado; el partido solo se usa para el preview)
           </div>
         )}
       </div>
     </div>
+  )
+}
+
+function ModeBtn({ label, active, onClick, disabled }: { label: string, active: boolean, onClick: () => void, disabled?: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`px-2 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wide transition-colors disabled:opacity-30 ${
+        active
+          ? 'bg-purple-700 text-white shadow-[0_0_0_1px_rgba(168,85,247,.5)]'
+          : 'bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700'
+      }`}>
+      {label}
+    </button>
   )
 }
 
