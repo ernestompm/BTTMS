@@ -36,25 +36,52 @@ const PTS_DISPLAY = ['0', '15', '30', '40']
  */
 export type PayloadMode = 'lite' | 'full'
 
+// Cache de tournament en memoria del proceso serverless. Vercel reusa
+// la misma instancia entre invocaciones "warm" — para una sesión activa
+// con muchos puntos esto evita decenas de SELECT al endpoint de Supabase.
+const _tournamentCache = new Map<string, { data: any, expiresAt: number }>()
+const TOURNAMENT_CACHE_TTL_MS = 60_000
+
+async function loadTournamentCached(service: any, tournamentId: string): Promise<any> {
+  const now = Date.now()
+  const cached = _tournamentCache.get(tournamentId)
+  if (cached && cached.expiresAt > now) return cached.data
+  const { data } = await service.from('tournaments').select('*').eq('id', tournamentId).single()
+  if (data) _tournamentCache.set(tournamentId, { data, expiresAt: now + TOURNAMENT_CACHE_TTL_MS })
+  return data
+}
+
+/** Limpia la caché de tournament — útil tras un UPDATE de su config. */
+export function invalidateTournamentCache(tournamentId?: string) {
+  if (tournamentId) _tournamentCache.delete(tournamentId)
+  else _tournamentCache.clear()
+}
+
 export async function buildBroadcastPayload(
   tournamentId: string,
   matchId?: string,
   mode: PayloadMode = 'full',
+  /** Match pre-cargado con joins (court, entry1, entry2). Si se pasa,
+   *  saltamos el SELECT del match — gran ahorro de latencia en el
+   *  hot-path (point_scored), donde la API route YA tiene el match
+   *  en memoria con score actualizado. */
+  preBuiltMatch?: any,
 ) {
   const service = createServiceSupabase()
 
-  // ── PASO 1: tournament + match en paralelo ───────────────────────────
-  // Antes era secuencial (1º tournament, luego match). Ahora simultáneo.
-  const matchQuery = matchId
-    ? service.from('matches').select(matchSelect()).eq('id', matchId).single()
-    : service.from('matches').select(matchSelect())
-        .eq('tournament_id', tournamentId).eq('broadcast_active', true).limit(1).maybeSingle()
+  // ── PASO 1: tournament (cached) + match (o pre-built) en paralelo ──
+  const matchQuery = preBuiltMatch
+    ? Promise.resolve({ data: preBuiltMatch })
+    : matchId
+      ? service.from('matches').select(matchSelect()).eq('id', matchId).single()
+      : service.from('matches').select(matchSelect())
+          .eq('tournament_id', tournamentId).eq('broadcast_active', true).limit(1).maybeSingle()
 
   const [
-    { data: tournament },
+    tournament,
     { data: matchPrimary },
   ] = await Promise.all([
-    service.from('tournaments').select('*').eq('id', tournamentId).single(),
+    loadTournamentCached(service, tournamentId),
     matchQuery,
   ])
 

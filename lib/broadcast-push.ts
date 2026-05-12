@@ -26,9 +26,14 @@ export function pushBroadcastEvent(
   tournamentId: string,
   matchId: string,
   event: string,
-  extraContext?: Record<string, unknown>
+  extraContext?: Record<string, unknown>,
+  options?: {
+    /** Match pre-cargado con joins. Si se proporciona, el push no
+     *  hace su propia SELECT — ahorra ~150ms en el hot-path. */
+    preBuiltMatch?: any,
+  },
 ): void {
-  const promise = doPush(tournamentId, matchId, event, extraContext)
+  const promise = doPush(tournamentId, matchId, event, extraContext, options?.preBuiltMatch)
   promise.catch(() => {})
   try {
     waitUntil(promise)
@@ -42,7 +47,8 @@ async function doPush(
   tournamentId: string,
   matchId: string,
   event: string,
-  extraContext?: Record<string, unknown>
+  extraContext?: Record<string, unknown>,
+  preBuiltMatch?: any,
 ): Promise<void> {
   const service = createServiceSupabase()
 
@@ -103,7 +109,7 @@ async function doPush(
     const isLiteEvent = LITE_EVENTS.has(event)
     const mode: PayloadMode = isLiteEvent ? 'lite' : 'full'
 
-    const payload = await buildBroadcastPayload(tournamentId, matchId, mode)
+    const payload = await buildBroadcastPayload(tournamentId, matchId, mode, preBuiltMatch)
     if (!payload) {
       logRow.error = 'payload_build_failed'
       await writeLog()
