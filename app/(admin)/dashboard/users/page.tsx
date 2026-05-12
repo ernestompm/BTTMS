@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import type { AppUser } from '@/types'
 import { Badge } from '@/components/ui/badge'
 import { roleLabel } from '@/lib/labels'
-import { DEFAULT_TOURNAMENT_ID } from '@/lib/active-tournament'
+import { DEFAULT_TOURNAMENT_ID } from '@/lib/tournament-constants'
 
 const TOURNAMENT_ID = DEFAULT_TOURNAMENT_ID
 const roleColors: Record<string, any> = {

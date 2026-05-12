@@ -15,14 +15,22 @@
  * varios → busca el marcado como is_active, fallback al primero.
  */
 
+// IMPORTANTE: este módulo importa supabase-server (que usa next/headers).
+// Solo úsalo desde server components o route handlers — NUNCA desde
+// 'use client'. Para client components importa DEFAULT_TOURNAMENT_ID
+// desde './tournament-constants'.
 import { createServiceSupabase } from './supabase-server'
+import { DEFAULT_TOURNAMENT_ID } from './tournament-constants'
+
+// Reexportamos por compat con los pocos sitios server-side que ya lo
+// importaban desde aquí. Para client components, importa directamente
+// de './tournament-constants'.
+export { DEFAULT_TOURNAMENT_ID }
 
 /** ID del torneo activo. Cached durante la vida de la función serverless. */
 let cachedId: string | null = null
 let cachedAt = 0
 const CACHE_TTL_MS = 30_000  // 30s — basta para una request, no demasiado largo
-
-export const DEFAULT_TOURNAMENT_ID = '00000000-0000-0000-0000-000000000001'
 
 /**
  * Devuelve el ID del torneo activo. En el caso típico de instalación
@@ -53,12 +61,6 @@ export async function getActiveTournamentId(): Promise<string> {
     // Fallback al ID histórico si la consulta falla
   }
 
-  return DEFAULT_TOURNAMENT_ID
-}
-
-/** Versión síncrona para componentes que no pueden hacer await. Devuelve
- *  el fallback histórico — usar solo cuando no se puede llamar al async. */
-export function getDefaultTournamentId(): string {
   return DEFAULT_TOURNAMENT_ID
 }
 

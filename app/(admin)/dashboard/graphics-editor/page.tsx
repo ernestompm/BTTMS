@@ -19,7 +19,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import type { Tournament } from '@/types'
-import { DEFAULT_TOURNAMENT_ID } from '@/lib/active-tournament'
+import { DEFAULT_TOURNAMENT_ID } from '@/lib/tournament-constants'
 
 const TOURNAMENT_ID = DEFAULT_TOURNAMENT_ID
 
