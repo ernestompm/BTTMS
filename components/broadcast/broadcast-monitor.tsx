@@ -223,13 +223,16 @@ export function BroadcastMonitor({ tournament, initialMatches, initialLogs }: Pr
           <EndpointHealthCard health={health} tournament={tournament}/>
         </div>
 
-        {/* Fila 2: Stats live + Singular control */}
+        {/* Fila 2: Previews en iframes — venue (por matchId) + Singular (URL fija configurable) */}
+        <LivePreviews activeMatchId={activeMatchId}/>
+
+        {/* Fila 3: Stats live + Singular control */}
         <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-4">
           <LiveStats match={activeMatch}/>
           <SingularControlPanel match={activeMatch}/>
         </div>
 
-        {/* Fila 3: Log + Preview JSON */}
+        {/* Fila 4: Log + Preview JSON */}
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
           <LogPanel logs={logs} activeMatchId={activeMatchId}/>
           <PayloadPreview payload={payload} loading={loadingPayload} autoRefresh={autoRefresh}
@@ -625,6 +628,168 @@ function PayloadPreview({ payload, loading, autoRefresh, onToggleAuto, onRefresh
       <pre className="text-[10px] text-gray-300 overflow-auto bg-gray-950 p-3 max-h-[420px] font-mono leading-snug">
 {payload ? JSON.stringify(payload, null, 2) : (loading ? 'Cargando…' : 'Selecciona un partido')}
       </pre>
+    </div>
+  )
+}
+
+// ─── LIVE PREVIEWS (iframes: venue scoreboard + Singular graphics) ─────────
+//
+// Venue scoreboard URL se compone a partir del matchId activo
+// (siempre /scoreboard/<matchId>). Singular es una URL fija por usuario
+// (la misma para todos los partidos), guardada en localStorage para que
+// no requiera tocar la BD ni una migración.
+//
+// Ambos iframes tienen botón ↻ para forzar reload (clave para verificar
+// que la gráfica volvió a renderizar tras un cambio) y ⛶ para abrir en
+// nueva pestaña a tamaño real.
+const SINGULAR_URL_KEY = 'bttms:broadcast-monitor:singular-url'
+
+function LivePreviews({ activeMatchId }: { activeMatchId: string | null }) {
+  const [singularUrl, setSingularUrl] = useState<string>('')
+  const [editingSingular, setEditingSingular] = useState(false)
+  const [draftSingular, setDraftSingular] = useState('')
+  const [venueKey, setVenueKey] = useState(0)
+  const [singularKey, setSingularKey] = useState(0)
+
+  // Cargar la URL guardada al montar (cliente-only)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(SINGULAR_URL_KEY) ?? ''
+      setSingularUrl(saved)
+      if (!saved) setEditingSingular(true)
+    } catch {}
+  }, [])
+
+  function saveSingular() {
+    const v = draftSingular.trim()
+    setSingularUrl(v)
+    try { localStorage.setItem(SINGULAR_URL_KEY, v) } catch {}
+    setEditingSingular(false)
+    setSingularKey(k => k + 1)
+  }
+  function openEditor() {
+    setDraftSingular(singularUrl)
+    setEditingSingular(true)
+  }
+  function clearSingular() {
+    setSingularUrl(''); setDraftSingular('')
+    try { localStorage.removeItem(SINGULAR_URL_KEY) } catch {}
+  }
+
+  const venueUrl = activeMatchId ? `/scoreboard/${activeMatchId}` : ''
+
+  return (
+    <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+      {/* Venue scoreboard */}
+      <IframePreview
+        title="🖥 Marcador venue"
+        subtitle={activeMatchId ? `/scoreboard/${activeMatchId.slice(0, 8)}…` : 'sin partido'}
+        url={venueUrl}
+        iframeKey={venueKey}
+        onReload={() => setVenueKey(k => k + 1)}
+        emptyMsg="Selecciona un partido para previsualizar el marcador venue"
+      />
+
+      {/* Singular graphics */}
+      <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden flex flex-col">
+        <div className="px-4 py-2 border-b border-gray-800 flex items-center justify-between gap-2 flex-wrap">
+          <div className="min-w-0">
+            <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400">🎬 Singular preview</h3>
+            <p className="text-[10px] text-gray-600 font-mono truncate max-w-[320px]">{singularUrl || 'sin URL configurada'}</p>
+          </div>
+          <div className="flex items-center gap-1.5">
+            {singularUrl && (
+              <>
+                <button onClick={() => setSingularKey(k => k + 1)} className="text-[10px] text-gray-400 hover:text-white px-1.5 py-1 rounded bg-gray-800 hover:bg-gray-700">↻</button>
+                <a href={singularUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-gray-400 hover:text-white px-1.5 py-1 rounded bg-gray-800 hover:bg-gray-700">⛶</a>
+              </>
+            )}
+            <button onClick={openEditor} className="text-[10px] text-gray-400 hover:text-white px-2 py-1 rounded bg-gray-800 hover:bg-gray-700">
+              {singularUrl ? '✎ URL' : '+ URL'}
+            </button>
+          </div>
+        </div>
+
+        {editingSingular && (
+          <div className="px-4 py-3 border-b border-gray-800 bg-gray-950/60 space-y-2">
+            <label className="text-[10px] uppercase tracking-widest text-gray-500">URL de Singular (output / preview share link)</label>
+            <input
+              type="url"
+              value={draftSingular}
+              onChange={(e) => setDraftSingular(e.target.value)}
+              placeholder="https://app.singular.live/output/..."
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-[12px] text-white font-mono focus:outline-none focus:border-purple-500"
+            />
+            <div className="flex items-center gap-2">
+              <button onClick={saveSingular} className="px-3 py-1.5 rounded-lg bg-purple-700 hover:bg-purple-600 text-white text-[11px] font-semibold">
+                Guardar
+              </button>
+              <button onClick={() => setEditingSingular(false)} className="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px]">
+                Cancelar
+              </button>
+              {singularUrl && (
+                <button onClick={clearSingular} className="ml-auto text-[10px] text-red-400 hover:text-red-300">
+                  Borrar URL
+                </button>
+              )}
+            </div>
+            <p className="text-[10px] text-gray-600">
+              Esta URL se guarda en tu navegador y se reutiliza para todos los partidos.
+            </p>
+          </div>
+        )}
+
+        <div className="relative bg-black flex-1 min-h-[260px]">
+          {singularUrl ? (
+            <iframe
+              key={singularKey}
+              src={singularUrl}
+              className="absolute inset-0 w-full h-full border-0"
+              referrerPolicy="no-referrer"
+              sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+              allow="autoplay; clipboard-write; encrypted-media; fullscreen"
+            />
+          ) : (
+            <div className="absolute inset-0 grid place-items-center text-gray-600 text-xs text-center px-6">
+              {editingSingular ? 'Pega arriba la URL pública de Singular' : 'Pulsa "+ URL" para añadir el preview de Singular'}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function IframePreview({ title, subtitle, url, iframeKey, onReload, emptyMsg }: {
+  title: string, subtitle: string, url: string, iframeKey: number, onReload: () => void, emptyMsg: string
+}) {
+  return (
+    <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden flex flex-col">
+      <div className="px-4 py-2 border-b border-gray-800 flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400">{title}</h3>
+          <p className="text-[10px] text-gray-600 font-mono truncate">{subtitle}</p>
+        </div>
+        {url && (
+          <div className="flex items-center gap-1.5">
+            <button onClick={onReload} className="text-[10px] text-gray-400 hover:text-white px-1.5 py-1 rounded bg-gray-800 hover:bg-gray-700">↻</button>
+            <a href={url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-gray-400 hover:text-white px-1.5 py-1 rounded bg-gray-800 hover:bg-gray-700">⛶</a>
+          </div>
+        )}
+      </div>
+      <div className="relative bg-black flex-1 min-h-[260px]">
+        {url ? (
+          <iframe
+            key={iframeKey}
+            src={url}
+            className="absolute inset-0 w-full h-full border-0"
+          />
+        ) : (
+          <div className="absolute inset-0 grid place-items-center text-gray-600 text-xs px-6 text-center">
+            {emptyMsg}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
