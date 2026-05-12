@@ -1,19 +1,20 @@
 'use client'
 // ============================================================================
-// CommentatorCIS — Dashboard tabbed para el comentarista
+// CommentatorCIS — Dashboard SIN tabs. Todo visible de un vistazo.
 // ============================================================================
-// TODO en una pantalla:
-//  - Top bar fija con score compacto + estado
-//  - Barra de tabs sticky
-//  - Contenido del tab activo (con scroll interno solo si hace falta)
+// Layout (vertical scroll, score header sticky):
 //
-// Tabs:
-//  📊 Stats  — con subfiltro Total / Set 1 / Set 2 / Set 3
-//  👤 Jugadores  — 4 bios en grid 2×2
-//  🏆 Cuadro
-//  📋 Resultados torneo
-//  ⏱ Log de puntos
-//  🤖 IA · sugerencias
+//   [TopBar]            ← sticky
+//   [Score header]      ← sticky
+//   ─────────────────────────────────────────────
+//   [Stats panel]                  ← full width, con filtro por set
+//   [Player bios: 2 columnas]      ← Equipo 1 | Equipo 2
+//   [Log puntos | Resultados | Cuadro]  ← 3 columnas
+//   [IA panel]                     ← colapsable, abre on demand
+//
+// El comentarista no tiene que hacer clic en pestañas. La info clave
+// (stats + bios + log) cae en la primera pantalla; con un scroll
+// alcanza el cuadro y los resultados previos.
 // ============================================================================
 
 import { useEffect, useMemo, useState } from 'react'
@@ -28,17 +29,6 @@ import { CommentatorBracketMini } from './bracket-mini'
 import { CommentatorRecentResults } from './recent-results'
 import { CommentatorPointLog } from './point-log'
 import { statsFromPoints } from './stats-from-points'
-
-type TabId = 'stats' | 'players' | 'bracket' | 'results' | 'log' | 'ai'
-
-const TABS: Array<{ id: TabId, label: string, icon: string }> = [
-  { id: 'stats',   label: 'Stats',      icon: '📊' },
-  { id: 'players', label: 'Jugadores',  icon: '👤' },
-  { id: 'bracket', label: 'Cuadro',     icon: '🏆' },
-  { id: 'results', label: 'Resultados', icon: '📋' },
-  { id: 'log',     label: 'Log puntos', icon: '⏱' },
-  { id: 'ai',      label: 'IA',         icon: '🤖' },
-]
 
 interface Props {
   currentUser: AppUser
@@ -55,9 +45,8 @@ export function CommentatorCIS({
   const supabase = createClient()
   const [match, setMatch] = useState<any>(initialMatch)
   const [pointLog, setPointLog] = useState<any[]>(initialPointLog)
-  const [tab, setTab] = useState<TabId>('stats')
 
-  // Realtime
+  // Realtime — partido
   useEffect(() => {
     const ch = supabase.channel(`cis-match-${initialMatch.id}`)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'matches', filter: `id=eq.${initialMatch.id}` },
@@ -66,6 +55,7 @@ export function CommentatorCIS({
     return () => { supabase.removeChannel(ch) }
   }, [initialMatch.id])
 
+  // Realtime — puntos
   useEffect(() => {
     const ch = supabase.channel(`cis-points-${initialMatch.id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'points', filter: `match_id=eq.${initialMatch.id}` },
@@ -80,20 +70,34 @@ export function CommentatorCIS({
   }, [initialMatch.id])
 
   return (
-    <div className="h-screen flex flex-col bg-gray-950 text-white">
+    <div className="min-h-screen flex flex-col bg-gray-950 text-white">
       <TopBar currentUser={currentUser} tournament={tournament} match={match}/>
       <CompactScoreHeader match={match}/>
-      <TabsBar active={tab} onChange={setTab} pendingCount={pointLog.length}/>
 
-      {/* Tab content — fills remaining height with internal scroll */}
-      <main className="flex-1 overflow-y-auto">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          {tab === 'stats' && <StatsTabPanel match={match} pointLog={pointLog}/>}
-          {tab === 'players' && <PlayersTabPanel match={match}/>}
-          {tab === 'bracket' && <CommentatorBracketMini matches={bracketMatches} highlightMatchId={match.id} category={match.category}/>}
-          {tab === 'results' && <CommentatorRecentResults previousMatches={previousMatches}/>}
-          {tab === 'log' && <CommentatorPointLog pointLog={pointLog} match={match}/>}
-          {tab === 'ai' && <CommentatorAIPanel match={match} tournament={tournament} previousMatches={previousMatches} pointLog={pointLog}/>}
+      <main className="flex-1">
+        <div className="max-w-[1600px] mx-auto px-4 py-4 space-y-4">
+
+          {/* ── Fila 1: Stats (col izq, ancha) + Log de puntos (col dcha, vertical) ── */}
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-4 items-start">
+            <StatsBlock match={match} pointLog={pointLog}/>
+            <LivePointLogPanel pointLog={pointLog} match={match}/>
+          </div>
+
+          {/* ── Fila 2: Bios de jugadores (2 columnas) ── */}
+          <PlayersBlock match={match}/>
+
+          {/* ── Fila 3: Cuadro + Resultados previos ── */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+            <Section title="🏆 Cuadro de la categoría">
+              <CommentatorBracketMini matches={bracketMatches} highlightMatchId={match.id} category={match.category}/>
+            </Section>
+            <Section title="📋 Resultados previos">
+              <CommentatorRecentResults previousMatches={previousMatches}/>
+            </Section>
+          </div>
+
+          {/* ── Fila 4: IA · colapsable ── */}
+          <CollapsibleAI match={match} tournament={tournament} previousMatches={previousMatches} pointLog={pointLog}/>
         </div>
       </main>
     </div>
@@ -104,8 +108,8 @@ export function CommentatorCIS({
 function TopBar({ currentUser, tournament, match }: { currentUser: AppUser, tournament: Tournament, match: any }) {
   const isLive = match.status === 'in_progress'
   return (
-    <div className="bg-gray-950/95 backdrop-blur border-b border-gray-800 flex-none">
-      <div className="max-w-7xl mx-auto px-4 py-2 flex items-center justify-between gap-3 text-sm">
+    <div className="bg-gray-950/95 backdrop-blur border-b border-gray-800 flex-none sticky top-0 z-30">
+      <div className="max-w-[1600px] mx-auto px-4 py-2 flex items-center justify-between gap-3 text-sm">
         <Link href="/commentator" className="text-gray-400 hover:text-white">← Partidos</Link>
         <div className="flex items-center gap-3 text-xs text-gray-500 flex-1 justify-center min-w-0 truncate">
           <span className="truncate">{tournament?.name}</span>
@@ -128,7 +132,7 @@ function TopBar({ currentUser, tournament, match }: { currentUser: AppUser, tour
   )
 }
 
-// ─── COMPACT SCORE HEADER ───────────────────────────────────────────────────
+// ─── COMPACT SCORE HEADER (sticky) ─────────────────────────────────────────
 function CompactScoreHeader({ match }: { match: any }) {
   const score = match.score as Score | null
   const isDoubles = match.match_type === 'doubles'
@@ -161,8 +165,8 @@ function CompactScoreHeader({ match }: { match: any }) {
   }
 
   return (
-    <div className="bg-gradient-to-b from-gray-900 to-gray-950 border-b border-gray-800 flex-none">
-      <div className="max-w-7xl mx-auto px-4 py-3 grid items-center gap-2"
+    <div className="bg-gradient-to-b from-gray-900 to-gray-950 border-b border-gray-800 flex-none sticky top-[37px] z-20">
+      <div className="max-w-[1600px] mx-auto px-4 py-3 grid items-center gap-2"
         style={{ gridTemplateColumns: `1fr ${Array(setCount).fill('60px').join(' ')} 70px 1fr ${Array(setCount).fill('60px').join(' ')} 70px` }}>
         {/* Team 1 */}
         <div className="text-right">
@@ -172,7 +176,6 @@ function CompactScoreHeader({ match }: { match: any }) {
             <span className="text-2xl font-bold uppercase tracking-tight" style={{ color: '#00e0c6' }}>{teamName(1)}</span>
           </div>
         </div>
-        {/* Sets T1 */}
         {Array.from({ length: setCount }).map((_, i) => (
           <SetCell key={`s1-${i}`} value={setVal(1, i)} isCurrent={i === finishedSets.length && isLive} accent="#00e0c6"/>
         ))}
@@ -225,39 +228,27 @@ function PointCell({ value, tb, accent }: { value: string, tb: boolean, accent: 
   )
 }
 
-// ─── TABS BAR ───────────────────────────────────────────────────────────────
-function TabsBar({ active, onChange, pendingCount }: { active: TabId, onChange: (t: TabId) => void, pendingCount: number }) {
+// ─── Helpers ────────────────────────────────────────────────────────────────
+function Section({ title, children, action }: { title: string, children: React.ReactNode, action?: React.ReactNode }) {
   return (
-    <div className="bg-gray-900 border-b border-gray-800 flex-none">
-      <div className="max-w-7xl mx-auto px-4 flex gap-1 overflow-x-auto">
-        {TABS.map(t => (
-          <button
-            key={t.id}
-            onClick={() => onChange(t.id)}
-            className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors text-sm font-medium whitespace-nowrap ${active === t.id
-              ? 'border-purple-500 text-white'
-              : 'border-transparent text-gray-500 hover:text-gray-300'}`}>
-            <span>{t.icon}</span>
-            <span>{t.label}</span>
-            {t.id === 'log' && pendingCount > 0 && (
-              <span className="text-[10px] bg-gray-800 text-gray-400 px-1.5 py-0.5 rounded-full tabular-nums">{pendingCount}</span>
-            )}
-          </button>
-        ))}
+    <div>
+      <div className="flex items-center justify-between mb-2 px-1">
+        <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400">{title}</h3>
+        {action}
       </div>
+      {children}
     </div>
   )
 }
 
-// ─── STATS TAB ──────────────────────────────────────────────────────────────
-function StatsTabPanel({ match, pointLog }: { match: any, pointLog: any[] }) {
+// ─── STATS BLOCK (con filtro por set) ─────────────────────────────────────
+function StatsBlock({ match, pointLog }: { match: any, pointLog: any[] }) {
   type Scope = 'total' | 1 | 2 | 3
   const [scope, setScope] = useState<Scope>('total')
 
   const setsPlayed = (match.score?.sets?.length ?? 0) + (match.status === 'in_progress' ? 1 : 0)
   const availableSets = Math.min(3, setsPlayed)
 
-  // Stats por set se calculan desde pointLog. Total usa match.stats si esta o computa.
   const stats = useMemo(() => {
     if (scope === 'total') return match.stats ?? statsFromPoints(pointLog)
     return statsFromPoints(pointLog, scope)
@@ -266,30 +257,31 @@ function StatsTabPanel({ match, pointLog }: { match: any, pointLog: any[] }) {
   const fakeMatch = { ...match, stats }
 
   return (
-    <div className="space-y-3">
-      {/* Filtro por set */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-xs text-gray-500 uppercase tracking-widest mr-2">Mostrar stats de:</span>
-        <ScopeBtn active={scope === 'total'} onClick={() => setScope('total')}>Total partido</ScopeBtn>
-        {Array.from({ length: availableSets }).map((_, i) => {
-          const n = i + 1
-          return (
-            <ScopeBtn key={n} active={scope === n} onClick={() => setScope(n as Scope)}>
-              Set {n}
-            </ScopeBtn>
-          )
-        })}
-        {availableSets === 0 && <span className="text-xs text-gray-600">Aún no se ha jugado ningún set</span>}
-      </div>
+    <Section
+      title="📊 Estadísticas en directo"
+      action={
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <ScopeBtn active={scope === 'total'} onClick={() => setScope('total')}>Total</ScopeBtn>
+          {Array.from({ length: availableSets }).map((_, i) => {
+            const n = i + 1
+            return (
+              <ScopeBtn key={n} active={scope === n} onClick={() => setScope(n as Scope)}>
+                Set {n}
+              </ScopeBtn>
+            )
+          })}
+        </div>
+      }
+    >
       <CommentatorStatsCompare match={fakeMatch}/>
-    </div>
+    </Section>
   )
 }
 function ScopeBtn({ active, onClick, children }: { active: boolean, onClick: () => void, children: React.ReactNode }) {
   return (
     <button
       onClick={onClick}
-      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${active
+      className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${active
         ? 'bg-purple-700 text-white'
         : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'}`}>
       {children}
@@ -297,24 +289,57 @@ function ScopeBtn({ active, onClick, children }: { active: boolean, onClick: () 
   )
 }
 
-// ─── PLAYERS TAB ────────────────────────────────────────────────────────────
-function PlayersTabPanel({ match }: { match: any }) {
+// ─── LIVE POINT LOG (col derecha) ─────────────────────────────────────────
+function LivePointLogPanel({ pointLog, match }: { pointLog: any[], match: any }) {
+  return (
+    <Section
+      title="⏱ Log puntos en vivo"
+      action={<span className="text-[10px] text-gray-600 tabular-nums">{pointLog.length}</span>}
+    >
+      <div className="max-h-[480px] overflow-y-auto rounded-2xl bg-gray-900 border border-gray-800">
+        <CommentatorPointLog pointLog={pointLog} match={match}/>
+      </div>
+    </Section>
+  )
+}
+
+// ─── PLAYERS BLOCK (2 columnas) ───────────────────────────────────────────
+function PlayersBlock({ match }: { match: any }) {
   const team1 = [match.entry1?.player1, match.entry1?.player2].filter(Boolean)
   const team2 = [match.entry2?.player1, match.entry2?.player2].filter(Boolean)
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <div className="space-y-3">
-        <h3 className="text-xs font-bold uppercase tracking-widest" style={{ color: '#00e0c6' }}>
-          Equipo 1
-        </h3>
-        {team1.map((p:any) => <CommentatorPlayerBio key={p.id} player={p} accent="cyan"/>)}
-      </div>
-      <div className="space-y-3">
-        <h3 className="text-xs font-bold uppercase tracking-widest" style={{ color: '#ff7b61' }}>
-          Equipo 2
-        </h3>
-        {team2.map((p:any) => <CommentatorPlayerBio key={p.id} player={p} accent="coral"/>)}
-      </div>
+      <Section title="👤 Equipo 1">
+        <div className="space-y-3">
+          {team1.map((p:any) => <CommentatorPlayerBio key={p.id} player={p} accent="cyan"/>)}
+        </div>
+      </Section>
+      <Section title="👤 Equipo 2">
+        <div className="space-y-3">
+          {team2.map((p:any) => <CommentatorPlayerBio key={p.id} player={p} accent="coral"/>)}
+        </div>
+      </Section>
     </div>
+  )
+}
+
+// ─── COLLAPSIBLE AI ────────────────────────────────────────────────────────
+function CollapsibleAI({ match, tournament, previousMatches, pointLog }: {
+  match: any, tournament: Tournament, previousMatches: any[], pointLog: any[]
+}) {
+  const [open, setOpen] = useState(false)
+  return (
+    <Section
+      title="🤖 IA · sugerencias y narrativa"
+      action={
+        <button
+          onClick={() => setOpen(o => !o)}
+          className="px-3 py-1 rounded-md text-[11px] font-medium bg-gray-800 hover:bg-gray-700 text-gray-300">
+          {open ? '▲ Ocultar' : '▼ Abrir'}
+        </button>
+      }
+    >
+      {open && <CommentatorAIPanel match={match} tournament={tournament} previousMatches={previousMatches} pointLog={pointLog}/>}
+    </Section>
   )
 }

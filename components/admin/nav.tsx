@@ -20,6 +20,7 @@ const navItems = [
   { href: '/judge', label: 'Arbitrar', icon: '⚖️', roles: ['super_admin','tournament_director','staff','judge'], group: 'live' },
   { href: '/commentator', label: 'Comentarista (CIS)', icon: '🎙️', roles: ['super_admin','tournament_director','commentator'], group: 'live' },
   { href: '/broadcast', label: 'TV Broadcast', icon: '📺', roles: ['super_admin','tournament_director'], group: 'live' },
+  { href: '/dashboard/broadcast-monitor', label: 'Monitor Broadcast', icon: '📡', roles: ['super_admin','tournament_director'], group: 'live' },
   // ── PRODUCCIÓN TV ────────────────────────────────────────────
   { href: '/dashboard/scoreboard', label: 'Marcador Venue', icon: '🖥️', roles: ['super_admin','tournament_director'], group: 'tv' },
   { href: '/dashboard/streaming', label: 'Streaming Grafismo', icon: '🎬', roles: ['super_admin','tournament_director','staff'], group: 'tv' },
