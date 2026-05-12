@@ -89,7 +89,7 @@ export function WarningModal({ warnings, team1Name, team2Name, onConfirm, onClos
   // Secondary confirmation for disqualification (terminal action)
   if (confirmStep && penalty === 'default') {
     return (
-      <div className="fixed inset-0 z-50 bg-red-950/96 flex flex-col justify-center p-4">
+      <div className="fixed inset-0 z-50 bg-red-950/95 backdrop-blur-md flex flex-col justify-center p-4">
         <div className="bg-red-950 rounded-3xl border-2 border-red-500 max-w-lg w-full mx-auto overflow-hidden shadow-2xl">
           <div className="px-6 py-5 border-b border-red-700 bg-red-900/50">
             <p className="text-red-100 font-black font-score text-2xl">⚠ DESCALIFICACIÓN</p>

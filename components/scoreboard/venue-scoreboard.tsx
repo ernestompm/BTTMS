@@ -172,7 +172,8 @@ export function VenueScoreboard({ initialMatch, config, tournamentName, sponsors
         @keyframes vsbBlink    { 0%,100%{opacity:1} 50%{opacity:.2} }
         @keyframes vsbSrvPulse { 0%,100%{box-shadow:0 0 0 0 rgba(239,106,76,.7)} 50%{box-shadow:0 0 0 18px rgba(239,106,76,0)} }
         @keyframes vsbSrvBadgePulse { 0%,100%{transform:scale(1);filter:brightness(1)} 50%{transform:scale(1.04);filter:brightness(1.18)} }
-        @keyframes vsbSrvBallSpin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+        @keyframes vsbSrvArrow { 0%,100%{transform:translateX(0);opacity:1} 50%{transform:translateX(4px);opacity:.55} }
+        @keyframes vsbSrvDot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.35;transform:scale(.78)} }
         @keyframes cardIn      { from{opacity:0;transform:translateY(40px) scale(.97);filter:blur(10px)} to{opacity:1;transform:none;filter:blur(0)} }
         @keyframes vsIn        { from{opacity:0;transform:scale(.5) rotate(-8deg);filter:blur(10px)} to{opacity:1;transform:none;filter:blur(0)} }
         @keyframes phaseIn     { from{opacity:0;transform:translateY(26px) scale(.985);filter:blur(12px)} to{opacity:1;transform:none;filter:blur(0)} }
@@ -760,10 +761,23 @@ function TeamRowLED({ team, serving, setCols, teamKey, isDoubles, servingPlayerI
           animation: 'vsbSrvBadgePulse 1.6s ease-in-out infinite',
         }}>
           <span aria-hidden style={{
-            display: 'inline-block',
-            fontSize: 28,
-            animation: 'vsbSrvBallSpin 2.2s linear infinite',
-          }}>🎾</span>
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+          }}>
+            <span style={{
+              display: 'inline-block',
+              width: 12, height: 12, borderRadius: '50%',
+              background: '#fff',
+              boxShadow: '0 0 12px rgba(255,255,255,.85)',
+              animation: 'vsbSrvDot 1.1s ease-in-out infinite',
+            }} />
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+              style={{ animation: 'vsbSrvArrow 1.1s ease-in-out infinite' }}>
+              <path d="M5 12h12M13 6l6 6-6 6" stroke="#fff" strokeWidth="3"
+                strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </span>
           <span>AL SAQUE</span>
         </div>
       )}

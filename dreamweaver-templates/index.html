@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>BTTMS — Plantillas editables</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;700;800;900&family=Inter:wght@400;700;800;900&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#0a1020; color:#fff; font-family:'Inter', system-ui, sans-serif; padding:48px; }
+  h1 { font-family:'Barlow Condensed', sans-serif; font-size:64px; font-weight:900; letter-spacing:-.01em; text-transform:uppercase; margin:0 0 8px 0; }
+  p.lead { font-size:18px; opacity:.7; max-width:760px; margin:0 0 48px 0; line-height:1.5; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(340px, 1fr)); gap:24px; max-width:1400px; }
+  a.card {
+    display:block; background:linear-gradient(180deg,#16213a 0%, #0d1426 100%);
+    border:1px solid rgba(255,255,255,.1); border-radius:14px; padding:28px 24px;
+    color:#fff; text-decoration:none; transition:.2s;
+  }
+  a.card:hover { transform:translateY(-3px); border-color:rgba(239,106,76,.55); box-shadow:0 12px 40px rgba(239,106,76,.18); }
+  a.card .tag { display:inline-block; padding:4px 12px; border-radius:999px; font-size:11px; font-weight:800; letter-spacing:.18em; text-transform:uppercase; margin-bottom:12px; }
+  a.card h2 { font-family:'Barlow Condensed', sans-serif; font-size:32px; font-weight:900; text-transform:uppercase; margin:0 0 8px 0; line-height:1; }
+  a.card p { font-size:14px; opacity:.7; margin:0; line-height:1.4; }
+  .tag-venue       { background:rgba(239,106,76,.2);  color:#ef6a4c; }
+  .tag-default     { background:rgba(255,255,255,.1); color:#fff; }
+  .tag-broadcast   { background:rgba(0,224,198,.2);   color:#00e0c6; }
+  .tag-tour        { background:rgba(74,144,194,.2);  color:#7dd3d8; }
+  .tag-pacific     { background:rgba(255,138,114,.2); color:#ff8a72; }
+  .tag-championship{ background:rgba(245,124,0,.2);   color:#f57c00; }
+</style>
+</head>
+<body>
+  <h1>Plantillas BTTMS</h1>
+  <p class="lead">Versiones HTML estáticas de las plantillas del sistema, editables en Dreamweaver. Edita lo que quieras y luego pásame el archivo para que yo aplique los cambios al código React real.</p>
+
+  <div class="grid">
+    <a class="card" href="venue-scoreboard.html">
+      <span class="tag tag-venue">Venue</span>
+      <h2>Marcador de pista</h2>
+      <p>Pantalla de la sede (1920×1080). Tres estados: pre-match, en directo y partido finalizado.</p>
+    </a>
+    <a class="card" href="graphics-default.html">
+      <span class="tag tag-default">Streaming · Default</span>
+      <h2>Graphics — Default</h2>
+      <p>Skin glass dark genérico. Intro, venue card, presentación, scorebug, bio jugador, stats.</p>
+    </a>
+    <a class="card" href="graphics-broadcast.html">
+      <span class="tag tag-broadcast">Streaming · Broadcast</span>
+      <h2>Graphics — Broadcast</h2>
+      <p>Estilo TV en vivo. Cards inclinadas (skewX), pills, sheen brillante, accent cyan + coral.</p>
+    </a>
+    <a class="card" href="graphics-tour.html">
+      <span class="tag tag-tour">Streaming · Tour</span>
+      <h2>Graphics — Tour</h2>
+      <p>Estilo WTA Tour. Navy compacto, tabs/pills, accent del torneo en datos clave.</p>
+    </a>
+    <a class="card" href="graphics-pacific.html">
+      <span class="tag tag-pacific">Streaming · Pacific</span>
+      <h2>Graphics — Pacific</h2>
+      <p>Estilo beach / sunset. Splashes orgánicos cyan + coral en esquinas, glass navy.</p>
+    </a>
+    <a class="card" href="graphics-championship.html">
+      <span class="tag tag-championship">Streaming · Championship</span>
+      <h2>Graphics — Championship</h2>
+      <p>Premium ATP/WTA. Naranja #f57c00 marca al líder/ganador. Aéreo, transparente.</p>
+    </a>
+  </div>
+</body>
+</html>

@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Graphics — Pacific skin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  /* ============================================================
+     STREAMING GRAPHICS — PACIFIC SKIN
+     Espejo de bttms/components/streaming/graphics-pacific.tsx
+     Beach / sunset · splashes orgánicos cyan + coral · glass navy
+     ============================================================ */
+  body { margin:0; background:#070b14; color:#fff; font-family:'Inter', system-ui, sans-serif; padding:32px 24px; }
+  h1.section { font-size:32px; font-weight:900; text-transform:uppercase; letter-spacing:.18em; margin:48px 0 18px 0; color:#5fc4cc; }
+  h1.section:first-of-type { margin-top:0; }
+  .stage-wrapper { width:960px; height:540px; position:relative; margin-bottom:8px; box-shadow:0 24px 60px rgba(0,0,0,.55); }
+  .stage-wrapper .stage { transform:scale(.5); transform-origin:top left; }
+  .ruler { font-size:13px; opacity:.5; letter-spacing:.18em; text-transform:uppercase; margin:0 0 28px 0; }
+
+  .stage {
+    width:1920px; height:1080px; position:relative; overflow:hidden;
+    /* Sunset sky base — el video del partido iría detrás. Lo simulamos */
+    background:linear-gradient(180deg, #ffd07a 0%, #ff8a72 35%, #4a90c2 75%, #0e1c29 100%);
+    color:#fff; font-family:'Inter', system-ui, sans-serif;
+    text-shadow:0 1px 2px rgba(0,0,0,.55), 0 2px 12px rgba(0,0,0,.40);
+  }
+
+  /* CORNER SPLASHES — la firma visual */
+  .splash {
+    position:absolute; width:520px; height:520px; border-radius:50%;
+    filter:blur(60px); pointer-events:none; z-index:0;
+  }
+  .splash.bl { left:-180px; bottom:-180px; background:radial-gradient(circle, rgba(95,196,204,1) 0%, rgba(95,196,204,0) 70%); opacity:.62; }
+  .splash.br { right:-180px; bottom:-180px; background:radial-gradient(circle, rgba(255,138,114,1) 0%, rgba(255,138,114,0) 70%); opacity:.55; }
+  .splash.tl { left:-200px; top:-200px; background:radial-gradient(circle, rgba(255,208,122,.8) 0%, transparent 70%); opacity:.45; }
+
+  /* GLASS dark navy card */
+  .glass {
+    background:linear-gradient(135deg, rgba(8,18,32,.68) 0%, rgba(15,28,52,.62) 100%);
+    border:1px solid rgba(255,255,255,.18);
+    box-shadow:0 24px 60px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.16);
+    backdrop-filter:blur(14px);
+    border-radius:36px;
+    color:#fff; position:relative;
+  }
+
+  /* Top pill horizontal cyan→blue→coral */
+  .grad-pill {
+    display:inline-block; padding:10px 32px; border-radius:999px;
+    background:linear-gradient(90deg, #5fc4cc 0%, #4a90c2 50%, #ff8a72 100%);
+    font-weight:800; letter-spacing:.24em; text-transform:uppercase;
+    color:#fff; font-size:18px; box-shadow:0 8px 24px rgba(74,144,194,.4);
+  }
+</style>
+</head>
+<body>
+
+<!-- ====================== 1) TOURNAMENT INTRO ====================== -->
+<h1 class="section">1. Tournament intro — takeover beach</h1>
+<p class="ruler">Sunset background · splashes orgánicos cyan + coral · glass navy con borde luminoso</p>
+<div class="stage-wrapper">
+  <div class="stage">
+    <div class="splash tl"></div>
+    <div class="splash bl"></div>
+    <div class="splash br"></div>
+
+    <div class="glass" style="position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:1300px; padding:80px 90px; text-align:center;">
+      <span class="grad-pill" style="margin-bottom:30px;">Beach Tennis · 2026</span>
+      <div style="font-size:130px; font-weight:900; line-height:.92; letter-spacing:-.02em; text-transform:uppercase; margin-top:24px;">
+        CAMPEONATO<br><span style="background:linear-gradient(90deg, #5fc4cc 0%, #4a90c2 50%, #ff8a72 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">DE ESPAÑA</span>
+      </div>
+      <div style="margin-top:32px; font-size:30px; font-weight:500; letter-spacing:.32em; text-transform:uppercase; opacity:.85;">
+        Marbella · 12 — 18 Junio
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====================== 2) MATCH PRESENTATION ====================== -->
+<h1 class="section">2. Match presentation — 3 columnas float</h1>
+<p class="ruler">Player blocks flotantes · número grande de seed sin marco · VS gigante con gradient</p>
+<div class="stage-wrapper">
+  <div class="stage">
+    <div class="splash bl"></div>
+    <div class="splash br"></div>
+
+    <!-- Top header floating -->
+    <div style="position:absolute; left:50%; top:60px; transform:translateX(-50%); text-align:center; z-index:5;">
+      <span class="grad-pill">OCTAVOS DE FINAL · SUB-18M</span>
+      <div style="margin-top:18px; font-size:46px; font-weight:900; letter-spacing:-.005em; text-transform:uppercase;">CAMPEONATO DE ESPAÑA · TENIS PLAYA</div>
+    </div>
+
+    <!-- Body -->
+    <div style="position:absolute; left:0; right:0; top:280px; bottom:80px; display:grid; grid-template-columns:1fr 320px 1fr; padding:0 100px; align-items:center; z-index:2;">
+
+      <!-- A -->
+      <div style="text-align:right;">
+        <div style="font-size:200px; font-weight:900; line-height:.85; color:#5fc4cc; letter-spacing:-.04em;">1</div>
+        <div style="margin-top:14px; display:flex; align-items:center; gap:18px; justify-content:flex-end;">
+          <span style="font-size:30px; font-weight:500; letter-spacing:.04em; text-transform:uppercase; opacity:.82;">JUAN CARLOS</span>
+          <img src="../public/Flags/ESP.jpg" alt="ESP" style="width:60px; height:40px; border-radius:6px; object-fit:cover; box-shadow:0 4px 12px rgba(0,0,0,.4);">
+        </div>
+        <div style="font-size:128px; font-weight:900; line-height:.92; text-transform:uppercase; letter-spacing:-.005em;">MARTÍNEZ</div>
+      </div>
+
+      <!-- VS -->
+      <div style="text-align:center;">
+        <div style="font-size:280px; font-weight:900; line-height:.85; letter-spacing:-.04em; background:linear-gradient(135deg, #5fc4cc 0%, #ff8a72 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">VS</div>
+      </div>
+
+      <!-- B -->
+      <div style="text-align:left;">
+        <div style="font-size:200px; font-weight:900; line-height:.85; color:#ff8a72; letter-spacing:-.04em;">4</div>
+        <div style="margin-top:14px; display:flex; align-items:center; gap:18px;">
+          <img src="../public/Flags/ITA.jpg" alt="ITA" style="width:60px; height:40px; border-radius:6px; object-fit:cover; box-shadow:0 4px 12px rgba(0,0,0,.4);">
+          <span style="font-size:30px; font-weight:500; letter-spacing:.04em; text-transform:uppercase; opacity:.82;">FRANCESCO</span>
+        </div>
+        <div style="font-size:128px; font-weight:900; line-height:.92; text-transform:uppercase; letter-spacing:-.005em;">ROSSI</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ====================== 3) BIG SCOREBOARD (live takeover) ====================== -->
+<h1 class="section">3. Big scoreboard — takeover (live)</h1>
+<p class="ruler">Glass card grande centrada · números flotantes sin marco · pill LIVE arriba</p>
+<div class="stage-wrapper">
+  <div class="stage">
+    <div class="splash bl"></div>
+    <div class="splash br"></div>
+
+    <div class="glass" style="position:absolute; left:50%; bottom:60px; transform:translateX(-50%); width:1700px; padding:34px 60px;">
+      <!-- LIVE pill -->
+      <div style="position:absolute; left:50%; top:-22px; transform:translateX(-50%);">
+        <span style="display:inline-flex; align-items:center; gap:10px; padding:10px 28px; border-radius:999px; background:linear-gradient(90deg, #5fc4cc 0%, #4a90c2 50%, #ff8a72 100%); font-size:18px; font-weight:800; letter-spacing:.32em; text-transform:uppercase; color:#fff; box-shadow:0 8px 24px rgba(255,138,114,.4);">
+          <span style="width:12px; height:12px; border-radius:50%; background:#fff;"></span> EN DIRECTO · 01:23
+        </span>
+      </div>
+
+      <!-- Header (round + category) -->
+      <div style="text-align:center; padding-top:6px; padding-bottom:18px; border-bottom:1px solid rgba(255,255,255,.16); margin-bottom:18px;">
+        <span style="font-size:22px; font-weight:500; letter-spacing:.32em; text-transform:uppercase; opacity:.62;">OCTAVOS DE FINAL · SUB-18 MASCULINO</span>
+      </div>
+
+      <!-- Score grid -->
+      <div style="display:grid; grid-template-columns:60px minmax(0,1fr) 100px 100px 130px; gap:18px; align-items:center; padding:14px 0;">
+        <div></div>
+        <div style="font-size:14px; font-weight:500; letter-spacing:.32em; opacity:.5; text-transform:uppercase;">JUGADOR</div>
+        <div style="font-size:14px; font-weight:500; letter-spacing:.32em; opacity:.5; text-transform:uppercase; text-align:center;">SET 1</div>
+        <div style="font-size:14px; font-weight:500; letter-spacing:.32em; opacity:.5; text-transform:uppercase; text-align:center;">SET 2</div>
+        <div style="font-size:14px; font-weight:500; letter-spacing:.32em; opacity:.5; text-transform:uppercase; text-align:center;">PUNTOS</div>
+      </div>
+
+      <!-- Row A serving -->
+      <div style="display:grid; grid-template-columns:60px minmax(0,1fr) 100px 100px 130px; gap:18px; align-items:center; padding:18px 0; border-top:1px solid rgba(255,255,255,.12);">
+        <span style="display:inline-block; width:18px; height:18px; border-radius:50%; background:#5fc4cc; box-shadow:0 0 0 4px rgba(95,196,204,.30), 0 0 18px #5fc4cc; margin:0 auto;"></span>
+        <div style="display:flex; align-items:center; gap:18px;">
+          <img src="../public/Flags/ESP.jpg" alt="ESP" style="width:54px; height:36px; border-radius:5px; object-fit:cover;">
+          <span style="font-weight:800; font-size:46px; line-height:1; text-transform:uppercase; letter-spacing:-.005em;">MARTÍNEZ</span>
+          <span style="font-size:18px; font-weight:500; letter-spacing:.04em; text-transform:uppercase; opacity:.55;">(1)</span>
+        </div>
+        <span style="font-size:60px; font-weight:900; text-align:center; line-height:1;">6</span>
+        <span style="font-size:60px; font-weight:900; text-align:center; line-height:1; color:#5fc4cc;">3</span>
+        <span style="font-size:60px; font-weight:900; text-align:center; line-height:1; background:linear-gradient(135deg, #5fc4cc, #ff8a72); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">30</span>
+      </div>
+
+      <!-- Row B -->
+      <div style="display:grid; grid-template-columns:60px minmax(0,1fr) 100px 100px 130px; gap:18px; align-items:center; padding:18px 0; border-top:1px solid rgba(255,255,255,.12);">
+        <span></span>
+        <div style="display:flex; align-items:center; gap:18px;">
+          <img src="../public/Flags/ITA.jpg" alt="ITA" style="width:54px; height:36px; border-radius:5px; object-fit:cover;">
+          <span style="font-weight:800; font-size:46px; line-height:1; text-transform:uppercase; letter-spacing:-.005em;">ROSSI</span>
+          <span style="font-size:18px; font-weight:500; letter-spacing:.04em; text-transform:uppercase; opacity:.55;">(4)</span>
+        </div>
+        <span style="font-size:60px; font-weight:900; text-align:center; line-height:1; opacity:.5;">4</span>
+        <span style="font-size:60px; font-weight:900; text-align:center; line-height:1;">2</span>
+        <span style="font-size:60px; font-weight:900; text-align:center; line-height:1; color:#ff8a72;">40</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====================== 4) SCOREBUG mínimo flotante ====================== -->
+<h1 class="section">4. Scorebug — mínimo flotante (top-left)</h1>
+<p class="ruler">Glass compacto · sin invadir pantalla · indicador de saque cyan</p>
+<div class="stage-wrapper">
+  <div class="stage">
+    <div class="splash bl"></div>
+    <div class="splash br"></div>
+
+    <div class="glass" style="position:absolute; left:60px; top:60px; padding:18px 24px; border-radius:24px; min-width:540px;">
+      <div style="display:grid; grid-template-columns:auto 1fr 50px 50px 70px; gap:16px; align-items:center; padding:8px 0;">
+        <span style="display:inline-block; width:14px; height:14px; border-radius:50%; background:#5fc4cc; box-shadow:0 0 0 3px rgba(95,196,204,.30);"></span>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <img src="../public/Flags/ESP.jpg" alt="ESP" style="width:40px; height:26px; border-radius:3px; object-fit:cover;">
+          <span style="font-weight:800; font-size:34px; line-height:1; text-transform:uppercase;">MARTÍNEZ</span>
+        </div>
+        <span style="font-size:34px; font-weight:900; text-align:center;">6</span>
+        <span style="font-size:34px; font-weight:900; text-align:center; color:#5fc4cc;">3</span>
+        <span style="font-size:34px; font-weight:900; text-align:center; color:#fff; background:linear-gradient(135deg, #5fc4cc, #4a90c2); border-radius:8px; padding:2px 0;">30</span>
+      </div>
+      <div style="height:1px; background:rgba(255,255,255,.1); margin:6px 0;"></div>
+      <div style="display:grid; grid-template-columns:auto 1fr 50px 50px 70px; gap:16px; align-items:center; padding:8px 0;">
+        <span></span>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <img src="../public/Flags/ITA.jpg" alt="ITA" style="width:40px; height:26px; border-radius:3px; object-fit:cover;">
+          <span style="font-weight:800; font-size:34px; line-height:1; text-transform:uppercase;">ROSSI</span>
+        </div>
+        <span style="font-size:34px; font-weight:900; text-align:center; opacity:.5;">4</span>
+        <span style="font-size:34px; font-weight:900; text-align:center;">2</span>
+        <span style="font-size:34px; font-weight:900; text-align:center; color:#fff; background:linear-gradient(135deg, #ff8a72, #ffd07a); border-radius:8px; padding:2px 0;">40</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====================== 5) WEATHER (blob orgánico real) ====================== -->
+<h1 class="section">5. Weather — blob orgánico SVG (esquina inferior)</h1>
+<p class="ruler">El único elemento con forma SVG asimétrica · path orgánico</p>
+<div class="stage-wrapper">
+  <div class="stage">
+    <div class="splash bl"></div>
+    <div class="splash br"></div>
+
+    <svg width="540" height="320" viewBox="0 0 100 60" style="position:absolute; right:60px; bottom:60px; filter:drop-shadow(0 24px 60px rgba(0,0,0,.4));">
+      <defs>
+        <linearGradient id="weatherBlob" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="rgba(8,18,32,.86)"/>
+          <stop offset="100%" stop-color="rgba(15,28,52,.78)"/>
+        </linearGradient>
+      </defs>
+      <!-- Asymmetric blob path -->
+      <path d="M10,25 C15,8 35,3 55,5 C78,7 96,18 95,38 C94,55 70,58 48,56 C25,53 5,42 10,25 Z"
+            fill="url(#weatherBlob)" stroke="rgba(255,255,255,.18)" stroke-width=".4"/>
+    </svg>
+
+    <div style="position:absolute; right:120px; bottom:120px; width:420px; padding:24px; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.55), 0 2px 12px rgba(0,0,0,.40);">
+      <div style="font-size:14px; font-weight:500; letter-spacing:.32em; opacity:.62; text-transform:uppercase;">PISTA 1 · MARBELLA</div>
+      <div style="display:flex; align-items:center; gap:24px; margin-top:8px;">
+        <div style="font-size:88px; font-weight:900; line-height:1; color:#ffd07a;">28°</div>
+        <div>
+          <div style="font-size:18px; font-weight:500; letter-spacing:.18em; opacity:.85; text-transform:uppercase;">Soleado</div>
+          <div style="font-size:14px; font-weight:500; opacity:.62;">Viento 6 km/h NE</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

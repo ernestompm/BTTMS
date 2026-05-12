@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Graphics — Broadcast skin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800;900&display=swap" rel="stylesheet">
+<style>
+  /* ============================================================
+     STREAMING GRAPHICS — BROADCAST SKIN
+     Espejo de bttms/components/streaming/graphics-broadcast.tsx
+     Cards skewX(-8deg) · sheen brillante · pills · accent CYAN + CORAL
+     ============================================================ */
+  body { margin:0; background:#040810; color:#fff; font-family:'Inter', system-ui, sans-serif; padding:32px 24px; }
+  h1.section { font-size:34px; font-weight:900; text-transform:uppercase; letter-spacing:.08em; margin:48px 0 18px 0; color:#00e0c6; font-style:italic; }
+  h1.section:first-of-type { margin-top:0; }
+  .stage-wrapper { width:960px; height:540px; position:relative; margin-bottom:8px; box-shadow:0 24px 60px rgba(0,0,0,.55); }
+  .stage-wrapper .stage { transform:scale(.5); transform-origin:top left; }
+  .ruler { font-size:13px; opacity:.5; letter-spacing:.18em; text-transform:uppercase; margin:0 0 28px 0; }
+
+  .stage {
+    width:1920px; height:1080px; position:relative; overflow:hidden;
+    background:linear-gradient(180deg, #0a1828 0%, #04070d 100%);
+    color:rgba(255,255,255,.96); font-family:'Inter', system-ui, sans-serif;
+  }
+  .stage::before {
+    content:''; position:absolute; inset:0;
+    background:
+      radial-gradient(700px 500px at 25% 30%, rgba(0,224,198,.18), transparent 60%),
+      radial-gradient(700px 400px at 75% 70%, rgba(255,123,97,.18), transparent 60%);
+  }
+
+  /* Speed lines decorativas */
+  .speedline {
+    position:absolute; height:6px; background:linear-gradient(90deg, transparent, rgba(0,224,198,.6), transparent);
+    transform:rotate(-13deg);
+  }
+
+  /* Glass dark broadcast */
+  .glass {
+    background:rgba(7,14,20,.72);
+    border:1px solid rgba(255,255,255,.24);
+    backdrop-filter:blur(14px);
+  }
+
+  /* Skewed card wrapper. The OUTER skews -8deg, INNER counter-skews +8deg */
+  .skew-card { transform:skewX(-8deg); position:relative; overflow:hidden; }
+  .skew-card .inner { transform:skewX(8deg); }
+
+  /* Sheen effect — visible static line on edited HTML so user sees it */
+  .sheen {
+    position:absolute; top:0; bottom:0; width:160px;
+    background:linear-gradient(105deg, transparent 0%, rgba(255,255,255,.18) 40%, rgba(255,255,255,.32) 50%, rgba(255,255,255,.18) 60%, transparent 100%);
+    left:65%; pointer-events:none;
+  }
+
+  .pill {
+    display:inline-block; padding:10px 26px; border-radius:999px;
+    font-weight:900; letter-spacing:.18em; text-transform:uppercase;
+    font-style:italic;
+  }
+
+  /* Bottom dual accent — cyan left, coral right */
+  .bottom-accent {
+    position:absolute; bottom:0; left:0; right:0; height:6px;
+    background:linear-gradient(90deg, #00e0c6 0%, #00e0c6 50%, #ff7b61 50%, #ff7b61 100%);
+  }
+</style>
+</head>
+<body>
+
+<!-- ====================== 1) TOURNAMENT INTRO ====================== -->
+<h1 class="section">1. Tournament intro</h1>
+<p class="ruler">Card centrada con skew · sheen barriendo · accent dual al pie</p>
+<div class="stage-wrapper">
+  <div class="stage">
+    <!-- Speed lines -->
+    <div class="speedline" style="top:120px; left:-200px; width:600px; opacity:.6;"></div>
+    <div class="speedline" style="top:280px; right:-200px; width:500px; opacity:.4; background:linear-gradient(90deg, transparent, rgba(255,123,97,.6), transparent);"></div>
+    <div class="speedline" style="bottom:200px; left:-150px; width:700px; opacity:.5;"></div>
+
+    <div class="skew-card glass" style="position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) skewX(-8deg); width:1400px; height:680px; padding:60px 80px;">
+      <div class="sheen"></div>
+      <div class="inner" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:36px; text-align:center; height:100%;">
+        <div style="width:280px; height:200px; border-radius:14px; background:linear-gradient(135deg, #00e0c6 0%, #ff7b61 100%); display:grid; place-items:center; font-weight:900; font-size:42px; letter-spacing:.18em; color:#04070d;">BTTMS</div>
+        <div style="font-size:118px; font-weight:900; line-height:.9; letter-spacing:-.02em; text-transform:uppercase; font-style:italic;">
+          BEACH TENNIS<br>CHAMPIONSHIP
+        </div>
+        <div style="font-size:30px; font-weight:800; letter-spacing:.34em; text-transform:uppercase; color:#00e0c6; font-style:italic;">
+          MARBELLA · 12 — 18 JUN 2026
+        </div>
+      </div>
+      <div class="bottom-accent"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ====================== 2) MATCH PRESENTATION ====================== -->
+<h1 class="section">2. Match presentation</h1>
+<p class="ruler">Doble card lateral skew · pill central con fase</p>
+<div class="stage-wrapper">
+  <div class="stage">
+    <div class="speedline" style="top:300px; left:-200px; width:600px;"></div>
+    <div class="speedline" style="bottom:300px; right:-200px; width:500px; background:linear-gradient(90deg, transparent, rgba(255,123,97,.6), transparent);"></div>
+
+    <!-- TEAM A -->
+    <div class="skew-card glass" style="position:absolute; left:80px; top:280px; width:780px; height:520px; padding:60px 80px; transform:skewX(-8deg);">
+      <div class="sheen"></div>
+      <div class="inner" style="height:100%; display:flex; flex-direction:column; justify-content:center;">
+        <div style="display:flex; align-items:center; gap:24px; margin-bottom:28px;">
+          <span style="font-size:32px; font-weight:900; color:#00e0c6; font-style:italic;">SEED 1</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:22px;">
+          <img src="../public/Flags/ESP.jpg" alt="ESP" style="width:96px; height:64px; border-radius:6px; object-fit:cover; box-shadow:0 4px 14px rgba(0,0,0,.5);">
+          <div>
+            <div style="font-size:34px; font-weight:700; opacity:.75; text-transform:uppercase; font-style:italic; letter-spacing:.04em;">JUAN CARLOS</div>
+            <div style="font-size:118px; font-weight:900; line-height:.92; text-transform:uppercase; font-style:italic; letter-spacing:-.01em; color:#fff;">MARTÍNEZ</div>
+          </div>
+        </div>
+      </div>
+      <div style="position:absolute; bottom:0; left:0; right:0; height:6px; background:#00e0c6;"></div>
+    </div>
+
+    <!-- VS PILL CENTER -->
+    <div style="position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);">
+      <div class="skew-card" style="background:linear-gradient(135deg, #00e0c6 0%, #ff7b61 100%); padding:24px 56px; box-shadow:0 16px 40px rgba(0,224,198,.4);">
+        <div class="inner">
+          <div style="font-size:28px; font-weight:900; letter-spacing:.32em; color:#04070d; font-style:italic; text-align:center; margin-bottom:6px;">OCTAVOS DE FINAL</div>
+          <div style="font-size:108px; font-weight:900; line-height:.85; color:#04070d; font-style:italic; letter-spacing:-.04em; text-align:center;">VS</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TEAM B -->
+    <div class="skew-card glass" style="position:absolute; right:80px; top:280px; width:780px; height:520px; padding:60px 80px; transform:skewX(-8deg);">
+      <div class="sheen"></div>
+      <div class="inner" style="height:100%; display:flex; flex-direction:column; justify-content:center; align-items:flex-end;">
+        <div style="display:flex; align-items:center; gap:24px; margin-bottom:28px;">
+          <span style="font-size:32px; font-weight:900; color:#ff7b61; font-style:italic;">SEED 4</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:22px; flex-direction:row-reverse;">
+          <img src="../public/Flags/ITA.jpg" alt="ITA" style="width:96px; height:64px; border-radius:6px; object-fit:cover; box-shadow:0 4px 14px rgba(0,0,0,.5);">
+          <div style="text-align:right;">
+            <div style="font-size:34px; font-weight:700; opacity:.75; text-transform:uppercase; font-style:italic; letter-spacing:.04em;">FRANCESCO</div>
+            <div style="font-size:118px; font-weight:900; line-height:.92; text-transform:uppercase; font-style:italic; letter-spacing:-.01em; color:#fff;">ROSSI</div>
+          </div>
+        </div>
+      </div>
+      <div style="position:absolute; bottom:0; left:0; right:0; height:6px; background:#ff7b61;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ====================== 3) SCOREBUG ====================== -->
+<h1 class="section">3. Scorebug — pills & skew (esquina superior izquierda)</h1>
+<p class="ruler">Cell pills (border-radius 999) en sets/games/points · italic uppercase</p>
+<div class="stage-wrapper">
+  <div class="stage">
+    <div class="skew-card glass" style="position:absolute; left:60px; top:60px; padding:18px 26px; min-width:620px; transform:skewX(-8deg);">
+      <div class="sheen"></div>
+      <div class="inner" style="display:flex; flex-direction:column; gap:10px;">
+
+        <!-- Header strip -->
+        <div style="display:flex; align-items:center; gap:14px; padding-bottom:8px; border-bottom:1px solid rgba(255,255,255,.16);">
+          <span style="font-size:18px; font-weight:800; letter-spacing:.32em; opacity:.6; text-transform:uppercase; font-style:italic;">OCTAVOS · SUB-18M</span>
+          <span style="flex:1;"></span>
+          <span style="font-size:18px; font-weight:800; opacity:.6; font-style:italic;">01:23</span>
+        </div>
+
+        <!-- Row A -->
+        <div style="display:grid; grid-template-columns:auto 1fr 60px 60px 80px; gap:14px; align-items:center; padding:8px 0;">
+          <span style="display:inline-block; width:18px; height:18px; border-radius:50%; background:#00e0c6; box-shadow:0 0 0 4px rgba(0,224,198,.30);"></span>
+          <div style="display:flex; align-items:center; gap:14px;">
+            <img src="../public/Flags/ESP.jpg" alt="ESP" style="width:50px; height:34px; border-radius:4px; object-fit:cover;">
+            <span style="font-weight:900; font-size:42px; line-height:1; text-transform:uppercase; font-style:italic; letter-spacing:.02em;">MARTÍNEZ</span>
+          </div>
+          <span style="font-size:38px; font-weight:900; text-align:center; font-style:italic;">6</span>
+          <span style="font-size:38px; font-weight:900; text-align:center; color:#00e0c6; font-style:italic;">3</span>
+          <span style="background:#00e0c6; color:#04070d; font-size:38px; font-weight:900; padding:4px 18px; border-radius:999px; text-align:center; font-style:italic;">30</span>
+        </div>
+
+        <!-- Row B -->
+        <div style="display:grid; grid-template-columns:auto 1fr 60px 60px 80px; gap:14px; align-items:center; padding:8px 0; border-top:1px solid rgba(255,255,255,.12);">
+          <span style="display:inline-block; width:18px; height:18px;"></span>
+          <div style="display:flex; align-items:center; gap:14px;">
+            <img src="../public/Flags/ITA.jpg" alt="ITA" style="width:50px; height:34px; border-radius:4px; object-fit:cover;">
+            <span style="font-weight:900; font-size:42px; line-height:1; text-transform:uppercase; font-style:italic; letter-spacing:.02em;">ROSSI</span>
+          </div>
+          <span style="font-size:38px; font-weight:900; text-align:center; font-style:italic; opacity:.5;">4</span>
+          <span style="font-size:38px; font-weight:900; text-align:center; font-style:italic;">2</span>
+          <span style="background:#ff7b61; color:#04070d; font-size:38px; font-weight:900; padding:4px 18px; border-radius:999px; text-align:center; font-style:italic;">40</span>
+        </div>
+
+      </div>
+      <div style="position:absolute; bottom:0; left:0; width:50%; height:4px; background:#00e0c6;"></div>
+      <div style="position:absolute; bottom:0; right:0; width:50%; height:4px; background:#ff7b61;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ====================== 4) PLAYER BIO ====================== -->
+<h1 class="section">4. Player bio (lateral)</h1>
+<p class="ruler">Card lateral skew con foto · datos en pills · accent inferior cyan</p>
+<div class="stage-wrapper">
+  <div class="stage">
+    <div class="speedline" style="top:200px; right:-200px; width:600px; background:linear-gradient(90deg, transparent, rgba(255,123,97,.6), transparent);"></div>
+
+    <div class="skew-card glass" style="position:absolute; left:60px; top:60px; bottom:60px; width:740px; padding:0; transform:skewX(-8deg);">
+      <div class="sheen"></div>
+      <div class="inner" style="height:100%; display:flex; flex-direction:column; padding:36px 44px;">
+
+        <!-- Header -->
+        <div style="display:flex; gap:24px; align-items:center; margin-bottom:24px;">
+          <div style="flex:none; width:240px; height:240px; border-radius:14px; overflow:hidden; border:2px solid #00e0c6; box-shadow:0 12px 30px rgba(0,224,198,.3); background:linear-gradient(135deg, #1a3656, #0a1828); display:grid; place-items:center; font-weight:900; font-size:32px; opacity:.6;">FOTO</div>
+          <div style="min-width:0; flex:1;">
+            <img src="../public/Flags/ESP.jpg" alt="ESP" style="width:80px; height:54px; border-radius:6px; object-fit:cover; margin-bottom:14px;">
+            <div style="font-size:38px; font-weight:700; opacity:.75; text-transform:uppercase; font-style:italic; line-height:1;">JUAN CARLOS</div>
+            <div style="font-size:78px; font-weight:900; line-height:.95; text-transform:uppercase; font-style:italic; color:#00e0c6; letter-spacing:-.01em;">MARTÍNEZ</div>
+          </div>
+        </div>
+
+        <!-- Pills with data -->
+        <div style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:24px;">
+          <span class="pill" style="background:rgba(0,224,198,.15); border:1px solid rgba(0,224,198,.4); color:#00e0c6; font-size:24px;">22 AÑOS</span>
+          <span class="pill" style="background:rgba(0,224,198,.15); border:1px solid rgba(0,224,198,.4); color:#00e0c6; font-size:24px;">182 CM</span>
+          <span class="pill" style="background:rgba(0,224,198,.15); border:1px solid rgba(0,224,198,.4); color:#00e0c6; font-size:24px;">DIESTRO</span>
+          <span class="pill" style="background:rgba(0,224,198,.15); border:1px solid rgba(0,224,198,.4); color:#00e0c6; font-size:24px;">MADRID</span>
+        </div>
+
+        <!-- Ranking row -->
+        <div style="display:flex; gap:18px;">
+          <div style="flex:1; padding:18px 22px; border:2px solid #00e0c6; border-radius:8px; background:rgba(0,224,198,.1);">
+            <div style="font-size:22px; font-weight:900; opacity:.8; letter-spacing:.28em; text-transform:uppercase; font-style:italic;">RFET</div>
+            <div style="font-size:78px; font-weight:900; line-height:1; color:#00e0c6; font-style:italic;">#12</div>
+          </div>
+          <div style="flex:1; padding:18px 22px; border:2px solid #ff7b61; border-radius:8px; background:rgba(255,123,97,.1);">
+            <div style="font-size:22px; font-weight:900; opacity:.8; letter-spacing:.28em; text-transform:uppercase; font-style:italic;">ITF</div>
+            <div style="font-size:78px; font-weight:900; line-height:1; color:#ff7b61; font-style:italic;">#48</div>
+          </div>
+        </div>
+
+        <!-- Titles -->
+        <div style="margin-top:24px; padding-top:18px; border-top:1px solid rgba(255,255,255,.16);">
+          <div style="font-size:22px; font-weight:900; letter-spacing:.32em; text-transform:uppercase; font-style:italic; color:#00e0c6; margin-bottom:14px;">PALMARÉS</div>
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <div style="display:flex; gap:18px;"><span style="font-size:28px; font-weight:900; color:#00e0c6; font-style:italic;">2025</span><span style="font-size:24px; font-weight:700; font-style:italic;">CAMPEÓN ANDALUZ SUB-23</span></div>
+            <div style="display:flex; gap:18px;"><span style="font-size:28px; font-weight:900; color:#00e0c6; font-style:italic;">2024</span><span style="font-size:24px; font-weight:700; font-style:italic;">SUBCAMPEÓN ESPAÑA SUB-21</span></div>
+          </div>
+        </div>
+
+      </div>
+      <div class="bottom-accent"></div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

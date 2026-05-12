@@ -148,14 +148,16 @@ function BreakOverlay({ title, subtitle, secs, onDismiss }: {
   title: string; subtitle: string; secs: number; onDismiss: () => void
 }) {
   return (
-    <div className="fixed inset-0 z-40 bg-gray-950/97 flex flex-col items-center justify-center gap-4">
-      <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">{subtitle}</p>
-      <p className="font-score font-black text-8xl tabular-nums text-white leading-none">{fmtMed(secs)}</p>
-      <p className="text-white font-black font-score text-2xl uppercase tracking-wide">{title}</p>
-      <button onClick={onDismiss}
-        className="mt-6 px-8 py-3 bg-gray-800 hover:bg-gray-700 rounded-xl text-gray-300 font-bold text-sm transition-colors">
-        Continuar ahora →
-      </button>
+    <div className="fixed inset-0 z-40 bg-gray-950/95 backdrop-blur-md flex items-center justify-center p-6">
+      <div className="w-full max-w-md rounded-3xl border border-white/10 bg-gray-900/85 shadow-2xl backdrop-blur-xl flex flex-col items-center justify-center gap-3 py-10 px-6">
+        <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">{subtitle}</p>
+        <p className="font-score font-black text-8xl tabular-nums text-white leading-none">{fmtMed(secs)}</p>
+        <p className="text-white font-black font-score text-2xl uppercase tracking-wide text-center">{title}</p>
+        <button onClick={onDismiss}
+          className="mt-6 px-8 py-3 bg-gray-800 hover:bg-gray-700 rounded-xl text-gray-200 font-bold text-sm transition-colors">
+          Continuar ahora →
+        </button>
+      </div>
     </div>
   )
 }
@@ -623,15 +625,17 @@ export function JudgeClient({ initialMatch, userId, judgeName, timerConfig, adva
   // Warmup countdown
   if (match.status === 'warmup') {
     return (
-      <div className="fixed inset-0 bg-gray-950 flex flex-col items-center justify-center gap-6 p-8">
-        <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">Calentamiento</p>
-        <p className="text-white font-black font-score text-2xl text-center">{t1Label}</p>
-        <p className="text-gray-500 text-base">vs</p>
-        <p className="text-white font-black font-score text-2xl text-center">{t2Label}</p>
-        <p className={`font-score font-black text-9xl tabular-nums leading-none mt-4 ${warmupTimer.secs <= 30 ? 'text-red-400 animate-pulse' : 'text-white'}`}>
-          {fmtMed(warmupTimer.secs)}
-        </p>
-        <p className="text-gray-600 text-sm">Tiempo de calentamiento · {fmtMed(timerConfig.warmup)} total</p>
+      <div className="fixed inset-0 bg-gray-950/95 backdrop-blur-md flex flex-col items-center justify-center gap-4 p-6">
+        <div className="w-full max-w-md rounded-3xl border border-white/10 bg-gray-900/85 shadow-2xl backdrop-blur-xl flex flex-col items-center justify-center gap-3 py-8 px-6">
+          <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">Calentamiento</p>
+          <p className="text-white font-black font-score text-2xl text-center">{t1Label}</p>
+          <p className="text-gray-500 text-base">vs</p>
+          <p className="text-white font-black font-score text-2xl text-center">{t2Label}</p>
+          <p className={`font-score font-black text-9xl tabular-nums leading-none mt-2 ${warmupTimer.secs <= 30 ? 'text-red-400 animate-pulse' : 'text-white'}`}>
+            {fmtMed(warmupTimer.secs)}
+          </p>
+          <p className="text-gray-500 text-xs">Tiempo de calentamiento · {fmtMed(timerConfig.warmup)} total</p>
+        </div>
         <button onClick={handleWarmupComplete} disabled={saving}
           className="mt-4 w-full max-w-sm h-20 rounded-2xl font-black font-score text-2xl text-white disabled:opacity-50 active:scale-95 transition-transform"
           style={{ background: 'linear-gradient(90deg,#f31948,#fc6f43)' }}>
@@ -886,7 +890,7 @@ export function JudgeClient({ initialMatch, userId, judgeName, timerConfig, adva
 
         {/* LET flash */}
         {letFlash && (
-          <div className="absolute inset-0 bg-blue-900/96 flex flex-col items-center justify-center z-10 pointer-events-none">
+          <div className="absolute inset-0 bg-blue-900/95 backdrop-blur-md flex flex-col items-center justify-center z-10 pointer-events-none">
             <p className="font-score font-black text-8xl text-blue-200 tracking-widest leading-none">LET</p>
             <p className="text-blue-300 text-2xl font-semibold mt-3">Repetir punto</p>
           </div>
@@ -894,7 +898,7 @@ export function JudgeClient({ initialMatch, userId, judgeName, timerConfig, adva
 
         {/* Medical team selector */}
         {showMedTeamSelector && (
-          <div className="absolute inset-0 bg-gray-950/96 flex flex-col items-center justify-center z-10 gap-5 p-8">
+          <div className="absolute inset-0 bg-gray-950/95 backdrop-blur-md flex flex-col items-center justify-center z-10 gap-5 p-8">
             <p className="text-white text-2xl font-black font-score">¿Tiempo médico para quién?</p>
             {([1, 2] as const).map((t) => {
               const name = t === 1 ? t1 : t2
@@ -961,20 +965,22 @@ export function JudgeClient({ initialMatch, userId, judgeName, timerConfig, adva
 
       {/* Medical overlay — fixed to cover everything */}
       {showMedical && (
-        <div className="fixed inset-0 z-50 bg-teal-950/97 flex flex-col items-center justify-center">
-          <p className="text-teal-300 text-xs font-bold uppercase tracking-widest mb-1">Tiempo médico</p>
-          {medTeam && (
-            <p className="text-teal-400 text-sm font-bold mb-4">
-              Equipo {medTeam}: {medTeam === 1 ? t1Label : t2Label}
+        <div className="fixed inset-0 z-50 bg-teal-950/90 backdrop-blur-md flex items-center justify-center p-6">
+          <div className="w-full max-w-md rounded-3xl border border-teal-400/15 bg-teal-900/80 shadow-2xl backdrop-blur-xl flex flex-col items-center justify-center py-10 px-6">
+            <p className="text-teal-300 text-xs font-bold uppercase tracking-widest mb-1">Tiempo médico</p>
+            {medTeam && (
+              <p className="text-teal-200 text-sm font-bold mb-4 text-center">
+                Equipo {medTeam}: {medTeam === 1 ? t1Label : t2Label}
+              </p>
+            )}
+            <p className={`font-score font-black text-9xl tabular-nums leading-none mb-2 ${medTimer.secs <= 30 ? 'text-red-400' : 'text-white'}`}>
+              {fmtMed(medTimer.secs)}
             </p>
-          )}
-          <p className={`font-score font-black text-9xl tabular-nums leading-none mb-2 ${medTimer.secs <= 30 ? 'text-red-400' : 'text-white'}`}>
-            {fmtMed(medTimer.secs)}
-          </p>
-          <p className="text-gray-500 text-sm mb-8">3 min · RFET art. 27b</p>
-          <button onClick={stopMedical} className="bg-teal-800 hover:bg-teal-700 text-white font-bold px-8 py-3.5 rounded-xl text-base transition-colors">
-            Finalizar tiempo médico
-          </button>
+            <p className="text-teal-300/70 text-sm mb-8">3 min · RFET art. 27b</p>
+            <button onClick={stopMedical} className="bg-teal-700 hover:bg-teal-600 text-white font-bold px-8 py-3.5 rounded-xl text-base transition-colors">
+              Finalizar tiempo médico
+            </button>
+          </div>
         </div>
       )}
 

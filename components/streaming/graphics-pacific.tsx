@@ -270,7 +270,7 @@ function PacPlayerCard({ entry, side, isDoubles, accent, teamLabel }: {
             {/* Lateralidad pill (right side) */}
             {p?.laterality && (
               <div style={{ ...pacKicker(C.lo, 9), textAlign: 'right', whiteSpace: 'nowrap' }}>
-                <span aria-hidden style={{ marginRight: 4 }}>🎾</span>
+                <span aria-hidden style={{ marginRight: 6, opacity: .65 }}>●</span>
                 {lateralityShort(p.laterality)}
               </div>
             )}
