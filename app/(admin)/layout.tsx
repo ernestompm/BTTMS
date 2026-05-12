@@ -32,8 +32,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <div className="flex min-h-screen bg-gray-950">
       <NavProgress />
       <AdminNav user={appUser as AppUser} />
-      <main className="flex-1 md:ml-56 pt-16 md:pt-6 px-4 pb-8 md:px-6 overflow-y-auto">
-        <div className="max-w-5xl mx-auto w-full">
+      {/* max-w generoso (1800px) — antes era 5xl (1024) y los dashboards
+          densos (broadcast-monitor, streaming) quedaban ahogados con
+          un mar de espacio vacío a la derecha. Las páginas con forms
+          se autocentran y respiran igual; los dashboards aprovechan
+          la pantalla. */}
+      <main className="flex-1 md:ml-56 pt-16 md:pt-6 px-4 pb-8 md:px-6 overflow-y-auto w-full">
+        <div className="max-w-[1800px] mx-auto w-full">
           {children}
         </div>
       </main>
