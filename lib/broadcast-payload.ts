@@ -115,51 +115,52 @@ export async function buildBroadcastPayload(
   let drawEntries: any[] = []
   let drawMatches: any[] = []
 
+  // ── Weather: SIEMPRE se carga (es per-tournament, no per-match) ──
+  // Antes estaba dentro del bloque `if (match)`, así que cuando no había
+  // partido activo seleccionado weather salía null. Ahora se ejecuta en
+  // paralelo con lo demás independientemente.
+  const weatherPromise = (async () => {
+    const WEATHER_TTL_SEC = parseInt(process.env.WEATHER_CACHE_SECONDS || '600')
+    try {
+      const { data: cached } = await service.from('weather_cache')
+        .select('data, updated_at').eq('tournament_id', tournamentId).maybeSingle()
+      if (cached) {
+        const ageSec = (Date.now() - new Date((cached as any).updated_at).getTime()) / 1000
+        if (ageSec < WEATHER_TTL_SEC) return (cached as any).data
+      }
+      const lat = (tournament as any)?.venue_lat
+      const lng = (tournament as any)?.venue_lng
+      if (lat == null || lng == null) return cached ? (cached as any).data : null
+      const { getWeather } = await import('@/lib/weather')
+      const fresh = await getWeather(Number(lat), Number(lng), `tournament:${tournamentId}`)
+      if (fresh) {
+        service.from('weather_cache').upsert({
+          tournament_id: tournamentId,
+          data: fresh,
+          updated_at: new Date().toISOString(),
+        }).then(() => {}, () => {})
+        return fresh
+      }
+      return cached ? (cached as any).data : null
+    } catch { return null }
+  })()
+
   if (match) {
-    // Judge y weather siempre se cargan — son pequeños y el receptor
-    // espera que estén presentes en cada push (no quiero el caso "el
-    // juez aparece a null en el primer push y luego cambia").
+    // ── Judge: con nombre completo y email para que la composition
+    // "Umpire" pueda mostrar lo que necesite. Antes solo enviábamos
+    // {id, name, role}; ampliado a {id, name, full_name, email, role}
+    // por si la composition usa otros campos.
     const judgePromise = match?.judge_id
       ? service.from('app_users')
           .select('id, full_name, email, role').eq('id', match.judge_id).single()
-          .then(({ data }: any) => data ? { id: data.id, name: data.full_name, role: data.role } : null)
+          .then(({ data }: any) => data ? {
+            id: data.id,
+            name: data.full_name,
+            full_name: data.full_name,
+            email: data.email,
+            role: data.role,
+          } : null)
       : Promise.resolve(null)
-
-    const weatherPromise = (async () => {
-      // Estrategia auto-reparadora: leemos weather_cache. Si la fila
-      // existe y es reciente (< WEATHER_TTL_SEC), la devolvemos. Si está
-      // vacía o caducada, vamos a Open-Meteo en línea con las coords del
-      // torneo y reescribimos la cache. Así no dependemos del cron — el
-      // cron sigue valiendo para mantenerla "caliente" entre pushes, pero
-      // no es requisito para que el JSON traiga weather.
-      const WEATHER_TTL_SEC = parseInt(process.env.WEATHER_CACHE_SECONDS || '600')
-      try {
-        const { data: cached } = await service.from('weather_cache')
-          .select('data, updated_at').eq('tournament_id', tournamentId).maybeSingle()
-        if (cached) {
-          const ageSec = (Date.now() - new Date((cached as any).updated_at).getTime()) / 1000
-          if (ageSec < WEATHER_TTL_SEC) return (cached as any).data
-        }
-        // Cache vacía o vieja → fetch en vivo. Necesitamos las coords del
-        // torneo (las cogemos del tournament cacheado en memoria).
-        const t = await loadTournamentCached(service, tournamentId)
-        const lat = (t as any)?.venue_lat
-        const lng = (t as any)?.venue_lng
-        if (lat == null || lng == null) return cached ? (cached as any).data : null
-        const { getWeather } = await import('@/lib/weather')
-        const fresh = await getWeather(Number(lat), Number(lng), `tournament:${tournamentId}`)
-        if (fresh) {
-          // No esperamos al upsert para no añadir latencia al push.
-          service.from('weather_cache').upsert({
-            tournament_id: tournamentId,
-            data: fresh,
-            updated_at: new Date().toISOString(),
-          }).then(() => {}, () => {})
-          return fresh
-        }
-        return cached ? (cached as any).data : null
-      } catch { return null }
-    })()
 
     // Reconcile siempre — si match.score está corrupto, no queremos
     // mandar datos malos al endpoint en NINGÚN evento.
@@ -187,16 +188,18 @@ export async function buildBroadcastPayload(
         }))
       : Promise.resolve({ entries: [], matches: [] })
 
-    const [r, j, w, sb, draw] = await Promise.all([
-      reconcilePromise, judgePromise, weatherPromise, statsBySetPromise, drawPromise,
+    const [r, j, sb, draw] = await Promise.all([
+      reconcilePromise, judgePromise, statsBySetPromise, drawPromise,
     ])
     reconciledScore = r
     judge = j
-    weather = w
     statsBySet = sb
     drawEntries = draw.entries
     drawMatches = draw.matches
   }
+
+  // Weather se carga siempre (per-tournament), corra paralelo
+  weather = await weatherPromise
 
   if (match?.id) match.score = reconciledScore
 

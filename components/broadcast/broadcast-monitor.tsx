@@ -75,7 +75,9 @@ export function BroadcastMonitor({ tournament, initialMatches, initialLogs }: Pr
     return () => { supabase.removeChannel(ch) }
   }, [tournamentId])
 
-  // ── Realtime: broadcast_logs (every PUT appears live) ──
+  // ── Realtime: broadcast_logs (cada PUT/POST aparece en vivo) ──
+  // Requiere que broadcast_logs esté en la publicación supabase_realtime
+  // (migración 021_broadcast_logs_realtime.sql).
   useEffect(() => {
     if (!tournamentId) return
     const ch = supabase.channel(`bmon-logs-${tournamentId}`)
@@ -84,6 +86,29 @@ export function BroadcastMonitor({ tournament, initialMatches, initialLogs }: Pr
         (p) => setLogs((l) => [p.new as LogRow, ...l].slice(0, 200))
       ).subscribe()
     return () => { supabase.removeChannel(ch) }
+  }, [tournamentId])
+
+  // ── Polling fallback (cada 5s) ──
+  // Red de seguridad por si la migración 021 no se ha aplicado todavía y
+  // los inserts no se replican por realtime. Hace un SELECT barato y solo
+  // re-renderiza si hay filas nuevas (compara created_at del top).
+  useEffect(() => {
+    if (!tournamentId) return
+    let cancelled = false
+    async function tick() {
+      const { data } = await supabase.from('broadcast_logs')
+        .select('*').eq('tournament_id', tournamentId)
+        .order('created_at', { ascending: false }).limit(100)
+      if (cancelled || !data) return
+      setLogs(prev => {
+        const newest = data[0]?.created_at
+        const prevNewest = prev[0]?.created_at
+        if (newest === prevNewest) return prev   // sin novedades → no re-render
+        return data as LogRow[]
+      })
+    }
+    const id = window.setInterval(tick, 5000)
+    return () => { cancelled = true; clearInterval(id) }
   }, [tournamentId])
 
   // ── Realtime: el match seleccionado (score, stats, status, serving…) ──
@@ -780,7 +805,7 @@ function SingularControlPanel({ match }: { match: any | null }) {
         {TOGGLE_GROUPS.map(g => (
           <div key={g.title}>
             <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1.5 px-1">{g.title}</p>
-            <div className="grid grid-cols-2 gap-1.5">
+            <div className="grid grid-cols-2 gap-2">
               {g.btns.map(b => {
                 const on = visible.has(b.comp)
                 return (
@@ -788,15 +813,15 @@ function SingularControlPanel({ match }: { match: any | null }) {
                     key={b.comp}
                     onClick={() => toggleComp(b.comp)}
                     disabled={busy}
-                    className={`relative px-2.5 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wide transition-colors disabled:opacity-30 text-left ${
+                    className={`relative px-3 py-3 rounded-lg text-xs font-bold uppercase tracking-wide transition-colors disabled:opacity-30 text-left ${
                       on ? 'bg-emerald-600/40 border border-emerald-400 text-emerald-100 shadow-[0_0_0_1px_rgba(52,211,153,.4)]' :
                       b.color === 'red'   ? 'bg-red-900/30 hover:bg-red-800/50 border border-red-800/50 text-red-200' :
                       b.color === 'amber' ? 'bg-amber-900/30 hover:bg-amber-800/50 border border-amber-800/50 text-amber-200' :
                       b.color === 'green' ? 'bg-emerald-900/20 hover:bg-emerald-800/40 border border-emerald-800/40 text-emerald-200' :
                                             'bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300'
                     }`}>
-                    <span className="flex items-center gap-1.5">
-                      <span className={`w-1.5 h-1.5 rounded-full ${on ? 'bg-emerald-300 shadow-[0_0_6px_rgba(110,231,183,.8)]' : 'bg-gray-600'}`}/>
+                    <span className="flex items-center gap-2">
+                      <span className={`w-2 h-2 rounded-full ${on ? 'bg-emerald-300 shadow-[0_0_8px_rgba(110,231,183,.9)]' : 'bg-gray-600'}`}/>
                       {b.label}
                     </span>
                   </button>
@@ -807,17 +832,17 @@ function SingularControlPanel({ match }: { match: any | null }) {
             {/* Controles inline del ScorebugWTA2 (Set + FLAG) — sólo
                 aparecen en el grupo "Marcador en pantalla" */}
             {g.title === 'Marcador en pantalla' && (
-              <div className="mt-2 ml-2 pl-3 border-l-2 border-gray-800 space-y-2">
+              <div className="mt-2.5 ml-2 pl-3 border-l-2 border-gray-800 space-y-2">
                 {/* Set 1 / Set 2 */}
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] text-gray-500 uppercase tracking-widest w-12">Set</span>
-                  <div className="flex gap-1 flex-1">
+                  <div className="flex gap-1.5 flex-1">
                     {([1, 2] as const).map(n => (
                       <button
                         key={n}
                         onClick={() => setScorebugSetValue(n)}
                         disabled={busy}
-                        className={`flex-1 px-2 py-1.5 rounded-md text-[11px] font-bold tabular-nums transition-colors disabled:opacity-30 ${
+                        className={`flex-1 px-2 py-2 rounded-md text-xs font-bold tabular-nums transition-colors disabled:opacity-30 ${
                           scorebugSet === n
                             ? 'bg-cyan-600/40 border border-cyan-400 text-cyan-100'
                             : 'bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300'
@@ -831,13 +856,13 @@ function SingularControlPanel({ match }: { match: any | null }) {
                     los valores del selector en Singular) */}
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] text-gray-500 uppercase tracking-widest w-12">Flag</span>
-                  <div className="flex gap-1 flex-1">
+                  <div className="flex gap-1.5 flex-1">
                     {(['IN', 'OUT'] as const).map(v => (
                       <button
                         key={v}
                         onClick={() => setScorebugFlagValue(v)}
                         disabled={busy}
-                        className={`flex-1 px-2 py-1.5 rounded-md text-[11px] font-bold uppercase tracking-wide transition-colors disabled:opacity-30 ${
+                        className={`flex-1 px-2 py-2 rounded-md text-xs font-bold uppercase tracking-wide transition-colors disabled:opacity-30 ${
                           scorebugFlag === v
                             ? (v === 'IN'
                                 ? 'bg-emerald-600/40 border border-emerald-400 text-emerald-100'
@@ -853,13 +878,13 @@ function SingularControlPanel({ match }: { match: any | null }) {
                 {/* Stats: selector isFinal (si/no) */}
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] text-gray-500 uppercase tracking-widest w-12">Final?</span>
-                  <div className="flex gap-1 flex-1">
+                  <div className="flex gap-1.5 flex-1">
                     {(['si', 'no'] as const).map(v => (
                       <button
                         key={v}
                         onClick={() => setStatsIsFinalValue(v)}
                         disabled={busy}
-                        className={`flex-1 px-2 py-1.5 rounded-md text-[11px] font-bold uppercase tracking-wide transition-colors disabled:opacity-30 ${
+                        className={`flex-1 px-2 py-2 rounded-md text-xs font-bold uppercase tracking-wide transition-colors disabled:opacity-30 ${
                           statsIsFinal === v
                             ? (v === 'si'
                                 ? 'bg-amber-600/40 border border-amber-400 text-amber-100'
@@ -881,19 +906,13 @@ function SingularControlPanel({ match }: { match: any | null }) {
         <button
           onClick={clearAll}
           disabled={busy || !token}
-          className="w-full px-3 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wide bg-red-900/40 hover:bg-red-800/60 border border-red-800/50 text-red-200 disabled:opacity-30 transition-colors">
+          className="w-full px-3 py-3 rounded-lg text-xs font-bold uppercase tracking-wide bg-red-900/40 hover:bg-red-800/60 border border-red-800/50 text-red-200 disabled:opacity-30 transition-colors">
           ⌫ Take out all output
         </button>
 
         {feedback && (
-          <div className={`text-[11px] rounded-md p-2 font-mono ${feedback.ok ? 'text-emerald-300 bg-emerald-950/40 border border-emerald-800/40' : 'text-red-300 bg-red-950/40 border border-red-800/40'}`}>
+          <div className={`text-xs rounded-md p-2.5 font-mono ${feedback.ok ? 'text-emerald-300 bg-emerald-950/40 border border-emerald-800/40' : 'text-red-300 bg-red-950/40 border border-red-800/40'}`}>
             {feedback.msg}
-          </div>
-        )}
-
-        {!match && (
-          <div className="text-[10px] text-gray-600 text-center pt-1">
-            (los botones funcionan igual sin partido seleccionado; el partido solo se usa para el preview)
           </div>
         )}
       </div>
@@ -1077,7 +1096,10 @@ function LivePreviews({ activeMatchId }: { activeMatchId: string | null }) {
           </div>
         )}
 
-        <div className="relative bg-black flex-1 min-h-[260px]">
+        {/* Ratio 16:9 (1920×1080) — el iframe respeta el aspecto del gráfico.
+            El contenido se escala vía width/height del iframe sin deformar
+            la composition de Singular. */}
+        <div className="relative bg-black w-full aspect-[16/9]">
           {singularUrl ? (
             <iframe
               key={singularKey}
@@ -1115,7 +1137,7 @@ function IframePreview({ title, subtitle, url, iframeKey, onReload, emptyMsg }: 
           </div>
         )}
       </div>
-      <div className="relative bg-black flex-1 min-h-[260px]">
+      <div className="relative bg-black w-full aspect-[16/9]">
         {url ? (
           <iframe
             key={iframeKey}
