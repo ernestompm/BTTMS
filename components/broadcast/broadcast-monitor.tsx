@@ -198,10 +198,17 @@ export function BroadcastMonitor({ tournament, initialMatches, initialLogs }: Pr
           </a>
         </div>
 
-        {/* Match selector strip */}
+        {/* Match selector strip — cada chip tiene DOS acciones:
+              · Click izq (zona del nombre) → seleccionar para preview
+              · Botón EMITIR / EN AIRE (parte derecha) → envía a Singular
+                (cambia matches.broadcast_active, lo que dispara el push
+                y activa el flujo del datastream para ese partido).
+            Sólo un partido puede estar EN AIRE a la vez: activar uno
+            corta automáticamente el anterior (lo gestiona el API
+            /api/matches/[id]/broadcast). */}
         <div className="max-w-[1700px] mx-auto px-4 pb-3">
           <div className="flex items-center gap-2 overflow-x-auto">
-            <span className="text-[10px] uppercase tracking-widest text-gray-600 flex-shrink-0">Emitiendo:</span>
+            <span className="text-[10px] uppercase tracking-widest text-gray-600 flex-shrink-0">Partidos:</span>
             {matches.length === 0 && <span className="text-xs text-gray-600">No hay partidos disponibles</span>}
             {matches.map(m => {
               const t1 = teamShortName(m.entry1)
@@ -209,32 +216,40 @@ export function BroadcastMonitor({ tournament, initialMatches, initialLogs }: Pr
               const isActive = m.broadcast_active
               const isSelected = m.id === activeMatchId
               return (
-                <button
+                <div
                   key={m.id}
-                  onClick={() => setActiveMatchId(m.id)}
-                  className={`flex-shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
-                    isSelected
-                      ? 'bg-purple-700/30 border-purple-500 text-white'
-                      : 'bg-gray-900 border-gray-800 text-gray-400 hover:text-white'
+                  className={`flex-shrink-0 flex items-stretch rounded-lg border overflow-hidden transition-colors ${
+                    isActive   ? 'border-red-500 bg-red-950/40 shadow-[0_0_0_1px_rgba(239,68,68,.5)]' :
+                    isSelected ? 'border-purple-500 bg-purple-700/20' :
+                                 'border-gray-800 bg-gray-900'
                   }`}>
-                  {isActive && <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"/>}
-                  <span>{t1} vs {t2}</span>
-                  <span className="text-[10px] text-gray-500">· {m.round ?? m.category}</span>
-                  {!isActive && isSelected && (
-                    <span
-                      onClick={(e) => { e.stopPropagation(); toggleBroadcast(m.id, true) }}
-                      className="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-red-700 hover:bg-red-600 text-white">
-                      EN AIRE
-                    </span>
+                  {/* Click izq: seleccionar para preview */}
+                  <button
+                    onClick={() => setActiveMatchId(m.id)}
+                    className={`flex items-center gap-2 px-3 py-2 text-xs font-semibold ${
+                      isSelected ? 'text-white' : 'text-gray-300 hover:text-white'
+                    }`}>
+                    {isActive && <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"/>}
+                    <span>{t1} vs {t2}</span>
+                    <span className="text-[10px] text-gray-500 ml-1">· {m.round ?? m.category}</span>
+                  </button>
+                  {/* Click dch: activar / cortar broadcast */}
+                  {isActive ? (
+                    <button
+                      onClick={() => toggleBroadcast(m.id, false)}
+                      title="Cortar emisión — deja de enviar este partido a Singular"
+                      className="px-3 py-2 text-[10px] font-black uppercase tracking-widest bg-red-700/50 hover:bg-red-700/80 text-red-50 border-l border-red-800/60 transition-colors">
+                      ● En aire
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => toggleBroadcast(m.id, true)}
+                      title="Emitir — pone este partido como activo y empuja su payload a Singular"
+                      className="px-3 py-2 text-[10px] font-black uppercase tracking-widest bg-gray-800 hover:bg-emerald-700 hover:text-white text-gray-400 border-l border-gray-800 transition-colors">
+                      Emitir
+                    </button>
                   )}
-                  {isActive && (
-                    <span
-                      onClick={(e) => { e.stopPropagation(); toggleBroadcast(m.id, false) }}
-                      className="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-gray-800 hover:bg-gray-700 text-gray-300">
-                      CORTAR
-                    </span>
-                  )}
-                </button>
+                </div>
               )
             })}
           </div>
