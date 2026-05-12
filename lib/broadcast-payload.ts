@@ -98,13 +98,14 @@ export async function buildBroadcastPayload(
   }
 
   // ── PASO 2: queries auxiliares ─────────────────────────────────────
-  // En modo 'lite' (point_scored/point_undone) saltamos las queries más
-  // caras: stats_by_set (replay de todos los puntos) y draw (entries +
-  // todos los matches del cuadro). Esos campos salen en el JSON como []
-  // y null. El receptor sigue viendo el MISMO schema en todos los eventos.
-  // En modo 'full' cargamos todo en paralelo.
+  // En modo 'lite' (point_scored/point_undone) saltamos SOLO el draw
+  // (cuadro completo con todas las entries y matches — la query más
+  // pesada). stats_by_set se calcula SIEMPRE para que el receptor
+  // disponga del desglose por set en cada push. Se ejecuta en paralelo
+  // con las otras queries, así que el coste real es ~100ms del SELECT
+  // de points, no se acumula con el resto.
   const isLite = mode === 'lite'
-  const wantStatsBySet = !isLite
+  const wantStatsBySet = true   // siempre — el receptor lo necesita en cada push
   const wantDraw = !isLite
 
   let reconciledScore: any = match?.score ?? null
