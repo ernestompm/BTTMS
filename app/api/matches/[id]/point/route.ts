@@ -184,10 +184,34 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     finished_at: matchFinished ? new Date().toISOString() : null,
   }).eq('id', matchId).select('*').single()
 
-  const [_pointResult, { data: updatedMatch }] = await Promise.all([
+  const [pointResult, { data: updatedMatch }] = await Promise.all([
     insertPointPromise,
     updatePromise,
   ])
+
+  // ── Comprobación crítica del INSERT del punto ──
+  // Si el INSERT falla (por ejemplo, un CHECK constraint que no incluye un
+  // point_type nuevo, o cualquier otra violación) y NO se comprueba el
+  // error, la app aparentaba funcionar: el match.score y match.stats se
+  // actualizaban pero la fila en points nunca se persistía. Eso rompe:
+  //   - undo (no encuentra punto que marcar)
+  //   - log de puntos (Singular y CIS leen de points)
+  //   - stats por set (statsFromPoints recorre points)
+  //
+  // Si pointResult tiene error, devolvemos 500 con detalle para que se
+  // vea inmediatamente en la consola del navegador del árbitro y en
+  // los logs de Vercel.
+  if ((pointResult as any)?.error) {
+    const err = (pointResult as any).error
+    console.error('points INSERT failed', err)
+    return NextResponse.json({
+      error: `No se pudo guardar el punto: ${err.message ?? 'error de BD'}`,
+      code: err.code,
+      hint: err.code === '23514'
+        ? 'CHECK constraint violado. Revisa point_type permitidos (migración 023).'
+        : undefined,
+    }, { status: 500 })
+  }
 
   // Auto-advance del ganador al siguiente partido del cuadro cuando este
   // punto cierra el match (independiente del trigger SQL 018).
