@@ -180,21 +180,33 @@ export async function buildBroadcastPayload(
   })()
 
   if (match) {
-    // ── Judge: con nombre completo y email para que la composition
-    // "Umpire" pueda mostrar lo que necesite. Antes solo enviábamos
-    // {id, name, role}; ampliado a {id, name, full_name, email, role}
-    // por si la composition usa otros campos.
+    // ── Judge / Umpire ──
+    // Prioridad de nombre:
+    //   1. match.judge_name (el nombre concreto que el árbitro físico
+    //      escribió al pisar la pista — distinto del usuario genérico
+    //      "juez@vinteon.com" compartido entre varios árbitros).
+    //   2. app_users.full_name del judge_id si no hay match.judge_name.
+    // Email y role siempre del app_user. El "name" canónico que
+    // consume Singular es siempre match.judge_name si existe.
+    const matchJudgeName: string | null = (match as any).judge_name?.trim() || null
     const judgePromise = match?.judge_id
       ? service.from('app_users')
           .select('id, full_name, email, role').eq('id', match.judge_id).single()
           .then(({ data }: any) => data ? {
             id: data.id,
-            name: data.full_name,
-            full_name: data.full_name,
+            name: matchJudgeName || data.full_name,
+            full_name: matchJudgeName || data.full_name,
+            account_name: data.full_name,        // por si la composition quisiera distinguir
             email: data.email,
             role: data.role,
-          } : null)
-      : Promise.resolve(null)
+          } : (matchJudgeName ? {
+            id: null, name: matchJudgeName, full_name: matchJudgeName,
+            account_name: null, email: null, role: null,
+          } : null))
+      : Promise.resolve(matchJudgeName ? {
+          id: null, name: matchJudgeName, full_name: matchJudgeName,
+          account_name: null, email: null, role: null,
+        } : null)
 
     // Reconcile siempre — si match.score está corrupto, no queremos
     // mandar datos malos al endpoint en NINGÚN evento.

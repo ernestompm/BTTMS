@@ -1,8 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabase, createServiceSupabase } from '@/lib/supabase-server'
 import { pushBroadcastEvent } from '@/lib/broadcast-push'
+import { applyPointToStats, applyBreakPointStats, emptyStats } from '@/lib/stats-engine'
+import { INITIAL_SCORE } from '@/lib/score-engine'
+import type { MatchStats, Score, ScoringSystem } from '@/types'
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+/**
+ * POST /api/matches/[id]/undo
+ *
+ * Marca el último punto no anulado como is_undone=true y restaura el match
+ * a su estado anterior. NOTA: requiere que las append-only rules de points
+ * estén borradas (migración 022_ensure_points_mutable.sql).
+ *
+ * Estrategia robusta:
+ *  1. Localiza el último punto activo.
+ *  2. Lo marca como is_undone=true.
+ *  3. RECOMPUTA score, stats y serving_team replayando todos los puntos
+ *     restantes. NO depende de stats_after del penúltimo punto (que podría
+ *     estar null en puntos viejos previos a la migración 007).
+ *  4. Persiste todo y dispara broadcast push.
+ */
+export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: matchId } = await params
   const supabase = await createServerSupabase()
   const service = createServiceSupabase()
@@ -20,44 +38,87 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'No es tu partido' }, { status: 403 })
   }
 
-  // Find last non-undone point
+  // ── 1. Localiza el último punto activo ──
   const { data: lastPoint } = await service.from('points')
     .select('*').eq('match_id', matchId).eq('is_undone', false)
-    .order('sequence', { ascending: false }).limit(1).single()
+    .order('sequence', { ascending: false }).limit(1).maybeSingle()
 
   if (!lastPoint) return NextResponse.json({ error: 'No hay puntos para deshacer' }, { status: 400 })
 
-  // Mark as undone (append-only; if rule is still active this silently no-ops — user should apply 005_fixes.sql)
-  await service.from('points').update({ is_undone: true }).eq('id', lastPoint.id)
+  // ── 2. Marca el punto como undone ──
+  // IMPORTANTE: si la migración 022 no se ha aplicado, este UPDATE es un
+  // no-op silencioso (la regla no_update_points lo intercepta). Para
+  // detectarlo, leemos el punto justo después y verificamos el flag.
+  await service.from('points').update({ is_undone: true }).eq('id', (lastPoint as any).id)
 
-  // After undoing, find the new "last" point to restore state from
-  const { data: prevPoint } = await service.from('points')
-    .select('*').eq('match_id', matchId).eq('is_undone', false)
-    .order('sequence', { ascending: false }).limit(1).single()
+  const { data: verify } = await service.from('points')
+    .select('is_undone').eq('id', (lastPoint as any).id).single()
+  if (!verify?.is_undone) {
+    return NextResponse.json({
+      error: 'No se pudo marcar el punto como deshecho. ¿Falta la migración 022_ensure_points_mutable.sql en la BD?',
+      hint: 'Ejecuta esa migración en Supabase SQL Editor y vuelve a intentar.',
+    }, { status: 500 })
+  }
 
-  // Restore score: if there's still a prior point, use its score_after; otherwise use score_before of the undone point
-  const restoredScore = prevPoint ? prevPoint.score_after : lastPoint.score_before
+  // ── 3. Recomputa score + stats replayando TODOS los puntos restantes ──
+  // En vez de fiarnos del stats_after del penúltimo punto (que puede ser
+  // null en puntos viejos), replay desde cero. Coste: O(N) puntos, en
+  // partidos reales <300 puntos así que <50ms.
+  const { data: remainingPoints } = await service.from('points')
+    .select('winner_team, server_team, point_type, shot_direction, score_before, score_after, is_break_point, was_break_point_saved')
+    .eq('match_id', matchId).eq('is_undone', false)
+    .order('sequence', { ascending: true })
 
-  // Restore stats from the per-point snapshot (stats_after added in migration 007)
-  const restoredStats = prevPoint ? (prevPoint as any).stats_after : null
+  const scoringSystem = ((match as any).scoring_system ?? 'best_of_2_sets_super_tb') as ScoringSystem
+  let restoredScore: Score = INITIAL_SCORE(scoringSystem)
+  let restoredStats: MatchStats = emptyStats()
 
-  // Restore serving_team from the server_team recorded on the undone point
-  const restoredServingTeam = lastPoint.server_team ?? match.serving_team
+  if (remainingPoints && remainingPoints.length > 0) {
+    // El score final ES el score_after del último punto restante (lo confiamos
+    // porque score_after es determinista — no se modifica por reclasificación).
+    const lastRemaining = remainingPoints[remainingPoints.length - 1]
+    restoredScore = (lastRemaining as any).score_after as Score
 
-  // Only restore status to 'in_progress' if the match was 'finished' (don't reopen suspended/walkover)
-  const restoredStatus = match.status === 'finished' ? 'in_progress' : match.status
+    // Stats se recomputan replayando todos los puntos con su clasificación
+    // actual. Esto refleja también cualquier classify-point que se hizo
+    // entre medias y mantiene coherencia incluso si stats_after estaba
+    // corrupto o nulo.
+    for (const p of remainingPoints) {
+      const pp = p as any
+      restoredStats = applyPointToStats(restoredStats, {
+        winnerTeam: pp.winner_team,
+        serverTeam: pp.server_team,
+        pointType: pp.point_type,
+        shotDirection: pp.shot_direction,
+        scoreBefore: pp.score_before,
+      })
+      if (pp.is_break_point) {
+        restoredStats = applyBreakPointStats(restoredStats, pp.server_team, true, pp.winner_team)
+      }
+    }
+  }
 
+  // Serving_team se restaura al del punto deshecho — porque ese era el
+  // que iba a sacar JUSTO ANTES de jugarse ese punto.
+  const restoredServingTeam = (lastPoint as any).server_team ?? (match as any).serving_team
+
+  // Si el partido había terminado, reabre a in_progress (el undo deshace
+  // el punto final que cerró el match).
+  const restoredStatus = (match as any).status === 'finished' ? 'in_progress' : (match as any).status
+
+  // ── 4. Persiste y push ──
   const { data: updatedMatch } = await service.from('matches').update({
     score: restoredScore,
     stats: restoredStats,
     serving_team: restoredServingTeam,
     status: restoredStatus,
-    finished_at: restoredStatus === 'in_progress' ? null : match.finished_at,
+    finished_at: restoredStatus === 'in_progress' ? null : (match as any).finished_at,
   }).eq('id', matchId).select('*').single()
 
-  if (match.broadcast_active && updatedMatch) {
-    pushBroadcastEvent(updatedMatch.tournament_id, matchId, 'point_undone', {
+  if ((match as any).broadcast_active && updatedMatch) {
+    pushBroadcastEvent((updatedMatch as any).tournament_id, matchId, 'point_undone', {
       restored_serving_team: restoredServingTeam,
+      remaining_points: remainingPoints?.length ?? 0,
     })
   }
 

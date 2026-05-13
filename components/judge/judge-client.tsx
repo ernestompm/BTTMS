@@ -491,7 +491,20 @@ export function JudgeClient({ initialMatch, userId, judgeName, timerConfig, adva
 
   async function handleUndo() {
     if (!confirm('¿Deshacer el último punto?')) return
-    setSaving(true); await post('undo'); setSaving(false)
+    setSaving(true)
+    const res = await post('undo')
+    setSaving(false)
+    if (!res.ok) {
+      let msg = `Error ${res.status} al deshacer`
+      try {
+        const j = await res.json()
+        if (j?.error) msg = j.error
+        if (j?.hint) msg += ` · ${j.hint}`
+      } catch {}
+      addToast(`✗ ${msg}`, 'red')
+    } else {
+      addToast('↩ Último punto deshecho', 'orange')
+    }
   }
 
   async function handleFinish() {
